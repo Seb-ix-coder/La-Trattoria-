@@ -661,6 +661,12 @@
     dessinerMarges();
     majInfoDonnees();
 
+    // Application installable : hors ligne complet après premier chargement
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      try { navigator.serviceWorker.register('sw.js').catch(function () { }); }
+      catch (e) { }
+    }
+
     document.addEventListener('click', function (e) {
       var t = e.target;
 

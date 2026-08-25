@@ -14,6 +14,22 @@ Les données sont conservées **sur l'appareil** (stockage local du navigateur).
 Exportez régulièrement la carte (JSON) pour la sauvegarder ou la passer d'une
 tablette à l'autre.
 
+## Installer comme une application (recommandé)
+
+Le module est une **PWA** : après un premier chargement, il fonctionne
+**entièrement hors ligne**, avec sa propre icône — sans passer par le Play Store.
+
+1. Servir le dossier sur le Wi-Fi du restaurant (toute méthode convient ;
+   sur Android, une application « serveur HTTP » suffit) ;
+2. Ouvrir l'adresse dans Chrome (Android) ou Safari (iPad) ;
+3. **Android** : menu ⋮ → *Ajouter à l'écran d'accueil* → l'icône rouge
+   « La Carte » apparaît ;
+4. **iPad/iPhone** : bouton *Partager* → *Sur l'écran d'accueil*.
+
+Ensuite, tout est en cache : l'application se lance avec ou sans connexion,
+exactement comme l'APK. Les photos, produits et marges saisis restent sur
+chaque tablette (penser à l'export JSON pour synchroniser).
+
 ## Fonctionnalités
 
 ### Types de produits
@@ -59,3 +75,4 @@ et de nouvelles rubriques peuvent être créées à la volée.
 | `carte.css` | identité visuelle reprise du site public (palette de l'APK) |
 | `carte.js` | logique : catalogue, photos, marges, import/export, persistance |
 | `donnees.js` | catalogue d'origine extrait de l'APK |
+| `manifest.webmanifest`, `sw.js`, `icones/` | installation PWA + fonctionnement hors ligne |
