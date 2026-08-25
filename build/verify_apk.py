@@ -161,8 +161,11 @@ def check_site_js(apk_path: str) -> None:
     assert 'Produits à la vente' in js, 'outil produits absent'
     assert 'pourboires_especes' in js, 'pourboires stats absents'
     assert '#paiement-bloc' in css, 'styles paiement absents'
-    print('[ok] site.js : QR + outils (PIN, fidélité, produits) + paiement + pourboires')
-    print('[ok] site.css : styles QR + conformité + pourboire + paiement présents')
+    assert 'Modes App' in js, 'modes App absents'
+    assert '?partenaire' in js or 'partenaire' in js, 'mode partenaire absent'
+    assert '.mode-app' in css, 'styles modes App absents'
+    print('[ok] site.js : QR + outils + paiement + pourboires + modes App')
+    print('[ok] site.css : styles QR + conformité + pourboire + paiement + App')
 
 
 # ---------------------------------------------------------------------------

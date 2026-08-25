@@ -109,6 +109,13 @@ def patch_site_js(source: str) -> str:
                                    'paiement_fidelite.js'))
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
         print('[patch] site.js : paiement + carte de fidélité (CLIENT)')
+
+    # -- addon modes App client/partenaire (idempotent)
+    if 'Modes App' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__),
+                                   'mode_app.js'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.js : modes App client/partenaire (APP)')
     return source
 
 
@@ -136,6 +143,12 @@ def patch_site_css(source: str) -> str:
                                    'paiement_fidelite.css'))
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
         print('[patch] site.css : styles paiement + fidélité (CLIENT)')
+
+    if 'Modes App' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__),
+                                   'mode_app.css'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.css : styles modes App (APP)')
     return source
 
 

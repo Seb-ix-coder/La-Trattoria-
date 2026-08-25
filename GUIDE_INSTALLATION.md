@@ -142,6 +142,13 @@ stock) :
     se fait dans **Administration → Catalogue** de l'application ;
     l'outil ⚙ → « Produits » permet la consultation et l'export.
 
+12. **Application client & partenaire (QR codes)** : scannez
+    `qr/QR-app-client.png` → l'app client (menu + cartes du jour + avis) ;
+    `qr/QR-app-partenaire.png` → l'app partenaire (idem + Espace
+    Partenaires). Les clients l'ajoutent à leur écran d'accueil (PWA).
+    Carte de visite : `qr/carte-visite.png` / `.pdf`. Détails :
+    `APP_CLIENT_PARTENAIRE.md`.
+
 ## 7. Verrouillage des tablettes (mode kiosque)
 
 L'application ne possède pas de code PIN : protégez l'accès au niveau
