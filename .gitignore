@@ -24,3 +24,4 @@ TestResults.xml
 # Données d'exécution du serveur de carte (synchronisation)
 carte/donnees-serveur.json
 carte/__pycache__/
+carte/gestion-de-la-carte.zip
