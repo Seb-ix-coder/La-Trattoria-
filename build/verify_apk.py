@@ -35,9 +35,9 @@ def check_manifest(apk_path: str) -> None:
     from androguard.core.apk import APK
     a = APK(apk_path)
     assert a.get_package() == 'com.trattoria.commande', 'package'
-    assert a.get_androidversion_code() == '16', 'versionCode=%s' \
+    assert a.get_androidversion_code() == '17', 'versionCode=%s' \
         % a.get_androidversion_code()
-    assert a.get_androidversion_name() == '11.1', 'versionName=%s' \
+    assert a.get_androidversion_name() == '11.2', 'versionName=%s' \
         % a.get_androidversion_name()
     assert a.get_min_sdk_version() == '21', 'minSdk'
     assert a.get_target_sdk_version() == '34', 'targetSdk'
@@ -46,7 +46,7 @@ def check_manifest(apk_path: str) -> None:
     app = [el for el in xml.iter() if el.tag.endswith('application')][0]
     assert app.get('{http://schemas.android.com/apk/res/android}allowBackup') \
         == 'false', 'allowBackup != false'
-    print('[ok] manifeste : versionName=11.1 versionCode=16 '
+    print('[ok] manifeste : versionName=11.2 versionCode=17 '
           'allowBackup=false minSdk=21 targetSdk=34')
 
 

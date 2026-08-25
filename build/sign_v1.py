@@ -63,7 +63,8 @@ def b64w(data: bytes) -> str:
 
 def build_manifest(entries) -> str:
     """MANIFEST.MF : une section par entrée (hors META-INF)."""
-    lines = ['Manifest-Version: 1.0', 'Created-By: 1.0 (Android)', '']
+    lines = ['Manifest-Version: 1.0', 'Built-By: Signflinger',
+             'Created-By: Android Gradle 8.4.0', '']
     for name, data in entries:
         lines.append('Name: %s' % name)
         lines.append('SHA-256-Digest: %s' % b64w(hashlib.sha256(data).digest()))
@@ -75,7 +76,7 @@ def build_sf(manifest_bytes: bytes, entries) -> str:
     """CERT.SF : digest du manifeste + digest de chaque section."""
     lines = [
         'Signature-Version: 1.0',
-        'Created-By: 1.0 (Android)',
+        'Created-By: Android Gradle 8.4.0',
         'SHA-256-Digest-Manifest: %s'
         % b64w(hashlib.sha256(manifest_bytes).digest()),
         # Même en-tête que l'outillage officiel (apksigner/SignApk) :
@@ -138,8 +139,12 @@ def build_cms(cert_der: bytes, private_key, content: bytes) -> bytes:
             }),
         }),
         'digest_algorithm': cms.DigestAlgorithm({'algorithm': 'sha256'}),
+        # Même OID que l'outillage Android officiel : rsaEncryption
+        # (1.2.840.113549.1.1.1) — la signature porte sur le contenu avec
+        # DigestInfo SHA-256 (voir build_cms). Être identique à apksigner
+        # élimine tout risque de rejet par le vérificateur v1 de l'appareil.
         'signature_algorithm':
-            cms.SignedDigestAlgorithm({'algorithm': 'sha256_rsa'}),
+            cms.SignedDigestAlgorithm({'algorithm': 'rsassa_pkcs1v15'}),
         'signature': signature,
     })
     signed_data = cms.SignedData({

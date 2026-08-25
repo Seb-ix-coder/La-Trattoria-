@@ -67,13 +67,14 @@ def generate_keystore(out_dir: str) -> str:
         .serial_number(x509.random_serial_number())
         .not_valid_before(now - datetime.timedelta(days=1))
         .not_valid_after(now + datetime.timedelta(days=30 * 365))
-        .add_extension(x509.BasicConstraints(ca=False, path_length=None),
-                       critical=True)
-        .add_extension(x509.KeyUsage(
-            digital_signature=True, key_encipherment=True,
-            data_encipherment=False, key_agreement=False,
-            key_cert_sign=False, crl_sign=False, content_commitment=False,
-            encipher_only=False, decipher_only=False), critical=True)
+        # Certificat volontairement minimal, comme celui de l'APK
+        # d'origine : uniquement SubjectKeyIdentifier, non critique.
+        # Android n'exige aucune extension pour un certificat de
+        # signature d'APK ; rester identique à l'outillage officiel
+        # élimine tout risque de rejet.
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(key.public_key()),
+            critical=False)
         .sign(key, hashes.SHA256())
     )
 

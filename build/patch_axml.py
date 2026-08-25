@@ -9,10 +9,10 @@ Correctifs appliqués (build durci 11.1) :
      (C5 du rapport ANALYSE_TRATO.md : empêche l'exfiltration des données —
      NIR, pièces d'identité, signatures, clé Hiboutik — via `adb backup`
      ou la sauvegarde cloud du compte Google de la tablette.)
-  2. android:versionCode : 15 -> 16
+  2. android:versionCode : 15 -> 17
      (nouvelle version signée avec une nouvelle clé ; le code de version est
      incrémenté pour distinguer le build durci et permettre le suivi.)
-  3. android:versionName : "11.0" -> "11.1"
+  3. android:versionName : "11.0" -> "11.2"
      (même longueur de chaîne, remplacement en place dans le string pool.)
 
 Principe technique
@@ -293,11 +293,11 @@ def main() -> None:
             sys.exit(1)
         # 1) allowBackup=false sur l'élément <application>
         axml.patch_boolean_attr('application', 'allowBackup', False)
-        # 2) versionCode 15 -> 16 sur <manifest>
-        axml.patch_int_attr('manifest', 'versionCode', 16)
-        # 3) versionName "11.0" -> "11.1"
+        # 2) versionCode 15 -> 17 sur <manifest>
+        axml.patch_int_attr('manifest', 'versionCode', 17)
+        # 3) versionName "11.0" -> "11.2"
         try:
-            axml.patch_string('11.0', '11.1')
+            axml.patch_string('11.0', '11.2')
         except ValueError as e:
             print('[attention] %s (versionName conservé)' % e)
         with open(sys.argv[3], 'wb') as f:
