@@ -1,0 +1,224 @@
+/* ============================================================
+   La Trattoria — gestion de la carte
+   Même palette que le site public (assets/site.css de l'APK) :
+   aucune dépendance, fonctionne sur le wifi du restaurant.
+   ============================================================ */
+
+:root{
+  --rouge:#A51822; --rougef:#7A1018; --olive:#8A8A55;
+  --creme:#FDFAF3; --fond:#F4F1EA; --beige:#EFE9DA;
+  --trait:#D8CFC0; --texte:#2B2B28; --gris:#6E6A63;
+  --vert:#3E6B2E; --vert-f:#2d5220; --ardoise:#1C1C1A;
+  --or:#8A6A12; --or-fond:#F6E9C8; --rouge-fond:#FBE3E1;
+  --ombre:0 2px 10px rgba(43,43,40,.08);
+  --ombre-f:0 8px 30px rgba(43,43,40,.16);
+  --r:14px;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  margin:0;background:var(--fond);color:var(--texte);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:16px;line-height:1.5;
+}
+h1,h2,h3{font-family:Georgia,"Times New Roman",serif;line-height:1.2;margin:0}
+button{font:inherit;cursor:pointer}
+img{display:block}
+.conteneur{max-width:1060px;margin:0 auto;padding:0 18px}
+
+.evite{position:absolute;left:-9999px;top:0;background:var(--rouge);color:#fff;
+  padding:12px 18px;z-index:500;border-radius:0 0 var(--r) 0}
+.evite:focus{left:0}
+:focus-visible{outline:3px solid var(--olive);outline-offset:2px}
+
+.aide{font-size:13px;color:var(--gris);margin:6px 0}
+.err{color:var(--rouge);font-weight:600;font-size:14px}
+
+/* ---------------- en-tête ---------------- */
+header{position:sticky;top:0;z-index:100;background:rgba(253,250,243,.97);
+  border-bottom:1px solid var(--trait);backdrop-filter:blur(8px)}
+.barre{display:flex;align-items:center;gap:14px;padding:10px 0;min-height:60px}
+.marque{display:flex;align-items:center;gap:11px;flex:1;min-width:0}
+.logo{width:44px;height:44px;flex:none;border-radius:10px;background:var(--rouge);
+  color:#fff;display:grid;place-items:center;font-family:Georgia,serif;
+  font-weight:700;font-size:19px}
+.marque .n{font-family:Georgia,serif;font-weight:700;font-size:19px;color:var(--rougef);
+  display:block;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.marque .s{font-size:11.5px;color:var(--gris);letter-spacing:.04em;text-transform:uppercase}
+.onglets{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:0 0 8px}
+.onglets::-webkit-scrollbar{display:none}
+.onglet{border:0;background:transparent;padding:0 14px;min-height:40px;border-radius:20px;
+  font-size:14.5px;font-weight:600;color:var(--texte);white-space:nowrap}
+.onglet:hover{background:var(--beige)}
+.onglet.actif{background:var(--rouge);color:#fff}
+
+/* ---------------- boutons ---------------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:44px;padding:0 16px;border-radius:22px;border:1px solid transparent;
+  font-weight:700;font-size:14.5px;text-decoration:none;box-shadow:var(--ombre)}
+.btn-p{background:var(--rouge);color:#fff}
+.btn-p:hover{background:var(--rougef)}
+.btn-s{background:var(--beige);color:var(--texte);border-color:var(--trait);box-shadow:none}
+.btn-s:hover{background:#e5ddcb}
+.btn-danger{background:transparent;color:var(--rouge);border-color:var(--rouge);box-shadow:none}
+.btn-danger:hover{background:var(--rouge-fond)}
+.btn-bloc{width:100%}
+.btn-mini{min-height:34px;padding:0 12px;font-size:13px;border-radius:17px}
+
+/* ---------------- écran carte ---------------- */
+main{padding:18px 0 80px}
+.outils{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+#recherche{width:100%;min-height:46px;padding:0 16px;border:1px solid var(--trait);
+  border-radius:23px;background:var(--creme);font-size:15px}
+.filtres{display:flex;gap:6px;flex-wrap:wrap}
+.filtre{border:1px solid var(--trait);background:var(--creme);border-radius:18px;
+  padding:0 14px;min-height:36px;font-size:13.5px;font-weight:600;color:var(--texte)}
+.filtre.actif{background:var(--olive);border-color:var(--olive);color:#fff}
+
+.famille{margin-bottom:22px}
+.famille>h2{font-size:21px;color:var(--rougef);border-bottom:2px solid var(--trait);
+  padding-bottom:6px;margin:0 0 4px}
+.famille .nb{font-family:inherit;color:var(--gris);font-size:13px;font-weight:400}
+
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:12px}
+
+.carte-prod{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
+  overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--ombre)}
+.carte-prod.masque{display:none}
+.carte-prod.inactif{opacity:.55}
+.visu{position:relative;aspect-ratio:16/10;background:var(--beige);
+  display:grid;place-items:center;overflow:hidden}
+.visu img{width:100%;height:100%;object-fit:cover}
+.visu .motif{font-family:Georgia,serif;font-size:34px;color:var(--trait);
+  text-transform:uppercase;letter-spacing:.06em}
+.badge-type{position:absolute;top:8px;left:8px;background:rgba(28,28,26,.82);color:#fff;
+  font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 10px;border-radius:11px}
+.badge-type.formule{background:var(--or)}
+.badge-type.plat{background:rgba(28,28,26,.82)}
+.badge-type.boisson{background:var(--olive)}
+.badge-type.cocktail{background:var(--rouge)}
+.badge-epuise{position:absolute;top:8px;right:8px;background:var(--ardoise);color:#fff;
+  font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:10px}
+
+.infos{padding:12px 14px 10px;display:flex;flex-direction:column;gap:6px;flex:1}
+.infos h3{font-size:16.5px}
+.infos .cat{font-size:11.5px;color:var(--gris);text-transform:uppercase;letter-spacing:.04em}
+.infos .desc{font-size:13px;color:var(--gris);display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ligne-prix{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:auto}
+.ligne-prix .pv{font-size:17px;font-weight:700}
+.ligne-prix .marge{font-size:12.5px;font-weight:700;padding:2px 9px;border-radius:11px;white-space:nowrap}
+.marge.vert{background:#E4EFDC;color:var(--vert-f)}
+.marge.rouge{background:var(--rouge-fond);color:var(--rouge)}
+.marge.neutre{background:var(--beige);color:var(--gris)}
+.badge-manuel{font-size:10.5px;font-weight:700;color:var(--or);
+  border:1px solid var(--or);border-radius:9px;padding:1px 7px;white-space:nowrap}
+.actions-prod{display:flex;gap:6px;padding:0 14px 12px}
+.actions-prod .btn{flex:1}
+
+/* ---------------- écran marges ---------------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
+  padding:14px;box-shadow:var(--ombre)}
+.kpi .v{font-family:Georgia,serif;font-size:24px;font-weight:700;color:var(--rougef)}
+.kpi .l{font-size:12px;color:var(--gris);text-transform:uppercase;letter-spacing:.04em}
+.kpi.alerte .v{color:var(--rouge)}
+
+.carte-bloc{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
+  padding:16px 18px;margin-bottom:16px;box-shadow:var(--ombre)}
+.carte-bloc h2{font-size:19px;color:var(--rougef);margin-bottom:8px}
+.carte-bloc.danger{border-color:var(--rouge)}
+
+.table-wrap{overflow-x:auto;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--gris);
+  text-align:left;padding:8px 10px;border-bottom:2px solid var(--trait);
+  cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:var(--rougef)}
+th.num,td.num{text-align:right}
+td{padding:7px 10px;border-bottom:1px solid var(--beige);vertical-align:middle}
+tr[data-id]{cursor:pointer}
+tr[data-id]:hover{background:var(--fond)}
+tr.alerte-marge{background:var(--rouge-fond)}
+tr.alerte-marge:hover{background:#f7d8d5}
+tr.inactif td{opacity:.5}
+td .type-mini{font-size:10.5px;color:var(--gris);text-transform:uppercase}
+.puce{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.puce.vert{background:var(--vert)}.puce.rouge{background:var(--rouge)}.puce.gris{background:var(--trait)}
+
+.mini-fam{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:8px}
+.fam-stat{background:var(--fond);border:1px solid var(--trait);border-radius:10px;padding:10px 12px}
+.fam-stat .t{font-weight:700;font-size:14px}
+.fam-stat .d{font-size:12.5px;color:var(--gris)}
+
+/* ---------------- écran données ---------------- */
+.actions-donnees{display:flex;flex-direction:column;gap:10px;margin:12px 0;max-width:340px}
+#info-donnees{font-family:monospace}
+
+/* ---------------- fiche (dialogue) ---------------- */
+.voile{position:fixed;inset:0;background:rgba(28,28,26,.45);z-index:300}
+.fiche{position:fixed;z-index:310;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 24px);
+  background:var(--creme);border-radius:var(--r);box-shadow:var(--ombre-f);
+  display:flex;flex-direction:column;overflow:hidden}
+.fiche[hidden],.voile[hidden]{display:none}
+.fiche-tete{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;border-bottom:1px solid var(--trait)}
+.fiche-tete h2{font-size:20px;color:var(--rougef)}
+.fermer{border:0;background:var(--beige);border-radius:50%;width:38px;height:38px;
+  font-size:20px;line-height:1;color:var(--texte)}
+.fiche-corps{padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.fiche-pied{display:flex;gap:8px;align-items:center;padding:12px 18px;
+  border-top:1px solid var(--trait);background:var(--fond)}
+.flex-vide{flex:1}
+
+.ligne-photo{display:flex;gap:14px;align-items:flex-start}
+.apercu-photo{width:120px;height:88px;flex:none;border-radius:10px;overflow:hidden;
+  background:var(--beige);border:1px dashed var(--trait);display:grid;place-items:center}
+.apercu-photo img{width:100%;height:100%;object-fit:cover}
+.sans-photo{font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:.05em}
+.col-photo{flex:1;display:flex;flex-direction:column;gap:8px}
+.col-photo .btn{min-height:40px;font-size:13.5px}
+
+.champ{display:flex;flex-direction:column;gap:4px;font-size:13.5px;font-weight:600}
+.champ span{color:var(--gris)}
+input[type=text],input[type=number],input[type=search],select,textarea{
+  min-height:44px;border:1px solid var(--trait);border-radius:10px;background:#fff;
+  padding:0 12px;font:inherit;color:var(--texte);font-weight:400}
+textarea{padding:10px 12px;resize:vertical;font-size:14.5px}
+.deux-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.trois-cols{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:10px}
+@media (max-width:460px){.deux-cols,.trois-cols{grid-template-columns:1fr}}
+
+.pave{border:1px solid var(--trait);border-radius:10px;padding:10px 12px 12px;margin:0}
+.pave legend{font-size:12px;font-weight:700;color:var(--gris);text-transform:uppercase;
+  letter-spacing:.05em;padding:0 6px}
+
+.chiffres-marge{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:4px 0 8px}
+.chiffres-marge div{background:var(--fond);border-radius:8px;padding:8px;text-align:center}
+.chiffres-marge dt{font-size:10.5px;color:var(--gris);text-transform:uppercase;margin:0}
+.chiffres-marge dd{margin:2px 0 0;font-weight:700;font-size:15px}
+.verdict{font-size:13px;font-weight:600;margin:0 0 10px}
+.verdict.ok{color:var(--vert-f)}
+.verdict.ko{color:var(--rouge)}
+
+.marge-manuelle{border-top:1px dashed var(--trait);padding-top:10px}
+.marge-manuelle h3{font-size:14.5px;margin-bottom:8px}
+.suggestion{font-size:13.5px;background:var(--or-fond);border-radius:8px;padding:8px 10px;margin:8px 0 0}
+.actions-marge{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+
+.case{display:flex;gap:9px;align-items:flex-start;font-size:13.5px}
+.case input{width:18px;height:18px;margin-top:2px;accent-color:var(--rouge)}
+
+/* ---------------- toast ---------------- */
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);
+  background:var(--ardoise);color:#fff;padding:12px 20px;border-radius:24px;
+  font-size:14.5px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:400;max-width:90vw}
+.toast.on{opacity:1;transform:translateX(-50%)}
+
+/* ---------------- impression (carte à exporter sur papier) ---------------- */
+@media print{
+  header,.outils,.actions-prod,#toast,.filtres{display:none!important}
+  main{padding:0}
+}
