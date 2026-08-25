@@ -78,6 +78,14 @@ def build_sf(manifest_bytes: bytes, entries) -> str:
         'Created-By: 1.0 (Android)',
         'SHA-256-Digest-Manifest: %s'
         % b64w(hashlib.sha256(manifest_bytes).digest()),
+        # Même en-tête que l'outillage officiel (apksigner/SignApk) :
+        # quand CERT.SF déclare "X-Android-APK-Signed: 2" et que le bloc
+        # v2 est présent et valide, Android 7+ utilise la signature v2 et
+        # n'exige plus la vérification v1 (elle reste utilisée sur
+        # Android 5-6). Sans cet en-tête, Android vérifie TOUJOURS la v1
+        # en plus de la v2 : ce correctif aligne notre comportement sur
+        # celui d'apksigner.
+        'X-Android-APK-Signed: 2',
         '',
     ]
     # digest de chaque section du manifeste (bloc "Name: ..." + ligne vide)
