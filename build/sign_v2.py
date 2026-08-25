@@ -47,6 +47,10 @@ from cryptography.hazmat.primitives.asymmetric import padding
 SIG_ALG_ID = 0x0103
 # Identifiant de la paire du bloc de signature v2
 V2_BLOCK_ID = 0x7109871A
+# Identifiant du bloc de padding verity (alignement à 4096 octets,
+# comme le fait apksigner) — requis pour la vérification d'APK
+# (fs-verity) sur Android 11+ et inoffensif sur les versions antérieures.
+VERITY_PADDING_BLOCK_ID = 0x42726577
 MAGIC = b'APK Sig Block 42'
 CHUNK_SIZE = 1 << 20          # 1 Mio
 DIGEST_SIZE = 32              # SHA-256
@@ -126,16 +130,29 @@ def build_v2_block(signed_data: bytes, signature: bytes, cert_der: bytes,
     signers_sequence = _lp(signer)
     v2_value = _lp(signers_sequence)
 
-    # -- paire puis bloc : size || paire || size || magic.
-    # NB : dans le format réel (vérifié sur un APK produit par l'outillage
-    # Android officiel, et c'est ce que lit AOSP : `pairSize - 4`), la
-    # longueur de la paire INCLUT les 4 octets de l'ID :
-    #   pair = [uint64 (valeur + 4)][uint32 id][valeur]
+    # -- paire v2 : [uint64 (valeur + 4)][uint32 id][valeur]
+    #    (la longueur inclut l'ID, cf. AOSP `pairSize - 4`).
     pair = struct.pack('<Q', len(v2_value) + 4) \
         + struct.pack('<I', V2_BLOCK_ID) + v2_value
-    total = 8 + len(pair) + 8 + len(MAGIC)
+
+    # -- paire de padding verity : on complète le bloc pour que sa taille
+    #    totale soit un multiple de 4096 (comportement d'apksigner).
+    #    Valeur = octets nuls ; longueur incluant l'ID (+4).
+    base_total = 8 + len(pair) + 8 + len(MAGIC)
+    pad_total = (4096 - (base_total % 4096)) % 4096
+    if pad_total >= 12:
+        pad_value_len = pad_total - 12
+    else:
+        pad_value_len = pad_total + 4096 - 12
+    pad_pair = struct.pack('<Q', pad_value_len + 4) \
+        + struct.pack('<I', VERITY_PADDING_BLOCK_ID) \
+        + b'\x00' * pad_value_len
+
+    # -- bloc final : size || paires || size || magic
+    total = 8 + len(pair) + len(pad_pair) + 8 + len(MAGIC)
+    assert total % 4096 == 0, 'bloc non aligné à 4096 (%d)' % total
     size_field = struct.pack('<Q', total - 8)
-    block = size_field + pair + size_field + MAGIC
+    block = size_field + pair + pad_pair + size_field + MAGIC
     assert len(block) == total
     return block
 

@@ -296,7 +296,11 @@ def check_v2(apk_path: str) -> None:
     pub = __import__('cryptography').hazmat.primitives.serialization \
         .load_der_public_key(pk)
     pub.verify(signature, signed, padding.PKCS1v15(), hashes.SHA256())
-    print('[ok] signature v2 : digest du contenu + signature RSA vérifiés')
+    # le bloc doit être aligné à 4096 (padding verity, comme apksigner)
+    assert (cd_off_expected - sb_start) % 4096 == 0, \
+        'bloc de signature non aligné à 4096'
+    print('[ok] signature v2 : digest du contenu + signature RSA vérifiés'
+          ' (bloc aligné 4096)')
 
     # NB : cet algorithme de digest (1 digest combiné des sections 1/3/4)
     # a été validé contre un APK signé par apksigner (l'original) : le digest
