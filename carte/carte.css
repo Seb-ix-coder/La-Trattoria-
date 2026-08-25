@@ -217,8 +217,90 @@ textarea{padding:10px 12px;resize:vertical;font-size:14.5px}
   font-size:14.5px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:400;max-width:90vw}
 .toast.on{opacity:1;transform:translateX(-50%)}
 
-/* ---------------- impression (carte à exporter sur papier) ---------------- */
+/* ---------------- badge de synchronisation ---------------- */
+.badge-sync{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--trait);
+  background:var(--creme);border-radius:17px;padding:0 12px;min-height:34px;
+  font-size:12px;font-weight:700;color:var(--gris);white-space:nowrap}
+.badge-sync .point{width:9px;height:9px;border-radius:50%;background:var(--trait)}
+.badge-sync.on{color:var(--vert-f);border-color:#bfd8ab}
+.badge-sync.on .point{background:var(--vert)}
+
+/* ---------------- écran cartes du jour ---------------- */
+.ardoise-intro{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.ardoise-intro h2{margin:0}
+.ardoise-intro .aide{flex:1 1 260px;margin:0}
+#ardoises{display:flex;flex-direction:column;gap:16px}
+.ardoise-bloc{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
+  padding:16px 18px;box-shadow:var(--ombre)}
+.ab-tete{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+.ab-tete h2{font-size:19px;color:var(--rougef)}
+.badge-vide,.badge-plein{flex:none;font-size:11.5px;font-weight:700;border-radius:11px;padding:3px 10px}
+.badge-vide{background:var(--beige);color:var(--gris)}
+.badge-plein{background:#E4EFDC;color:var(--vert-f)}
+.mini-lien{border:0;background:none;color:var(--olive);font-size:14px;padding:2px 4px}
+.mini-lien:hover{color:var(--rouge)}
+.ab-lignes{border:1px solid var(--trait);border-radius:10px;overflow:hidden;margin-bottom:10px;background:#fff}
+.ligne-edit{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--beige)}
+.ligne-edit:last-child{border-bottom:0}
+.le-nom{flex:1;font-size:14px;font-weight:600;min-width:0}
+.le-libre{font-size:10.5px;font-weight:700;color:var(--or);text-transform:uppercase;
+  border:1px solid var(--or);border-radius:8px;padding:0 6px;margin-left:6px;white-space:nowrap}
+.le-prix{font-weight:700;font-size:14px;white-space:nowrap}
+.le-actions{display:flex;gap:4px}
+.le-actions button{width:32px;height:32px;border-radius:8px;border:1px solid var(--trait);
+  background:var(--beige);font-size:14px;line-height:1;color:var(--texte)}
+.le-actions button:hover{background:#e5ddcb}
+.le-actions [data-retirer]{color:var(--rouge)}
+.ab-actions{display:flex;gap:6px;flex-wrap:wrap}
+.mini-form{display:grid;grid-template-columns:1.4fr 2fr .7fr auto auto;gap:8px;
+  margin-top:10px;padding:12px;background:var(--fond);border:1px dashed var(--trait);border-radius:10px}
+.mini-form[hidden]{display:none}
+.mini-form input{min-height:40px;font-size:14px}
+@media (max-width:640px){.mini-form{grid-template-columns:1fr 1fr}.mini-form [data-l-desc]{grid-column:1/-1}}
+
+/* ---------------- composition (cueillette) ---------------- */
+.cueillette-liste{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.cueillette-ligne{display:flex;align-items:center;gap:10px;padding:9px 12px;
+  border:1px solid var(--trait);border-radius:10px;background:#fff;cursor:pointer}
+.cueillette-ligne.on{border-color:var(--olive);background:#f4f6ec}
+.cueillette-ligne input{width:18px;height:18px;accent-color:var(--rouge);flex:none}
+.cl-nom{flex:1;font-size:14px;font-weight:600;min-width:0}
+.cl-meta{display:block;font-weight:400;font-size:11.5px;color:var(--gris)}
+.cl-prix{font-weight:700;font-size:13.5px;white-space:nowrap}
+
+/* ---------------- aperçu plein écran ---------------- */
+.apercu-overlay{position:fixed;inset:0;z-index:320;background:rgba(28,28,26,.9);
+  overflow-y:auto;padding:30px 14px;display:flex;flex-direction:column;align-items:center}
+.apercu-overlay[hidden]{display:none}
+.apercu-page{width:min(720px,100%);background:#fff;box-shadow:var(--ombre-f);border-radius:4px}
+.fermer-overlay{position:fixed;top:14px;right:14px;background:var(--creme)}
+
+/* ---------------- carte « papier » (aperçu + impression) ---------------- */
+.page-ardoise{background:#fff;color:var(--ardoise);padding:34px 38px 26px;
+  display:flex;flex-direction:column;min-height:52vh}
+.page-ardoise.grande{min-height:auto}
+.page-ardoise>header{text-align:center;margin-bottom:18px}
+.page-ardoise h1{font-family:Georgia,serif;color:var(--rougef);font-size:30px;
+  letter-spacing:.02em;margin:0}
+.page-ardoise .sous{font-style:italic;color:#55524a;margin:6px 0 0;font-family:Georgia,serif}
+.page-ardoise .lignes{flex:1;display:flex;flex-direction:column;gap:13px;
+  padding:6px 4px;border-top:2px solid var(--ardoise);border-bottom:2px solid var(--ardoise);
+  padding-top:16px;padding-bottom:16px}
+.page-ardoise .l .lg{display:flex;align-items:baseline;gap:10px}
+.page-ardoise .nom{font-family:Georgia,serif;font-size:17px;font-weight:700}
+.page-ardoise .pts{flex:1;border-bottom:1px dotted #9a958c;transform:translateY(-4px)}
+.page-ardoise .prix{font-family:Georgia,serif;font-weight:700;font-size:16px;white-space:nowrap}
+.page-ardoise .d{margin:2px 0 0;font-size:12.5px;color:#55524a;font-style:italic}
+.page-ardoise .rien{text-align:center;color:#8a857c;font-style:italic;padding:34px 0}
+.page-ardoise>footer{text-align:center;font-size:11px;color:#6e6a63;margin-top:14px;line-height:1.5}
+@media screen{.page-ardoise{border:1px solid var(--trait)}}
+
+/* ---------------- impression ---------------- */
+@media screen{#zone-impression{display:none}}
 @media print{
-  header,.outils,.actions-prod,#toast,.filtres{display:none!important}
-  main{padding:0}
+  body{background:#fff}
+  body>header,main,.toast,.voile,.fiche,#cueillette,#apercu,#apercu .fermer{display:none!important}
+  #zone-impression{display:block!important}
+  .page-ardoise{border:0;min-height:0;page-break-after:always;padding:10mm 6mm}
+  .page-ardoise:last-child{page-break-after:auto}
 }

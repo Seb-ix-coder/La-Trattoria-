@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#A51822">
+<title>La Trattoria — La carte du jour</title>
+<style>
+  /* Page publique servie par serveur_carte.py — lecture seule.
+     Palette identique au site public de l'APK. */
+  :root{
+    --rouge:#A51822; --rougef:#7A1018; --olive:#8A8A55;
+    --creme:#FDFAF3; --fond:#F4F1EA; --beige:#EFE9DA;
+    --trait:#D8CFC0; --texte:#2B2B28; --gris:#6E6A63;
+    --r:14px; --ombre:0 2px 10px rgba(43,43,40,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fond);color:var(--texte);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:16px;line-height:1.5}
+  h1,h2,h3{font-family:Georgia,"Times New Roman",serif;margin:0;line-height:1.2}
+  .hero{background:var(--rouge);color:#fff;text-align:center;padding:42px 18px 34px}
+  .hero .titre{font-size:38px;font-weight:700}
+  .hero .sous{font-family:Georgia,serif;font-style:italic;font-size:16px;opacity:.85;margin-top:6px}
+  .hero .date{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;margin-top:12px}
+  .conteneur{max-width:1020px;margin:0 auto;padding:26px 18px 70px}
+  .ardoise{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
+    box-shadow:var(--ombre);padding:22px 24px;margin:0 0 22px}
+  .ardoise h2{color:var(--rougef);font-size:24px;text-align:center}
+  .ardoise .sous-titre{text-align:center;font-family:Georgia,serif;font-style:italic;
+    color:var(--gris);margin:4px 0 14px}
+  .ligne{display:flex;align-items:baseline;gap:10px;padding:9px 4px;border-bottom:1px dotted var(--trait)}
+  .ligne:last-child{border-bottom:0}
+  .ligne .nom{font-family:Georgia,serif;font-weight:700;font-size:15.5px}
+  .ligne .desc{display:block;font-family:inherit;font-style:italic;font-weight:400;
+    font-size:12.5px;color:var(--gris)}
+  .ligne .pts{flex:1}
+  .ligne .prix{font-family:Georgia,serif;font-weight:700;white-space:nowrap}
+  .famille{margin:34px 0 8px;text-align:center}
+  .famille h2{font-size:26px;color:var(--rougef)}
+  .famille h2::after{content:"";display:block;width:56px;height:2px;background:var(--olive);
+    margin:8px auto 0}
+  .grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:16px}
+  .prod{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
+    overflow:hidden;box-shadow:var(--ombre);display:flex;flex-direction:column}
+  .prod .photo{aspect-ratio:16/9;background:var(--beige);overflow:hidden}
+  .prod .photo img{width:100%;height:100%;object-fit:cover}
+  .prod .infos{padding:12px 14px;display:flex;flex-direction:column;gap:4px;flex:1}
+  .prod .cat{font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:.05em}
+  .prod h3{font-size:16px}
+  .prod .d{font-size:12.5px;color:var(--gris);display:-webkit-box;-webkit-line-clamp:2;
+    -webkit-box-orient:vertical;overflow:hidden}
+  .prod .ligne-prix{margin-top:auto;padding-top:6px;display:flex;justify-content:flex-end}
+  .prod .pv{font-family:Georgia,serif;font-weight:700;font-size:16.5px;color:var(--rougef)}
+  .pied{text-align:center;color:var(--gris);font-size:12px;padding:30px 18px 20px;
+    border-top:1px solid var(--trait);margin-top:30px;line-height:1.7}
+  .hs{text-align:center;padding:80px 20px;color:var(--gris)}
+  .hs h2{color:var(--rougef);margin-bottom:10px}
+  .hs code{background:var(--beige);padding:2px 8px;border-radius:6px}
+  .live{position:fixed;top:10px;right:12px;background:rgba(28,28,26,.8);color:#fff;
+    font-size:10.5px;padding:4px 10px;border-radius:12px;letter-spacing:.06em}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1 class="titre">La Trattoria</h1>
+  <p class="sous">Cuisine italienne — fait maison, servi au restaurant</p>
+  <p class="date" id="date"></p>
+</header>
+
+<div class="live" id="live" hidden>EN DIRECT</div>
+
+<main class="conteneur" id="contenu">
+  <div class="hs">
+    <h2>Un instant…</h2>
+    <p>La carte arrive.</p>
+  </div>
+</main>
+
+<footer class="pied">
+  La Trattoria · Rue de La Poste · 17100 Saintes<br>
+  Prix TTC, service compris. Merci de votre visite !
+</footer>
+
+<script>
+/* Consulte l'API locale (serveur_carte.py) ; se rafraîchit toutes les 60 s
+   — pratique pour un écran en vitrine ou en salle. */
+(function () {
+  'use strict';
+
+  var ORDRE_ARDOISES = ['plats', 'bieres', 'desserts'];
+
+  function echap(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function eur(v) {
+    var n = Number(v);
+    if (!isFinite(n)) n = 0;
+    return n.toFixed(2).replace('.', ',') + ' €';
+  }
+
+  function ligneHTML(l) {
+    return '<div class="ligne"><span class="nom">' + echap(l.nom) +
+      (l.desc ? '<span class="desc">' + echap(l.desc) + '</span>' : '') +
+      '</span><span class="pts"></span><span class="prix">' + eur(l.prix) + '</span></div>';
+  }
+
+  function ardoiseHTML(cle, a, carte) {
+    var lignes = [];
+    (a.selection || []).forEach(function (id) {
+      for (var i = 0; i < carte.length; i++) {
+        if (carte[i].id === id && carte[i].actif !== false) {
+          lignes.push({ nom: carte[i].nom, desc: carte[i].desc, prix: carte[i].pv });
+          break;
+        }
+      }
+    });
+    (a.libres || []).forEach(function (l) { lignes.push(l); });
+    if (!lignes.length) return '';
+    return '<section class="ardoise" data-cle="' + cle + '">' +
+      '<h2>' + echap(a.titre) + '</h2>' +
+      (a.sous ? '<p class="sous-titre">' + echap(a.sous) + '</p>' : '') +
+      lignes.map(ligneHTML).join('') + '</section>';
+  }
+
+  function carteHTML(carte) {
+    var ordre = [];
+    var parFam = {};
+    carte.forEach(function (p) {
+      if (p.actif === false) return;
+      if (!parFam[p.fam]) { parFam[p.fam] = []; ordre.push(p.fam); }
+      parFam[p.fam].push(p);
+    });
+    return ordre.map(function (fam) {
+      var prods = parFam[fam].map(function (p) {
+        return '<article class="prod">' +
+          (p.photo ? '<div class="photo"><img src="' + p.photo + '" alt="' +
+            echap(p.nom) + '" loading="lazy"></div>' : '') +
+          '<div class="infos">' +
+          '<span class="cat">' + echap(p.cat || p.fam) + '</span>' +
+          '<h3>' + echap(p.nom) + '</h3>' +
+          (p.desc ? '<p class="d">' + echap(p.desc) + '</p>' : '') +
+          '<div class="ligne-prix"><span class="pv">' + eur(p.pv) + '</span></div>' +
+          '</div></article>';
+      }).join('');
+      return '<section class="famille"><h2>' + echap(fam) + '</h2>' +
+        '<div class="grille">' + prods + '</div></section>';
+    }).join('');
+  }
+
+  function afficher(etat) {
+    var carte = etat.carte || [];
+    var ardoises = etat.ardoises || {};
+    var h = ORDRE_ARDOISES.map(function (cle) {
+      return ardoises[cle] ? ardoiseHTML(cle, ardoises[cle], carte) : '';
+    }).join('');
+    h += carteHTML(carte);
+    document.getElementById('contenu').innerHTML = h;
+    document.getElementById('live').hidden = false;
+  }
+
+  function horsService() {
+    document.getElementById('contenu').innerHTML =
+      '<div class="hs"><h2>La carte n\u2019est pas servie ici</h2>' +
+      '<p>Cette page doit être ouverte via le serveur du restaurant ' +
+      '(<code>serveur_carte.py</code>) sur le Wi-Fi.<br>' +
+      'Adressez-vous au comptoir pour conna\u00eetre la carte du jour.</p></div>';
+  }
+
+  function rafraichir() {
+    fetch('api/carte', { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('ko');
+      return r.json();
+    }).then(afficher).catch(horsService);
+  }
+
+  try {
+    document.getElementById('date').textContent =
+      new Date().toLocaleDateString('fr-FR',
+        { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  } catch (e) { }
+
+  rafraichir();
+  setInterval(rafraichir, 60000);
+})();
+</script>
+</body>
+</html>

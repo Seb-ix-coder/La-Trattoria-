@@ -20,6 +20,12 @@ appliquer ; alertes identiques à celles de l'application (coeff. 4,0 cuisine / 
 alcool) ; export JSON compatible avec le modèle de données de l'APK et export CSV
 pour Excel.
 
+Nouveautés : **cartes du jour** (plats du jour, bières du jour, carte des desserts)
+composables et imprimables ; **synchronisation entre tablettes** via
+`carte/serveur_carte.py` (Wi-Fi local, dernier écrivain fait foi) ; **page publique
+clients** (`carte/public.html`) en lecture seule avec photos. Installable sur
+tablette comme une application (PWA, hors ligne complet).
+
 ⚠️ Le dépôt ne contient pas le **code source** de l'application Android. L'intégration
 de ces fonctions dans l'APK elle-même nécessite le projet source (Android Studio) —
 voir `docs/ANALYSE.md` §5-6.

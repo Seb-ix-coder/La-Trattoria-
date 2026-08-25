@@ -28,10 +28,13 @@
         <span class="s">Gestion de la carte</span>
       </span>
     </div>
+    <button type="button" class="badge-sync" id="badge-sync" title="Synchronisation entre tablettes">
+      <span class="point"></span>Mode autonome</button>
     <button type="button" class="btn btn-p" id="btn-nouveau">+ Ajouter</button>
   </div>
   <nav class="conteneur onglets" aria-label="Écrans">
     <button type="button" class="onglet actif" data-ecran="carte" aria-pressed="true">La carte</button>
+    <button type="button" class="onglet" data-ecran="ardoises" aria-pressed="false">Cartes du jour</button>
     <button type="button" class="onglet" data-ecran="marges" aria-pressed="false">Marges</button>
     <button type="button" class="onglet" data-ecran="donnees" aria-pressed="false">Données</button>
   </nav>
@@ -54,6 +57,18 @@
       <p class="aide" id="nb-visibles" aria-live="polite"></p>
     </div>
     <div id="liste-produits"></div>
+  </section>
+
+  <!-- ================= écran : cartes du jour ================= -->
+  <section id="ecran-ardoises" hidden>
+    <div class="ardoise-intro carte-bloc">
+      <h2>Les cartes du jour</h2>
+      <p class="aide">Composez les ardoises du service — bières du jour, plats du jour,
+        carte des desserts — à partir de vos produits ou de lignes libres, puis
+        imprimez-les ou affichez-les. Vides, elles ne sont ni affichées ni imprimées.</p>
+      <button type="button" class="btn btn-p" id="btn-imprimer-tout">🖨 Imprimer les trois cartes</button>
+    </div>
+    <div id="ardoises"></div>
   </section>
 
   <!-- ================= écran : marges ================= -->
@@ -102,10 +117,22 @@
       </div>
       <p class="aide" id="info-donnees"></p>
     </div>
+    <div class="carte-bloc">
+      <h2>Entre tablettes et avec les clients</h2>
+      <p class="aide">Lancez <code>serveur_carte.py</code> sur une tablette ou un ordinateur
+        du restaurant : toutes les tablettes se synchronisent alors automatiquement
+        (la dernière modification fait foi), et la page publique
+        <a href="public.html"><strong>public.html</strong></a> affiche la carte et les
+        cartes du jour en lecture seule, pour les clients connectés au Wi-Fi.</p>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-s" id="btn-sync">Synchroniser maintenant</button>
+        <a class="btn btn-s" href="public.html" target="_blank" rel="noopener">Voir la page publique</a>
+      </div>
+    </div>
     <div class="carte-bloc danger">
       <h2>Zone sensible</h2>
       <p class="aide">Restaure le catalogue d'origine (celui de l'application, version 11).
-        Les photos et modifications seront perdues.</p>
+        Les photos, modifications et cartes du jour seront perdues.</p>
       <button type="button" class="btn btn-danger" id="btn-reinit">Restaurer la carte d'origine</button>
     </div>
   </section>
@@ -245,6 +272,34 @@
     </footer>
   </form>
 </div>
+
+<!-- ============ composition d'une carte du jour ============ -->
+<div id="voile-cueillette" class="voile" hidden></div>
+<div id="cueillette" class="fiche" role="dialog" aria-modal="true" aria-labelledby="cueillette-titre" hidden>
+  <header class="fiche-tete">
+    <h2 id="cueillette-titre">Composer la carte</h2>
+    <button type="button" class="fermer" aria-label="Fermer">×</button>
+  </header>
+  <div class="fiche-corps">
+    <input type="search" id="cueillette-recherche" placeholder="Rechercher un produit…"
+           aria-label="Rechercher un produit">
+    <div id="cueillette-liste" class="cueillette-liste"></div>
+  </div>
+  <footer class="fiche-pied">
+    <span class="flex-vide"></span>
+    <button type="button" class="btn btn-s" id="cueillette-annuler" data-fermer>Annuler</button>
+    <button type="button" class="btn btn-p" id="cueillette-valider">Valider la sélection</button>
+  </footer>
+</div>
+
+<!-- ================= aperçu d'une carte du jour ================= -->
+<div id="apercu" class="apercu-overlay" role="dialog" aria-modal="true" hidden>
+  <button type="button" class="fermer fermer-overlay" aria-label="Fermer l'aperçu">×</button>
+  <div id="apercu-contenu" class="apercu-page"></div>
+</div>
+
+<!-- ================= zone d'impression (invisible à l'écran) ================= -->
+<div id="zone-impression" aria-hidden="true"></div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 

@@ -6,13 +6,14 @@
    ============================================================ */
 'use strict';
 
-var CACHE = 'trattoria-carte-v1';
+var CACHE = 'trattoria-carte-v2';
 var FICHIERS = [
   './',
   './index.html',
   './carte.css',
   './carte.js',
   './donnees.js',
+  './public.html',
   './manifest.webmanifest',
   './icones/icone-180.png',
   './icones/icone-192.png',
