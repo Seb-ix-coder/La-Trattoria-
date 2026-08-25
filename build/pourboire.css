@@ -1,0 +1,40 @@
+/* ============================================================================
+   Addon « Pourboire numérique » — styles (injecté dans site.css)
+   ============================================================================
+   Bloc pourboire dans le tiroir de commande : gros boutons tactiles,
+   cohérents avec le thème du site.
+   ========================================================================== */
+
+#pourboire-bloc{
+  margin:12px 0 4px;padding:12px 14px;
+  background:var(--creme,#FDFAF3);border:1.5px dashed var(--trait,#D8CFC0);
+  border-radius:12px;
+}
+.pourboire-titre{
+  margin:0 0 8px;font-size:13.5px;font-weight:700;color:var(--texte,#2B2B28);
+}
+.pourboire-titre span{font-weight:400;color:var(--gris,#6E6A63);font-size:12px}
+.pourboire-options{display:flex;gap:7px;flex-wrap:wrap}
+.pb-btn{
+  min-width:52px;min-height:46px;flex:1;max-width:92px;
+  border:1.5px solid var(--trait,#D8CFC0);border-radius:11px;
+  background:#fff;color:var(--texte,#2B2B28);
+  font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.pb-btn:active{transform:scale(.95)}
+.pb-btn.sel,.pb-btn[aria-pressed="true"]{
+  background:var(--rouge,#A51822);border-color:var(--rouge,#A51822);color:#fff;
+}
+.pourboire-libre{margin-top:9px;display:flex;flex-direction:column;gap:5px}
+.pourboire-libre label{font-size:12.5px;color:var(--gris,#6E6A63)}
+.pourboire-libre input{
+  min-height:44px;border:1.5px solid var(--trait,#D8CFC0);border-radius:10px;
+  padding:0 10px;font-size:16px;font-family:inherit;background:#fff;width:100%;
+}
+.pourboire-total{
+  margin:8px 0 0;font-size:12.5px;color:var(--vert,#3E6B2E);font-weight:600;
+}
+.pourboire-dont{
+  margin:2px 0 0;font-size:12.5px;color:var(--gris,#6E6A63);text-align:right;
+}

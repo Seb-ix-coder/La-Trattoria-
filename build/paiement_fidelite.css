@@ -1,0 +1,47 @@
+/* ============================================================================
+   Addon « Mode de paiement & carte de fidélité » — styles (site.css)
+   ========================================================================== */
+
+#paiement-bloc{
+  margin:10px 0 4px;padding:12px 14px;
+  background:var(--creme,#FDFAF3);border:1.5px solid var(--trait,#D8CFC0);
+  border-radius:12px;
+}
+.paiement-titre{
+  margin:0 0 8px;font-size:13.5px;font-weight:700;color:var(--texte,#2B2B28);
+}
+.paiement-titre span{font-weight:400;color:var(--gris,#6E6A63);font-size:12px}
+.paiement-options{display:flex;flex-wrap:wrap;gap:7px}
+.pm-opt{
+  flex:1 1 40%;min-width:120px;position:relative;cursor:pointer;
+}
+.pm-opt input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer}
+.pm-opt span{
+  display:flex;align-items:center;justify-content:center;min-height:46px;
+  border:1.5px solid var(--trait,#D8CFC0);border-radius:11px;background:#fff;
+  color:var(--texte,#2B2B28);font-size:14px;font-weight:600;text-align:center;
+  padding:0 8px;touch-action:manipulation;
+}
+.pm-opt input:checked + span{
+  background:var(--rouge,#A51822);border-color:var(--rouge,#A51822);color:#fff;
+}
+.pm-opt input:focus-visible + span{outline:3px solid var(--olive,#8A8A55);outline-offset:2px}
+
+.paiement-fidelite{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.paiement-fidelite label{font-size:12.5px;color:var(--gris,#6E6A63)}
+.paiement-fidelite input{
+  min-height:44px;border:1.5px solid var(--trait,#D8CFC0);border-radius:10px;
+  padding:0 10px;font-size:15px;font-family:inherit;background:#fff;width:100%;
+}
+.paiement-aide{font-size:12px;color:var(--gris,#6E6A63);margin:2px 0 0}
+.paiement-tip{
+  margin:9px 0 0;font-size:12px;color:var(--olive,#8A8A55);font-weight:600;
+}
+.paiement-recap{
+  margin:2px 0 0;font-size:12.5px;color:var(--texte,#2B2B28);text-align:right;
+  font-weight:600;
+}
+
+/* Section d'information « Carte de fidélité » sur la page */
+#fidelite-info{background:var(--creme,#FDFAF3)}
+#fidelite-info p{font-size:15px;line-height:1.6;margin:10px 0}
