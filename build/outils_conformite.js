@@ -24,8 +24,11 @@
 
   var OUTILS = {
     ereporting: { titre: 'Export e-reporting', sous: 'Ventes par jour (CSV/XML)' },
-    factures: { titre: 'Factures fournisseurs', sous: 'Contrôle Factur-X + registre' }
+    factures: { titre: 'Factures fournisseurs', sous: 'Contrôle Factur-X + registre' },
+    fidelite: { titre: 'Cartes de fidélité', sous: 'Tampons, offres et historique' },
+    produits: { titre: 'Produits à la vente', sous: 'Consultation et export du catalogue' }
   };
+  var FIDELITE_KEY = 'trattoria_fidelite';
   var REGISTRE_KEY = 'trattoria_registre_factures';
   var PIN_KEY = 'trattoria_pin_hash';
   var OUTIL_COURANT = 'ereporting';
@@ -122,10 +125,16 @@
     if (outil === 'ereporting') {
       $id('oc-contenu').innerHTML = contenuEreporting();
       $id('er-gen').addEventListener('click', genererEreporting);
-    } else {
+    } else if (outil === 'factures') {
       $id('oc-contenu').innerHTML = contenuFactures();
       $id('fx-fichier').addEventListener('change', lireFichier);
       afficherRegistre();
+    } else if (outil === 'fidelite') {
+      $id('oc-contenu').innerHTML = contenuFidelite();
+      brancherFidelite();
+    } else if (outil === 'produits') {
+      $id('oc-contenu').innerHTML = contenuProduits();
+      chargerProduits();
     }
     var f = $id('oc-fermer');
     if (f) f.focus();
@@ -193,6 +202,7 @@
     zone.innerHTML = '<p class="oc-info">Récupération des ventes…</p>';
     var jours = jours_plage(d1, d2);
     var donnees = [], restant = jours.length;
+    var montantPourboires = parseFloat(($id('er-pourboires').value || '0').replace(',', '.')) || 0;
 
     jours.forEach(function (j) {
       var xhr = new XMLHttpRequest();
@@ -219,24 +229,33 @@
       zone.innerHTML = '<p class="oc-info">Aucune vente sur cette période.</p>';
       return;
     }
-    // tableau
+    // tableau (avec colonne Pourboires et ligne de total)
     var h = '<table class="oc-tab"><thead><tr><th>Jour</th><th>CA TTC</th>' +
-      '<th>CA HT</th><th>TVA</th><th>Tickets</th><th>Couverts</th></tr></thead><tbody>';
+      '<th>CA HT</th><th>TVA</th><th>Tickets</th><th>Couverts</th><th>Pourboires (espèces)</th></tr></thead><tbody>';
     donnees.sort(function (a, b) { return a.jour < b.jour ? -1 : 1; });
+    var totTtc = 0, totPourboires = 0;
     donnees.forEach(function (r) {
+      totTtc += Number(r.chiffre_affaires_ttc) || 0;
       h += '<tr><td>' + r.jour + '</td><td>' + eur(r.chiffre_affaires_ttc) +
         '</td><td>' + eur(r.chiffre_affaires_ht) + '</td><td>' + eur(r.tva_collectee) +
-        '</td><td>' + r.tickets + '</td><td>' + r.couverts + '</td></tr>';
+        '</td><td>' + r.tickets + '</td><td>' + r.couverts + '</td><td>—</td></tr>';
     });
+    // pourboires : une ligne de total sur la période
+    h += '<tr><td><strong>Total</strong></td><td><strong>' + eur(totTtc) +
+      '</strong></td><td></td><td></td><td></td><td></td>' +
+      '<td><strong>' + eur(montantPourboires) + '</strong></td></tr>';
     h += '</tbody></table>';
+    h += '<p class="oc-small">Pourboires : ' + eur(montantPourboires) +
+      ' — à déposer à la caisse, comptabilisés en espèces uniquement.</p>';
 
-    // CSV
-    var csv = 'jour;ca_ttc;ca_ht;tva;tickets;couverts;ticket_moyen\r\n';
+    // CSV (une ligne par jour + ligne pourboires de la période)
+    var csv = 'jour;ca_ttc;ca_ht;tva;tickets;couverts;ticket_moyen;pourboires_especes\r\n';
     donnees.forEach(function (r) {
       csv += [r.jour, r.chiffre_affaires_ttc, r.chiffre_affaires_ht,
-        r.tva_collectee, r.tickets, r.couverts, r.ticket_moyen]
+        r.tva_collectee, r.tickets, r.couverts, r.ticket_moyen, '']
         .map(function (v) { return csv_escape(v); }).join(';') + '\r\n';
     });
+    csv += 'TOTAL_PERIODE;;;;;;;' + csv_escape(montantPourboires) + '\r\n';
     // XML
     var xml = '<?xml version="1.0" encoding="UTF-8"?>\n<e_reporting>\n';
     donnees.forEach(function (r) {
@@ -246,6 +265,7 @@
         '    <couverts>' + r.couverts + '</couverts>\n    <ticket_moyen>' +
         r.ticket_moyen + '</ticket_moyen>\n  </jour>\n';
     });
+    xml += '  <pourboires_especes>' + montantPourboires + '</pourboires_especes>\n';
     xml += '</e_reporting>\n';
 
     zone.innerHTML = h +
@@ -259,6 +279,7 @@
     $id('er-xml').onclick = function () {
       telecharger('ereporting_' + d1 + '_' + d2 + '.xml', xml, 'application/xml');
     };
+    // stocke le montant pourboires pour référence (export inclus)
   }
 
   // ------------------------------------------------------------------
@@ -424,6 +445,232 @@
   }
 
   // ------------------------------------------------------------------
+  //  Cartes de fidélité (programme classique)
+  //  Stockage : localStorage de la tablette (export/import JSON pour
+  //  sauvegarde). 1 tampon par produit éligible, seuil configurable
+  //  (défaut 10) = 1 pizza offerte.
+  // ------------------------------------------------------------------
+  var FID_DEFAUT = {
+    seuil: 10,
+    famillesEligibles: ['Pizzas'],
+    message: '1 pizza = 1 tampon · 10 tampons = 1 pizza offerte',
+    cards: []
+  };
+
+  function lireFidelite() {
+    try {
+      var d = JSON.parse(localStorage.getItem(FIDELITE_KEY) || 'null');
+      if (d && d.cards) return d;
+    } catch (e) { }
+    return JSON.parse(JSON.stringify(FID_DEFAUT));
+  }
+  function sauverFidelite(d) {
+    try { localStorage.setItem(FIDELITE_KEY, JSON.stringify(d)); } catch (e) { }
+  }
+  function newCardId(d) {
+    var n = d.cards.length + 1;
+    while (d.cards.some(function (c) { return c.id === 'F-' + String(n).padStart(4, '0'); })) n++;
+    return 'F-' + String(n).padStart(4, '0');
+  }
+
+  function contenuFidelite() {
+    var d = lireFidelite();
+    return '<div class="oc-form">' +
+      '<label>Rechercher (n° ou téléphone)</label>' +
+      '<input id="fd-recherche" type="text" placeholder="F-0042 ou 06 12…">' +
+      '<div class="oc-btns">' +
+      '<button type="button" class="oc-btn" id="fd-creer">Nouvelle carte</button>' +
+      '<button type="button" class="oc-btn oc-btn-sec" id="fd-config">Configurer</button>' +
+      '<button type="button" class="oc-btn oc-btn-sec" id="fd-export">Exporter (CSV)</button>' +
+      '</div></div>' +
+      '<div class="oc-small" style="margin-top:6px">Programme : ' + echap(d.message) +
+      ' — tampons stockés sur la tablette (sauvegardez via l\'export).</div>' +
+      '<div id="fd-liste"></div>';
+  }
+
+  function carteLigne(c, d) {
+    var stamps = 0, offres = 0;
+    (c.tampons || []).forEach(function (t) {
+      if (t.type === 'offre') offres += t.qte; else stamps += t.qte;
+    });
+    var prog = stamps % d.seuil;
+    return '<div class="oc-carte fd-carte">' +
+      '<p><strong>' + echap(c.id) + '</strong> · ' + echap(c.nom || c.tel || '—') +
+      ' <span class="oc-small">(créée le ' + echap(c.cree || '') + ')</span></p>' +
+      '<p>Tampons : <strong>' + stamps + '</strong> / seuil ' + d.seuil +
+      ' · progressif ' + prog + '/' + d.seuil +
+      ' · offres utilisées : ' + offres + '</p>' +
+      '<div class="oc-btns">' +
+      '<button type="button" class="oc-btn oc-btn-sec" data-fd-stamp="' + echap(c.id) + '">+1 tampon</button>' +
+      '<button type="button" class="oc-btn oc-btn-sec" data-fd-offre="' + echap(c.id) + '">Offrir une pizza</button>' +
+      '<button type="button" class="oc-btn oc-btn-sec" data-fd-detail="' + echap(c.id) + '">Historique</button>' +
+      '</div><div class="oc-small" data-fd-hist="' + echap(c.id) + '"></div></div>';
+  }
+
+  function afficherFidelite() {
+    var d = lireFidelite();
+    var zone = $id('fd-liste');
+    if (!zone) return;
+    var q = ($id('fd-recherche').value || '').toLowerCase();
+    var liste = d.cards.filter(function (c) {
+      if (!q) return true;
+      return (c.id + ' ' + (c.nom || '') + ' ' + (c.tel || '')).toLowerCase().indexOf(q) >= 0;
+    });
+    if (!liste.length) {
+      zone.innerHTML = '<p class="oc-info">Aucune carte' + (q ? ' correspondante' : '') +
+        '. Créez la première carte de fidélité.</p>';
+      return;
+    }
+    zone.innerHTML = liste.map(function (c) { return carteLigne(c, d); }).join('');
+    // branche les actions
+    zone.querySelectorAll('[data-fd-stamp]').forEach(function (b) {
+      b.addEventListener('click', function () { ajouterTampon(b.dataset.fdStamp, 1); });
+    });
+    zone.querySelectorAll('[data-fd-offre]').forEach(function (b) {
+      b.addEventListener('click', function () { utiliserOffre(b.dataset.fdOffre); });
+    });
+    zone.querySelectorAll('[data-fd-detail]').forEach(function (b) {
+      b.addEventListener('click', function () { afficherDetail(b.dataset.fdDetail); });
+    });
+  }
+
+  function ajouterTampon(id, qte) {
+    var d = lireFidelite();
+    var c = d.cards.find(function (x) { return x.id === id; });
+    if (!c) return;
+    c.tampons = c.tampons || [];
+    c.tampons.push({ date: new Date().toISOString().slice(0, 10), qte: qte, type: 'tampon' });
+    sauverFidelite(d);
+    afficherFidelite();
+  }
+  function utiliserOffre(id) {
+    var d = lireFidelite();
+    var c = d.cards.find(function (x) { return x.id === id; });
+    if (!c) return;
+    var stamps = 0;
+    (c.tampons || []).forEach(function (t) { if (t.type !== 'offre') stamps += t.qte; });
+    if (stamps < d.seuil) {
+      alert('Pas assez de tampons : ' + stamps + ' / ' + d.seuil);
+      return;
+    }
+    if (!confirm('Offrir une pizza à ' + c.id + ' ? (consomme ' + d.seuil + ' tampons)')) return;
+    c.tampons.push({ date: new Date().toISOString().slice(0, 10), qte: 1, type: 'offre', note: 'pizza offerte' });
+    sauverFidelite(d);
+    afficherFidelite();
+  }
+  function afficherDetail(id) {
+    var d = lireFidelite();
+    var c = d.cards.find(function (x) { return x.id === id; });
+    var zone = document.querySelector('[data-fd-hist="' + id + '"]');
+    if (!zone || !c) return;
+    var h = (c.tampons || []).slice().reverse().map(function (t) {
+      return '<div>' + t.date + ' — ' + (t.type === 'offre' ? '🎁 ' : '➕ ') +
+        (t.type === 'offre' ? 'pizza offerte' : '+' + t.qte + ' tampon(s)') +
+        (t.note ? ' (' + echap(t.note) + ')' : '') + '</div>';
+    }).join('') || 'Aucun mouvement.';
+    zone.innerHTML = h;
+  }
+
+  function creerCarte() {
+    var d = lireFidelite();
+    var id = newCardId(d);
+    var nom = prompt('Nom du client (facultatif) :') || '';
+    var tel = prompt('Téléphone (facultatif) :') || '';
+    d.cards.push({ id: id, nom: nom, tel: tel, cree: new Date().toISOString().slice(0, 10), tampons: [] });
+    sauverFidelite(d);
+    afficherFidelite();
+  }
+  function configurerFidelite() {
+    var d = lireFidelite();
+    var seuil = prompt('Seuil de tampons pour une pizza offerte (défaut 10) :', String(d.seuil));
+    var s = parseInt(seuil, 10);
+    if (!isNaN(s) && s > 0) d.seuil = s;
+    var fam = prompt('Familles éligibles, séparées par des virgules (ex. Pizzas) :',
+                    d.famillesEligibles.join(', '));
+    if (fam && fam.trim()) {
+      d.famillesEligibles = fam.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    }
+    d.message = '1 tampon par produit éligible · ' + d.seuil + ' tampons = 1 pizza offerte';
+    sauverFidelite(d);
+    afficherFidelite();
+  }
+  function exporterFidelite() {
+    var d = lireFidelite();
+    var lignes = ['id;nom;tel;cree;type;date;qte;note'];
+    d.cards.forEach(function (c) {
+      (c.tampons || []).forEach(function (t) {
+        lignes.push([c.id, c.nom, c.tel, c.cree, t.type, t.date, t.qte, t.note || '']
+          .map(csv_escape).join(';'));
+      });
+    });
+    telecharger('fidelite.csv', lignes.join('\r\n') + '\r\n', 'text/csv;charset=utf-8');
+  }
+
+  function brancherFidelite() {
+    $id('fd-creer').addEventListener('click', creerCarte);
+    $id('fd-config').addEventListener('click', configurerFidelite);
+    $id('fd-export').addEventListener('click', exporterFidelite);
+    $id('fd-recherche').addEventListener('input', afficherFidelite);
+    afficherFidelite();
+  }
+
+  // ------------------------------------------------------------------
+  //  Produits à la vente (consultation + export)
+  //  NB : la modification (nom, tarif, description, photo) se fait dans
+  //  l'application native (Administration → Catalogue). Cet outil permet
+  //  de consulter et d'exporter le catalogue (via la route locale /carte).
+  // ------------------------------------------------------------------
+  function contenuProduits() {
+    return '<p class="oc-info">Chargement du catalogue…</p><div id="pd-liste"></div>';
+  }
+  function chargerProduits() {
+    var zone = $id('pd-liste');
+    if (!zone) return;
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/carte', true);
+    xhr.timeout = 8000;
+    xhr.onload = function () {
+      try {
+        var r = JSON.parse(xhr.responseText);
+        var prods = (r && r.produits) || [];
+        if (!prods.length) {
+          zone.innerHTML = '<p class="oc-info">Catalogue vide.</p>';
+          return;
+        }
+        var h = '<div class="oc-btns">' +
+          '<button type="button" class="oc-btn" id="pd-csv">Exporter le catalogue (CSV)</button>' +
+          '</div>' +
+          '<table class="oc-tab"><thead><tr><th>Nom</th><th>Famille</th>' +
+          '<th>Prix TTC</th><th>TVA</th><th>Actif</th></tr></thead><tbody>';
+        prods.forEach(function (p) {
+          h += '<tr><td>' + echap(p.nom) + '</td><td>' + echap(p.fam) +
+            '</td><td>' + eur(p.prix_ttc) + '</td><td>' + (p.tva || 0) +
+            '%</td><td>' + (p.disponible ? '✓' : '✗') + '</td></tr>';
+        });
+        h += '</tbody></table>' +
+          '<p class="oc-small">Pour modifier un produit (nom, tarif, description, photo) : ' +
+          'application → Administration → Catalogue. L\'export sert de référence ' +
+          '(e-reporting, menus imprimés).</p>';
+        zone.innerHTML = h;
+        $id('pd-csv').addEventListener('click', function () {
+          var lignes = ['nom;famille;categorie;description;prix_ttc;tva;disponible'];
+          prods.forEach(function (p) {
+            lignes.push([p.nom, p.fam, p.cat, p.description || '', p.prix_ttc, p.tva,
+              p.disponible ? 'oui' : 'non'].map(csv_escape).join(';'));
+          });
+          telecharger('catalogue.csv', lignes.join('\r\n') + '\r\n', 'text/csv;charset=utf-8');
+        });
+      } catch (e) {
+        zone.innerHTML = '<p class="oc-err">Catalogue illisible : ' + echap(e.message) + '</p>';
+      }
+    };
+    xhr.onerror = xhr.ontimeout = function () {
+      zone.innerHTML = '<p class="oc-err">Tablette injoignable.</p>';
+    };
+    xhr.send();
+  }
+
+  // ------------------------------------------------------------------
   //  Construction / ouverture / fermeture des écrans
   // ------------------------------------------------------------------
   function construireEcrans() {
@@ -439,6 +686,8 @@
       '<div class="oc-nav">' +
       '<button type="button" class="oc-nav-btn" data-outil="ereporting">Export e-reporting</button>' +
       '<button type="button" class="oc-nav-btn" data-outil="factures">Factures Factur-X</button>' +
+      '<button type="button" class="oc-nav-btn" data-outil="fidelite">Fidélité</button>' +
+      '<button type="button" class="oc-nav-btn" data-outil="produits">Produits</button>' +
       '<button type="button" class="oc-nav-btn oc-nav-pin" id="oc-pin-btn" ' +
       'aria-label="Modifier le code PIN">🔒 Code</button>' +
       '</div>' +
@@ -476,8 +725,15 @@
     return '<div class="oc-form">' +
       '<label>Du <input type="date" id="er-de" value="' + hier + '"></label>' +
       '<label>Au <input type="date" id="er-a" value="' + auj + '"></label>' +
+      '<label for="er-pourboires">Pourboires reçus sur la période (€) — ' +
+      '<span class="oc-small">déposés à la caisse, comptabilisés en espèces uniquement</span></label>' +
+      '<input id="er-pourboires" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Ex. 45,50" value="">' +
       '<button type="button" class="oc-btn" id="er-gen">Générer l\'export</button>' +
-      '</div><div id="er-resultat"></div>';
+      '</div>' +
+      '<p class="oc-small" style="margin-top:6px">💡 Règle comptable : les pourboires sont ' +
+      'déposés à la caisse et enregistrés en <strong>espèces uniquement</strong>. Ils sont ' +
+      'inclus dans les statistiques et l\'export ci-dessous.</p>' +
+      '<div id="er-resultat"></div>';
   }
 
   function contenuFactures() {

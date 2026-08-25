@@ -102,6 +102,13 @@ def patch_site_js(source: str) -> str:
                                    'pourboire.js'))
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
         print('[patch] site.js : pourboire numérique (POURBOIRE)')
+
+    # -- addon paiement + carte de fidélité (idempotent)
+    if 'Mode de paiement prévu' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__),
+                                   'paiement_fidelite.js'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.js : paiement + carte de fidélité (CLIENT)')
     return source
 
 
@@ -123,6 +130,12 @@ def patch_site_css(source: str) -> str:
                                    'pourboire.css'))
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
         print('[patch] site.css : styles du pourboire numérique')
+
+    if 'Mode de paiement prévu' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__),
+                                   'paiement_fidelite.css'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.css : styles paiement + fidélité (CLIENT)')
     return source
 
 

@@ -125,6 +125,22 @@ stock) :
    Le montant est affiché sous le total (« dont pourboire : X € ») et
    ajouté à la note de la commande : le personnel le voit sur l'écran des
    commandes et l'encaisse au retrait (le paiement reste sur place).
+   💡 Les pourboires sont **déposés à la caisse** et **comptabilisés en
+   espèces uniquement** ; ils sont inclus dans les stats (outil
+   e-reporting → champ « Pourboires »).
+
+9. **Mode de paiement au choix du client** : espèces / carte / tickets
+   restaurant / chèque / bon de fidélité (choisi à la commande, rappelé
+   dans la note pour le personnel).
+
+10. **Carte de fidélité** (1 pizza = 1 tampon, 10 tampons = 1 pizza
+    offerte) : gestion dans ⚙ → « Fidélité » (protégé par PIN) — créer
+    des cartes, tamponner, offrir, exporter. Détails :
+    `FIDELITE_PAIEMENT_PRODUITS.md`.
+
+11. **Produits** : la gestion complète (nom, tarif, description, photo)
+    se fait dans **Administration → Catalogue** de l'application ;
+    l'outil ⚙ → « Produits » permet la consultation et l'export.
 
 ## 7. Verrouillage des tablettes (mode kiosque)
 

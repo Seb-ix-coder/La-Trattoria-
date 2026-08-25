@@ -154,8 +154,15 @@ def check_site_js(apk_path: str) -> None:
     assert 'Pourboire numérique' in js, 'pourboire absent'
     assert 'pourboire-bloc' in js, 'bloc pourboire absent'
     assert '#pourboire-bloc' in css, 'styles pourboire absents'
-    print('[ok] site.js : API locale + QR + outils (PIN) + pourboire intégrés')
-    print('[ok] site.css : styles QR + conformité + pourboire présents')
+    assert 'Mode de paiement prévu' in js, 'paiement absent'
+    assert 'pm-opt' in js, 'options de paiement absentes'
+    assert 'Cartes de fidélité' in js, 'outil fidélité absent'
+    assert 'trattoria_fidelite' in js, 'stockage fidélité absent'
+    assert 'Produits à la vente' in js, 'outil produits absent'
+    assert 'pourboires_especes' in js, 'pourboires stats absents'
+    assert '#paiement-bloc' in css, 'styles paiement absents'
+    print('[ok] site.js : QR + outils (PIN, fidélité, produits) + paiement + pourboires')
+    print('[ok] site.css : styles QR + conformité + pourboire + paiement présents')
 
 
 # ---------------------------------------------------------------------------
