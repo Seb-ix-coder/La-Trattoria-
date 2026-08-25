@@ -36,6 +36,10 @@ build/
 ├── sign_v1.py           # signature JAR (v1) — CMS sans attributs, comme Android
 ├── sign_v2.py           # signature APK Signature Scheme v2
 ├── verify_apk.py        # batterie de vérifications indépendantes
+├── export_e_reporting.py # export e-reporting (CSV/XML) depuis l'API tablette
+├── facturx_archivage.py  # contrôle + archivage des factures Factur-X reçues
+├── surgical_resign.py    # re-signature d'un APK sans toucher aux octets ZIP
+├── resign.py             # reconstruction + signature en préservant le ZIP
 ├── generate_keystore.py # génération du keystore PKCS#12 (local uniquement)
 ├── run_build.sh         # orchestration complète du build
 └── requirements.txt     # dépendances Python (cryptography, asn1crypto, androguard)
