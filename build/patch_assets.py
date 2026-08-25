@@ -1,42 +1,44 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-patch_assets.py — Correctif de assets/site.js (build durci 11.1)
-================================================================
+patch_assets.py — Correctifs des assets du site (build durci 11.1)
+=================================================================
 
-Correctif [B1] : la commande en ligne servie par la tablette est inopérante
-dans la version 11.0.
+Deux correctifs appliqués aux assets servis par la tablette :
 
-Cause racine
-------------
-La page servie par la tablette (`Reseau.servir()` -> `Site.page(true)`)
-injecte `window.TRATTORIA = {"mode":"local","api":"","tel":"…"}` : l'URL de
-l'API est VIDE. Or `site.js` refuse d'envoyer une commande ou une
-réservation quand `api` est vide :
-    if (MODE !== 'local' || !API) { … repli « Commande par téléphone » … }
-Résultat : sur le WiFi, les clients voient le menu mais ne peuvent pas
-commander — ils basculent sur l'appel téléphonique. Les routes
-`/site/commande`, `/site/reservation` et `/site/etat` existent pourtant
-côté serveur (port 8720).
+1. [B1] site.js — la commande en ligne est réparée.
+   La page servie injecte `window.TRATTORIA = {"mode":"local","api":""}` :
+   l'URL de l'API est vide, donc `site.js` basculait systématiquement sur
+   le repli « commande par téléphone ». On retombe sur `location.origin`
+   (la page est TOUJOURS servie par la tablette) : l'API locale est
+   découverte automatiquement. En mode « statique » (site exporté), API
+   reste vide et le repli téléphonique est conservé.
 
-Correctif
----------
-En mode « local », si `api` est vide, on retombe sur `location.origin` :
-la page est TOUJOURS servie par la tablette elle-même (le navigateur du
-client l'a chargée depuis `http://<ip-tablette>:8720`), donc
-`location.origin` pointe exactement vers l'API locale. Aucune donnée
-externe nécessaire, aucun changement de comportement en mode « statique »
-(site exporté) : dans ce cas `API` reste vide et le repli téléphonique
-est conservé.
+2. [QR] Génération de QR code intégrée à l'application.
+   On ajoute à `site.js` un encodeur QR autonome (mode octets, versions
+   1-10, niveau H — validé octet pour octet contre l'implémentation de
+   référence ISO/IEC 18004) et une interface tactile :
+     * bouton flottant « QR » (bas gauche, 58 px, zone sûre iOS),
+     * plein écran : QR très grand (min(78vw,62vh)), bord blanc de
+       sécurité, bouton Fermer ≥ 48 px,
+     * ouverture automatique sur l'adresse `/qr` (affichage permanent
+       sur la tablette).
+   L'URL encodée est celle de la page elle-même : le QR pointe toujours
+   vers le bon serveur. On ajoute aussi à `site.css` les styles dédiés
+   (optimisés petits écrans tactiles).
 
-Ce correctif touche uniquement l'asset `assets/site.js` : il ne modifie
-aucun bytecode, ce qui le rend sûr et facile à auditer.
+Ces correctifs ne touchent que les assets : aucun bytecode modifié.
+
+Usage :
+  python3 patch_assets.py site.js site.css site_js_out.js site_css_out.css
 """
 
+import os
 import sys
 
-# Bloc ajouté juste après la définition de MODE / API / TEL (3 variables).
-# L'insertion se fait par remplacement d'une ancre unique, vérifiée.
+# ---------------------------------------------------------------------------
+#  B1 — découverte automatique de l'API locale (site.js)
+# ---------------------------------------------------------------------------
 ANCRE = (
     "  var MODE = (window.TRATTORIA && window.TRATTORIA.mode) || 'statique';\n"
     "  var API = (window.TRATTORIA && window.TRATTORIA.api) || '';\n"
@@ -64,33 +66,54 @@ AJOUT = ANCRE + (
 )
 
 
+def _read(path: str) -> str:
+    with open(path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+
 def patch_site_js(source: str) -> str:
-    """Applique le correctif au contenu de site.js (idempotent)."""
-    if "Correctif durci 11.1" in source:
-        # déjà patché : on ne ré-applique pas (le script doit être
-        # reproductible, même relancé plusieurs fois)
-        print('[info] site.js déjà patché, aucune modification')
+    """Applique le correctif B1 puis ajoute l'addon QR à site.js."""
+    # -- B1 (idempotent)
+    if 'Correctif durci 11.1' not in source:
+        if source.count(ANCRE) != 1:
+            raise RuntimeError(
+                'ancre introuvable ou ambiguë dans site.js '
+                '(%d occurrence(s))' % source.count(ANCRE)
+            )
+        source = source.replace(ANCRE, AJOUT, 1)
+        print('[patch] site.js : découverte automatique de l\'API locale (B1)')
+
+    # -- addon QR (idempotent)
+    if 'QR code du menu' in source:
+        print('[info] site.js : addon QR déjà présent')
         return source
-    if source.count(ANCRE) != 1:
-        raise RuntimeError(
-            'ancre introuvable ou ambiguë dans site.js '
-            '(%d occurrence(s))' % source.count(ANCRE)
-        )
-    out = source.replace(ANCRE, AJOUT, 1)
-    print('[patch] site.js : découverte automatique de l\'API locale (B1)')
-    return out
+    addon = _read(os.path.join(os.path.dirname(__file__), 'qr_addon.js'))
+    source = source.rstrip('\n') + '\n\n' + addon + '\n'
+    print('[patch] site.js : encodeur QR + interface tactile (QR)')
+    return source
+
+
+def patch_site_css(source: str) -> str:
+    """Ajoute les styles de l'interface QR à site.css (idempotent)."""
+    if 'QR code du menu' in source:
+        print('[info] site.css : styles QR déjà présents')
+        return source
+    addon = _read(os.path.join(os.path.dirname(__file__), 'qr_addon.css'))
+    source = source.rstrip('\n') + '\n\n' + addon + '\n'
+    print('[patch] site.css : styles de l\'interface QR (QR)')
+    return source
 
 
 def main() -> None:
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 5:
         print(__doc__)
         sys.exit(1)
-    src, dst = sys.argv[1], sys.argv[2]
-    with open(src, 'r', encoding='utf-8') as f:
-        content = f.read()
-    with open(dst, 'w', encoding='utf-8') as f:
-        f.write(patch_site_js(content))
-    print('[ok] site.js patché écrit : %s' % dst)
+    js_in, css_in, js_out, css_out = sys.argv[1:5]
+    with open(js_out, 'w', encoding='utf-8') as f:
+        f.write(patch_site_js(_read(js_in)))
+    with open(css_out, 'w', encoding='utf-8') as f:
+        f.write(patch_site_css(_read(css_in)))
+    print('[ok] assets patchés : %s et %s' % (js_out, css_out))
 
 
 if __name__ == '__main__':

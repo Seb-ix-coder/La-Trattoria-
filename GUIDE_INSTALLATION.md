@@ -107,9 +107,12 @@ stock) :
    sans accès au réseau de commande.
 5. Notez l'**adresse IP fixe** (réservation DHCP) de la tablette maître :
    elle est nécessaire aux tablettes satellites et au dépannage.
-6. **Affichez le QR code « ouvrir le menu »** (`qr/QR-site-web.png`) en
-   salle et en terrasse — régénérez-le avec l'IP réelle de la tablette
-   (cf. `qr/README.md`) avant impression.
+6. **Affichez le QR code « ouvrir le menu »** : depuis le build 11.1, le
+   QR est **généré par l'application** — ouvrez `http://<ip-tablette>:8720/qr`
+   sur la tablette (QR plein écran automatique, adapté aux petits écrans
+   tactiles) ou utilisez le bouton flottant « QR » en bas à gauche de la
+   page du site. Un QR imprimé reste possible (`qr/QR-site-web.png`,
+   à régénérer avec l'IP réelle — cf. `qr/README.md`).
 
 ## 7. Verrouillage des tablettes (mode kiosque)
 

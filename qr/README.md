@@ -1,20 +1,35 @@
 # QR code « Ouvrir le site web » — La Trattoria
 
-`QR-site-web.png` : QR code à afficher dans le restaurant pour que les
-clients ouvrent **le site web** (menu, réservations, commande à emporter)
-avec leur téléphone.
+Deux façons d'afficher le QR code du menu à vos clients :
 
-> ⚠️ **Ce QR est un EXEMPLE** : il pointe vers l'adresse fictive
-> `http://192.168.1.50:8720/` (port 8720 = serveur local de la tablette
-> maître). Il doit être **régénéré avec la vraie adresse** avant
-> impression.
+## 1. 📱 QR code INTÉGRÉ à l'application (build 11.1) — recommandé
 
-## Régénérer avec la bonne URL
+Depuis le build durci 11.1, la tablette **génère elle-même** le QR code,
+avec l'URL correcte automatiquement (celle de la tablette qui sert le site) :
 
-1. Récupérez l'IP fixe de la tablette maître (menu Réseau de l'app,
-   ou réglages WiFi / réservation DHCP du routeur — cf.
-   `GUIDE_INSTALLATION.md` §6).
-2. Générez le QR :
+* **Sur la page du site** : un bouton rond rouge « QR » flotte en bas à
+  gauche (le bouton panier est en bas à droite). Une pression ouvre un
+  plein écran avec un **grand QR scannable** (min 78 % de la largeur de
+  l'écran), légende et bouton Fermer tactile (≥ 48 px).
+* **Adresse dédiée** : ouvrez `http://<ip-tablette>:8720/qr` depuis
+  n'importe quel appareil du réseau → le QR plein écran s'affiche
+  **automatiquement**, parfait pour laisser la tablette affichée en salle.
+* Le QR encode `location.origin` : aucune configuration, il pointe
+  toujours vers le bon serveur.
+
+L'encodeur est **intégré au site** (`assets/site.js`, aucun bytecode
+modifié) : il est autonome (aucune dépendance externe, fonctionne sans
+Internet) et a été **validé octet pour octet** contre l'implémentation de
+référence du standard ISO/IEC 18004 (niveau de correction H = le plus
+robuste, décodeur OpenCV de contrôle).
+
+`qr/apercu-ecran-tactile.png` : aperçu de ce que voit le client sur un
+téléphone (plein écran QR + bouton flottant).
+
+## 2. 🖨️ QR imprimé (optionnel)
+
+`QR-site-web.png` : QR statique à imprimer, à régénérer avec la vraie
+adresse de la tablette maître (l'exemple pointe vers `192.168.1.50:8720`).
 
 ```bash
 python3 build/make_qrcode.py "http://<IP-DE-LA-TABLETTE>:8720/" \
@@ -22,7 +37,10 @@ python3 build/make_qrcode.py "http://<IP-DE-LA-TABLETTE>:8720/" \
     --label "La Trattoria — Ouvrir le menu"
 ```
 
-3. Vérifiez le contenu (décodage) :
+Variantes : site en ligne → `python3 build/make_qrcode.py "https://www.votresite.fr/" qr/QR-site-web.png` ;
+QR sans légende → `--no-caption` ; plus grande résolution → `--box 20`.
+
+## Vérification du décodage
 
 ```bash
 python3 -c "
@@ -32,22 +50,9 @@ print(data)
 "
 ```
 
-4. Imprimez : le PNG est en 518×692 px (échelle imprimable) ; agrandissez
-   sans dépasser ~10×13 cm pour garder un contraste net.
-
-## Variantes
-
-* **Site hébergé en ligne** (si le site est publié sur Internet) :
-  ```bash
-  python3 build/make_qrcode.py "https://www.votresite.fr/" qr/QR-site-web.png
-  ```
-* **QR seul, sans légende** (pour impression sur support dédié) :
-  `--no-caption`.
-* **Résolution plus grande** pour l'impression : `--box 20`.
-
 ## Test conseillé
 
-Après impression, scannez le QR avec un téléphone **en conditions réelles**
-(salle éclairée, distance d'affichage) : le téléphone doit ouvrir le site
-du restaurant. Si la lecture échoue, imprimez plus grand ou avec plus de
-marge blanche.
+1. Ouvrez `http://<ip-tablette>:8720/qr` sur la tablette.
+2. Scannez avec un téléphone **en conditions réelles** (salle éclairée,
+   distance d'affichage) : le téléphone doit ouvrir le menu.
+3. Vérifiez aussi le bouton « QR » sur la page d'accueil du site.

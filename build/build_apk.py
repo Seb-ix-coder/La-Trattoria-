@@ -47,16 +47,19 @@ REPLACED = (
     'AndroidManifest.xml',
     'classes.dex',
     'assets/site.js',
+    'assets/site.css',
 )
 
 
 def build(src_apk: str, manifest: str, dex: str, site_js: str,
-          dst_apk: str) -> None:
+          dst_apk: str, site_css: str = None) -> None:
     replacements = {
         'AndroidManifest.xml': open(manifest, 'rb').read(),
         'classes.dex': open(dex, 'rb').read(),
         'assets/site.js': open(site_js, 'rb').read(),
     }
+    if site_css:
+        replacements['assets/site.css'] = open(site_css, 'rb').read()
     src = zipfile.ZipFile(src_apk)
     with zipfile.ZipFile(dst_apk, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) \
             as out:
@@ -87,10 +90,10 @@ def build(src_apk: str, manifest: str, dex: str, site_js: str,
 
 
 def main() -> None:
-    if len(sys.argv) != 6:
+    if len(sys.argv) < 6:
         print(__doc__)
         sys.exit(1)
-    build(*sys.argv[1:6])
+    build(*sys.argv[1:6], site_css=(sys.argv[6] if len(sys.argv) > 6 else None))
 
 
 if __name__ == '__main__':

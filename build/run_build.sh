@@ -64,12 +64,14 @@ python3 "$BUILD/patch_axml.py" patch extracted/AndroidManifest.xml manifest_patc
 echo "==> Correctif 2/3 : classes.dex (timeout 2000 ms, /carte sans cout)"
 python3 "$BUILD/patch_dex.py" extracted/classes.dex classes_patched.dex
 
-echo "==> Correctif 3/3 : assets/site.js (découverte automatique de l'API)"
-python3 "$BUILD/patch_assets.py" extracted/assets/site.js site_js_patched.js
+echo "==> Correctif 3/3 : assets (API locale + générateur QR intégré)"
+python3 "$BUILD/patch_assets.py" extracted/assets/site.js extracted/assets/site.css \
+        site_js_patched.js site_css_patched.css
 
 echo "==> Reconstruction de l'APK non signé"
 python3 "$BUILD/build_apk.py" "$APK_SRC" manifest_patched.xml classes_patched.dex \
-        site_js_patched.js unsigned.apk
+        site_js_patched.js unsigned.apk \
+        site_css_patched.css
 
 echo "==> Signature v1 (JAR)"
 python3 "$BUILD/sign_v1.py" unsigned.apk "$KEYSTORE" "$PASSWORD" signed_v1.apk

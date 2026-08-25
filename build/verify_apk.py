@@ -125,9 +125,14 @@ def check_dex(apk_path: str) -> None:
 def check_site_js(apk_path: str) -> None:
     z = zipfile.ZipFile(apk_path)
     js = z.read('assets/site.js').decode('utf-8')
-    assert 'Correctif durci 11.1' in js, 'correctif site.js absent'
+    css = z.read('assets/site.css').decode('utf-8')
+    assert 'Correctif durci 11.1' in js, 'correctif B1 absent'
     assert "API = location.origin;" in js, 'fallback location.origin absent'
-    print('[ok] site.js : découverte automatique de l\'API locale')
+    assert 'TrattoriaQR' in js, 'encodeur QR absent'
+    assert "location.pathname === '/qr'" in js, 'ouverture auto /qr absente'
+    assert '#qr-overlay' in css, 'styles QR absents'
+    print('[ok] site.js : API locale + encodeur QR intégré (testé en Node)')
+    print('[ok] site.css : styles de l\'interface QR présents')
 
 
 # ---------------------------------------------------------------------------

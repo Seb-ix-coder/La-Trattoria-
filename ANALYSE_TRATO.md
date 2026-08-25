@@ -162,6 +162,10 @@ La **base légale et les durées de conservation déclarées sur le site** (12 m
    - [C3] mitigation du DoS mono-thread : `setSoTimeout` 8000 → 2000 ms,
    - [C2] prix de revient (`cout`) retiré de la route non authentifiée `/carte`,
    - [B1] commande en ligne réparée (découverte automatique de l'API locale),
+   - [QR] générateur de QR code intégré à l'application : encodeur autonome
+     (ISO/IEC 18004, niveau H, validé octet pour octet contre la référence),
+     interface tactile (bouton flottant 58 px, plein écran, ouverture auto
+     sur `/qr`) — cf. `qr/README.md` et `qr/apercu-ecran-tactile.png`,
    - versions incrémentées (16 / 11.1).
    Les signatures ont été **validées par trois voies indépendantes** :
    vérification interne, `keytool` (v1) et `apksigtool` (v2), ce dernier

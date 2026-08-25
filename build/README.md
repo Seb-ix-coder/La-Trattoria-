@@ -14,6 +14,7 @@ rapport `ANALYSE_TRATO.md`, puis en signant avec votre clé.
 | P3 | Prix de revient (`cout`) retiré de la route non authentifiée `/carte` | C2 | `patch_dex.py` |
 | P4 | Commande en ligne réparée (découverte automatique de l'API locale) | B1 | `patch_assets.py` |
 | P5 | versionCode 15→16, versionName 11.0→11.1 (nouvelle clé, nouveau build) | — | `patch_axml.py` |
+| P6 | **Générateur de QR code intégré à l'application** : encodeur QR autonome (ISO/IEC 18004, niveau H, validé contre la référence) + interface tactile (bouton flottant, plein écran, ouverture auto sur `/qr`) | — | `patch_assets.py` + `qr_addon.js` / `qr_addon.css` |
 
 > **Limites assumées de ce build (sans les sources) :** le serveur HTTP reste
 > mono-thread (P2 n'est qu'une mitigation), les données au repos ne sont pas
@@ -28,7 +29,9 @@ rapport `ANALYSE_TRATO.md`, puis en signant avec votre clé.
 build/
 ├── patch_axml.py        # manifeste : allowBackup, versionCode, versionName
 ├── patch_dex.py         # DEX : timeout, suppression du "cout" de /carte
-├── patch_assets.py      # site.js : découverte automatique de l'API
+├── patch_assets.py      # site.js : API locale + addon QR ; site.css : styles QR
+├── qr_addon.js          # encodeur QR (validé) + interface tactile
+├── qr_addon.css         # styles de l'interface QR (petits écrans)
 ├── build_apk.py         # reconstruction ZIP déterministe (tout en DEFLATED)
 ├── sign_v1.py           # signature JAR (v1) — CMS sans attributs, comme Android
 ├── sign_v2.py           # signature APK Signature Scheme v2
