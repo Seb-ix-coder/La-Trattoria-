@@ -21,6 +21,7 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+
 # --- Build APK durci ---
 build/work/
 build/out/
@@ -30,3 +31,8 @@ build/work_keystore.p12
 *.keystore
 !trato.apk
 __pycache__/
+
+# Données d'exécution du serveur de carte (synchronisation)
+carte/donnees-serveur.json
+carte/__pycache__/
+carte/gestion-de-la-carte.zip
