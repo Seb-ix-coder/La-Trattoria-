@@ -9,7 +9,8 @@ social, cartes imprimables. **Tout le projet vit dans cette branche.**
 | Élément | Description |
 |---|---|
 | `trato.apk` | Application Android v11.0 (`com.trattoria.commande`) — artefact d'origine |
-| `trato-11.1-durci.apk` | **APK durci v11.1** (versionCode 16, signé v1+v2) : correctifs sécurité + QR intégré + outils de conformité + pourboire + paiement/fidélité |
+| `trato-11.1-durci.apk` | APK durci v11.2 (versionCode 17, signé v1+v2) : correctifs sécurité + QR intégré + outils de conformité + pourboire + paiement/fidélité + module social |
+| `trato-11.3-unifie.apk` | **⭐ L'application unique** (versionCode 18) : tout le 11.2 **+ le module « carte » intégré** (bouton 📋 ou `/?carte`) — voir `APK_UNIFIE_11.3.md` |
 | `trato-11.1-temoin.apk`, `trato-temoin-chirurgical.apk` | Variantes témoins du build 11.1 |
 | `build/` | Outillage reproductible du build APK (patch AXML/DEX/assets, signature v1/v2, vérifications) |
 | `build/mode_app.js` / `mode_app.css` | **Module social** + modes client/partenaire (barre sociale : avis Google/Facebook/Tripadvisor, appeler ; espace partenaires) |
@@ -25,15 +26,20 @@ social, cartes imprimables. **Tout le projet vit dans cette branche.**
 
 ## L'application unique
 
-L'application La Trattoria sert elle-même ses pages sur le Wi-Fi local du
-restaurant (port `8720`) :
+Installer `trato-11.3-unifie.apk` (voir `APK_UNIFIE_11.3.md`) : la
+tablette sert **toute** l'offre sur le Wi-Fi local du restaurant (port
+`8720`) :
 
 | Mode | URL | Contenu |
 |---|---|---|
-| **Tablette (gestion)** | `http://<tablette>:8720/` | Caisse, commandes, produits, marges, outils, module de carte |
+| **Tablette (gestion)** | `http://<tablette>:8720/` | Caisse, commandes, produits, marges, outils |
+| **Module carte (intégré)** | `http://<tablette>:8720/?carte` (ou bouton 📋) | Gestion de la carte : 84 produits, photos, marges, cartes du jour, données |
 | **App Client** | `http://<tablette>:8720/?client` | Menu, cartes spéciales du jour, **module social** (avis Google/Facebook/Tripadvisor, appeler) |
 | **App Partenaire** | `http://<tablette>:8720/?partenaire` | Comme le client + Espace Partenaires (message au restaurant) |
-| **Module carte (PWA)** | `http://<tablette>:8720/carte/` | Gestion de la carte du jour installable (hors ligne) |
+
+Le module carte reste aussi disponible en **PWA standalone** (dossier
+`carte/`, `serveur_carte.py`) pour la synchronisation multi-tablettes —
+données compatibles avec le module intégré (même modèle, export JSON).
 
 ### Installer
 
