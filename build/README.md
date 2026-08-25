@@ -38,8 +38,10 @@ build/
 ├── verify_apk.py        # batterie de vérifications indépendantes
 ├── surgical_resign.py    # re-signature d'un APK sans toucher aux octets ZIP
 ├── resign.py             # reconstruction + signature en préservant le ZIP
-├── outils_conformite.js  # e-reporting + registre Factur-X intégrés au site
+├── outils_conformite.js  # e-reporting + registre Factur-X + bouton Outils + PIN
 ├── outils_conformite.css # styles des outils de conformité
+├── pourboire.js          # pourboire numérique au moment de la commande
+├── pourboire.css         # styles du bloc pourboire
 ├── export_e_reporting.py # export e-reporting (CSV/XML) depuis l'API tablette
 ├── facturx_archivage.py  # contrôle + archivage des factures Factur-X reçues
 ├── planifier_export.sh   # export e-reporting quotidien automatique (cron)

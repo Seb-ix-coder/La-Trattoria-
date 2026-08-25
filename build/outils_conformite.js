@@ -27,6 +27,109 @@
     factures: { titre: 'Factures fournisseurs', sous: 'Contrôle Factur-X + registre' }
   };
   var REGISTRE_KEY = 'trattoria_registre_factures';
+  var PIN_KEY = 'trattoria_pin_hash';
+  var OUTIL_COURANT = 'ereporting';
+  var SESSION_OK = false;   // PIN validé : reste vrai tant que l'overlay est ouvert
+
+  // ------------------------------------------------------------------
+  //  Code PIN (protection d'accès aux outils de gestion)
+  // ------------------------------------------------------------------
+  // NB : protection LÉGÈRE côté navigateur (le réseau local reste la vraie
+  // frontière) — on stocke un simple hash (djb2) du code, jamais le code en
+  // clair. Crypto.subtle n'est pas disponible en http local, d'où ce hash
+  // maison ; à remplacer par une vraie authentification si l'application
+  // passe en HTTPS.
+  function hashPin(code) {
+    var h = 5381;
+    for (var i = 0; i < code.length; i++) {
+      h = ((h << 5) + h + code.charCodeAt(i)) >>> 0;
+    }
+    return 'h' + h.toString(16);
+  }
+  function pinDefini() {
+    try { return !!localStorage.getItem(PIN_KEY); } catch (e) { return false; }
+  }
+  function pinValide(code) {
+    return /^\d{4}$/.test(code) &&
+      hashPin(code) === localStorage.getItem(PIN_KEY);
+  }
+
+  function ecranPin(mode) {
+    // mode : 'definir' (première fois / modification) ou 'verif'
+    var definir = mode === 'definir';
+    $id('oc-titre').textContent = definir ? 'Définir un code PIN'
+                                          : 'Code PIN requis';
+    $id('oc-sous').textContent = definir
+      ? 'Choisissez un code à 4 chiffres pour protéger l\'accès aux outils.'
+      : 'Entrez le code PIN pour accéder aux outils de gestion.';
+    var h = '<div class="oc-form oc-pin">' +
+      '<label for="oc-pin1">' + (definir ? 'Nouveau code (4 chiffres)' : 'Code PIN') + '</label>' +
+      '<input id="oc-pin1" type="password" inputmode="numeric" maxlength="4" ' +
+      'autocomplete="off" placeholder="••••" enterkeyhint="done">' +
+      (definir
+        ? '<label for="oc-pin2">Confirmez le code</label>' +
+          '<input id="oc-pin2" type="password" inputmode="numeric" maxlength="4" ' +
+          'autocomplete="off" placeholder="••••" enterkeyhint="done">'
+        : '') +
+      '<p class="oc-err" id="oc-pin-msg" role="alert"></p>' +
+      '<div class="oc-btns">' +
+      '<button type="button" class="oc-btn oc-btn-sec" id="oc-pin-annuler">Annuler</button>' +
+      '<button type="button" class="oc-btn" id="oc-pin-ok">' + (definir ? 'Enregistrer' : 'Valider') + '</button>' +
+      '</div></div>';
+    $id('oc-contenu').innerHTML = h;
+
+    var p1 = $id('oc-pin1'), p2 = $id('oc-pin2');
+    if (p1) p1.focus();
+
+    $id('oc-pin-annuler').addEventListener('click', fermer);
+    $id('oc-pin-ok').addEventListener('click', function () {
+      var code = p1.value;
+      if (definir) {
+        if (!/^\d{4}$/.test(code)) {
+          $id('oc-pin-msg').textContent = 'Le code doit contenir exactement 4 chiffres.';
+          return;
+        }
+        if (code !== p2.value) {
+          $id('oc-pin-msg').textContent = 'Les deux codes ne correspondent pas.';
+          return;
+        }
+        try { localStorage.setItem(PIN_KEY, hashPin(code)); } catch (e) { }
+        SESSION_OK = true;
+        ouvrirOutils(OUTIL_COURANT);
+      } else {
+        if (!pinValide(code)) {
+          $id('oc-pin-msg').textContent = 'Code incorrect.';
+          p1.value = '';
+          p1.focus();
+          return;
+        }
+        SESSION_OK = true;
+        ouvrirOutils(OUTIL_COURANT);
+      }
+    });
+    // Entrée pour valider
+    [p1, p2].forEach(function (p) {
+      if (p) p.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') $id('oc-pin-ok').click();
+      });
+    });
+  }
+
+  function ouvrirOutils(outil) {
+    OUTIL_COURANT = outil;
+    $id('oc-titre').textContent = OUTILS[outil].titre;
+    $id('oc-sous').textContent = OUTILS[outil].sous;
+    if (outil === 'ereporting') {
+      $id('oc-contenu').innerHTML = contenuEreporting();
+      $id('er-gen').addEventListener('click', genererEreporting);
+    } else {
+      $id('oc-contenu').innerHTML = contenuFactures();
+      $id('fx-fichier').addEventListener('change', lireFichier);
+      afficherRegistre();
+    }
+    var f = $id('oc-fermer');
+    if (f) f.focus();
+  }
 
   // ------------------------------------------------------------------
   //  Utilitaires
@@ -336,6 +439,8 @@
       '<div class="oc-nav">' +
       '<button type="button" class="oc-nav-btn" data-outil="ereporting">Export e-reporting</button>' +
       '<button type="button" class="oc-nav-btn" data-outil="factures">Factures Factur-X</button>' +
+      '<button type="button" class="oc-nav-btn oc-nav-pin" id="oc-pin-btn" ' +
+      'aria-label="Modifier le code PIN">🔒 Code</button>' +
       '</div>' +
       '<div id="oc-contenu"></div>' +
       '</div>';
@@ -346,10 +451,23 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && ov.classList.contains('on')) fermer();
     });
-    var btns = ov.querySelectorAll('.oc-nav-btn');
+    var btns = ov.querySelectorAll('.oc-nav-btn[data-outil]');
     for (var i = 0; i < btns.length; i++) {
       btns[i].addEventListener('click', function () { ouvrir(this.dataset.outil); });
     }
+    // « Code » : permet de modifier le PIN depuis l'intérieur des outils
+    $id('oc-pin-btn').addEventListener('click', function () {
+      ecranPin('definir');
+    });
+
+    // bouton flottant « Outils » (visible, en bas à gauche au-dessus du QR)
+    var btnOutils = document.createElement('button');
+    btnOutils.id = 'btn-outils';
+    btnOutils.type = 'button';
+    btnOutils.setAttribute('aria-label', 'Outils de gestion : e-reporting, factures');
+    btnOutils.textContent = '⚙';
+    btnOutils.addEventListener('click', function () { ouvrir('ereporting'); });
+    document.body.appendChild(btnOutils);
   }
 
   function contenuEreporting() {
@@ -371,25 +489,27 @@
   }
 
   function ouvrir(outil) {
+    OUTIL_COURANT = outil;
     var ov = $id('oc-overlay');
     if (!ov) return;
     ov.classList.add('on');
     document.body.style.overflow = 'hidden';
-    $id('oc-titre').textContent = OUTILS[outil].titre;
-    $id('oc-sous').textContent = OUTILS[outil].sous;
-    if (outil === 'ereporting') {
-      $id('oc-contenu').innerHTML = contenuEreporting();
-      $id('er-gen').addEventListener('click', genererEreporting);
+    // accès protégé par code PIN (défini à la première utilisation).
+    // Une fois validé, la session reste ouverte jusqu'à la fermeture :
+    // on peut naviguer entre les onglets sans ressaisir le code.
+    if (SESSION_OK) {
+      ouvrirOutils(outil);
+    } else if (!pinDefini()) {
+      ecranPin('definir');
     } else {
-      $id('oc-contenu').innerHTML = contenuFactures();
-      $id('fx-fichier').addEventListener('change', lireFichier);
-      afficherRegistre();
+      ecranPin('verif');
     }
     var f = $id('oc-fermer');
     if (f) f.focus();
   }
 
   function fermer() {
+    SESSION_OK = false;   // on reverrouille à la fermeture
     var ov = $id('oc-overlay');
     if (ov) ov.classList.remove('on');
     document.body.style.overflow = '';

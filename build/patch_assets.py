@@ -95,6 +95,13 @@ def patch_site_js(source: str) -> str:
                                    'outils_conformite.js'))
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
         print('[patch] site.js : e-reporting + registre Factur-X (CONFORMITÉ)')
+
+    # -- addon pourboire numérique (idempotent)
+    if 'Pourboire numérique' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__),
+                                   'pourboire.js'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.js : pourboire numérique (POURBOIRE)')
     return source
 
 
@@ -110,6 +117,12 @@ def patch_site_css(source: str) -> str:
                                    'outils_conformite.css'))
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
         print('[patch] site.css : styles des outils de conformité')
+
+    if 'Pourboire numérique' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__),
+                                   'pourboire.css'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.css : styles du pourboire numérique')
     return source
 
 

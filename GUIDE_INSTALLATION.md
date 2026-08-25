@@ -114,10 +114,17 @@ stock) :
    page du site. Un QR imprimé reste possible (`qr/QR-site-web.png`,
    à régénérer avec l'IP réelle — cf. `qr/README.md`).
 
-7. **Outils de conformité intégrés** (facturation électronique) : depuis
-   la page du site — `http://<ip-tablette>:8720/#ereporting` (export
-   e-reporting CSV/XML) et `http://<ip-tablette>:8720/#factures`
-   (registre Factur-X). Détails : `FACTURATION_ELECTRONIQUE.md`.
+7. **Outils de gestion intégrés** (bouton ⚙ en bas à gauche, au-dessus du
+   QR) : e-reporting (`#ereporting`), registre Factur-X (`#factures`).
+   L'accès est **protégé par un code PIN à 4 chiffres** (défini à la
+   première utilisation, modifiable dans les outils). Détails :
+   `FACTURATION_ELECTRONIQUE.md`.
+
+8. **Pourboire numérique** : au moment de la commande en ligne, le client
+   peut choisir un pourboire pour l'équipe (0/1/2/5 € ou montant libre).
+   Le montant est affiché sous le total (« dont pourboire : X € ») et
+   ajouté à la note de la commande : le personnel le voit sur l'écran des
+   commandes et l'encaisse au retrait (le paiement reste sur place).
 
 ## 7. Verrouillage des tablettes (mode kiosque)
 

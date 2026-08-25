@@ -148,8 +148,14 @@ def check_site_js(apk_path: str) -> None:
     assert "'#ereporting'" in js or '#ereporting' in js, 'e-reporting absent'
     assert "'#factures'" in js or '#factures' in js, 'registre Factur-X absent'
     assert '#oc-overlay' in css, 'styles conformité absents'
-    print('[ok] site.js : API locale + QR + outils de conformité intégrés')
-    print('[ok] site.css : styles QR + conformité présents')
+    assert "'btn-outils'" in js or 'btn-outils' in js, 'bouton Outils absent'
+    assert 'trattoria_pin_hash' in js, 'code PIN absent'
+    assert '#btn-outils' in css, 'styles bouton Outils absents'
+    assert 'Pourboire numérique' in js, 'pourboire absent'
+    assert 'pourboire-bloc' in js, 'bloc pourboire absent'
+    assert '#pourboire-bloc' in css, 'styles pourboire absents'
+    print('[ok] site.js : API locale + QR + outils (PIN) + pourboire intégrés')
+    print('[ok] site.css : styles QR + conformité + pourboire présents')
 
 
 # ---------------------------------------------------------------------------

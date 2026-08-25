@@ -67,9 +67,11 @@ Depuis la page servie par la tablette (`http://<ip-tablette>:8720`) :
 | **Registre Factur-X** | `…/#factures` | Déposez une facture fournisseur (XML Factur-X ou PDF) → contrôle des champs → ajout au **registre local** → export du registre en CSV |
 
 Ces écrans sont accessibles sur la tablette elle-même ou depuis un poste
-du bureau (même réseau), et s'ouvrent automatiquement via le hash de
-l'URL. L'APK 11.2 s'installe **par-dessus** la version actuelle (même clé),
-données conservées.
+du bureau (même réseau), via le **bouton ⚙** (en bas à gauche) ou le hash
+de l'URL. L'accès est protégé par un **code PIN à 4 chiffres** défini à la
+première utilisation (protection légère côté navigateur — le réseau local
+reste la frontière principale). L'APK 11.2 s'installe **par-dessus** la
+version actuelle (même clé), données conservées.
 
 ### 🖥️ En scripts (poste du bureau)
 

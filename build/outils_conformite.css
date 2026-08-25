@@ -86,3 +86,30 @@
 @media(prefers-reduced-motion:reduce){
   #oc-overlay,#oc-carte{transition:none !important}
 }
+
+/* --- Bouton flottant « Outils » (au-dessus du bouton QR) --------------- */
+#btn-outils{
+  position:fixed;left:16px;bottom:84px;z-index:110;
+  width:58px;height:58px;border-radius:50%;border:0;cursor:pointer;
+  background:var(--creme,#FDFAF3);color:var(--rouge,#A51822);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;line-height:1;
+  box-shadow:0 4px 14px rgba(0,0,0,.28);
+  border:1.5px solid var(--trait,#D8CFC0);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+#btn-outils:active{transform:scale(.94)}
+#btn-outils:focus-visible{outline:3px solid var(--olive,#8A8A55);outline-offset:2px}
+@supports(padding:max(0px)){
+  #btn-outils{left:max(16px,env(safe-area-inset-left));
+              bottom:calc(max(16px,env(safe-area-inset-bottom)) + 68px)}
+}
+
+/* --- Écran code PIN ---------------------------------------------------- */
+.oc-pin input[type="password"]{
+  display:block;width:100%;min-height:50px;margin-top:4px;
+  border:1.5px solid var(--trait,#D8CFC0);border-radius:10px;
+  padding:0 12px;font-size:20px;letter-spacing:.4em;text-align:center;
+  font-family:inherit;background:#fff;
+}
+.oc-nav-pin{flex:0 0 auto;max-width:86px;font-size:12.5px}
