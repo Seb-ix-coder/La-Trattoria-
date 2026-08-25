@@ -59,6 +59,20 @@
   .hs code{background:var(--beige);padding:2px 8px;border-radius:6px}
   .live{position:fixed;top:10px;right:12px;background:rgba(28,28,26,.8);color:#fff;
     font-size:10.5px;padding:4px 10px;border-radius:12px;letter-spacing:.06em}
+  .barre-filtre{text-align:center;padding:14px 0 0}
+  .barre-filtre select{min-height:42px;border:1px solid var(--trait);border-radius:21px;
+    background:var(--creme);padding:0 16px;font:inherit;font-size:14px;box-shadow:var(--ombre)}
+  .alg{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+  .alg span{font-size:13px;background:var(--beige);border-radius:8px;padding:2px 6px}
+  .fmts{display:flex;flex-direction:column;gap:2px;margin-top:2px}
+  .fmts .f{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--gris);
+    border-bottom:1px dotted var(--beige);padding:2px 0}
+  .fmts .f b{font-family:Georgia,serif;color:var(--rougef);font-weight:700}
+  .legende{max-width:1020px;margin:26px auto;border:1px solid var(--trait);border-radius:var(--r);
+    background:var(--creme);padding:12px 16px}
+  .legende summary{font-weight:700;font-size:13.5px;cursor:pointer}
+  .legende .grille-alg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+    gap:6px;margin-top:10px;font-size:12px;color:var(--gris)}
 </style>
 </head>
 <body>
@@ -71,12 +85,28 @@
 
 <div class="live" id="live" hidden>EN DIRECT</div>
 
+<div class="barre-filtre">
+  <select id="filtre-alg" aria-label="Filtrer selon un allergène">
+    <option value="">Toute la carte</option>
+    <option value="gluten">Sans gluten</option>
+    <option value="lactose">Sans lactose</option>
+    <option value="fruitsacoque">Sans fruits à coque</option>
+    <option value="oeufs">Sans œufs</option>
+    <option value="poissons">Sans poisson</option>
+  </select>
+</div>
+
 <main class="conteneur" id="contenu">
   <div class="hs">
     <h2>Un instant…</h2>
     <p>La carte arrive.</p>
   </div>
 </main>
+
+<details class="legende">
+  <summary>🌾 Allergènes — signification des pictogrammes</summary>
+  <div class="grille-alg" id="legende-alg"></div>
+</details>
 
 <footer class="pied">
   La Trattoria · Rue de La Poste · 17100 Saintes<br>
@@ -90,6 +120,40 @@
   'use strict';
 
   var ORDRE_ARDOISES = ['plats', 'bieres', 'desserts'];
+  var FILTRE_ALG = '';
+  var dernierEtat = null;
+  var ALLERGENES = {
+    gluten: ['Gluten', '🌾'], crustaces: ['Crustacés', '🦐'], oeufs: ['Œufs', '🥚'],
+    poissons: ['Poissons', '🐟'], arachides: ['Arachides', '🥜'], soja: ['Soja', '🌿'],
+    lactose: ['Lactose', '🥛'], fruitsacoque: ['Fruits à coque', '🌰'],
+    celeri: ['Céleri', '🥬'], moutarde: ['Moutarde', '🟡'], sesame: ['Sésame', '◻️'],
+    sulfites: ['Sulfites', '🍷'], lupin: ['Lupin', '🌼'], mollusques: ['Mollusques', '🐚']
+  };
+
+  function prixHTML(p) {
+    if (p.formats && p.formats.length) {
+      var lignes = p.formats.map(function (f) {
+        return '<span class="f"><span>' + echap(f.nom || '—') + '</span><b>' + eur(f.pv) + '</b></span>';
+      }).join('');
+      return (p.pv > 0
+          ? '<div class="ligne-prix"><span class="pv">' + eur(p.pv) + '</span></div>'
+          : '<div style="margin-top:auto"></div>') +
+        '<div class="fmts">' + lignes + '</div>';
+    }
+    return '<div class="ligne-prix"><span class="pv">' + eur(p.pv) + '</span></div>';
+  }
+
+  function algBadges(p) {
+    if (!p.allergenes || !p.allergenes.length) return '';
+    return '<div class="alg">' + p.allergenes.map(function (c) {
+      var a = ALLERGENES[c];
+      return a ? '<span title="' + echap(a[0]) + '">' + a[1] + '</span>' : '';
+    }).join('') + '</div>';
+  }
+
+  function passeFiltre(p) {
+    return !FILTRE_ALG || (p.allergenes || []).indexOf(FILTRE_ALG) < 0;
+  }
 
   function echap(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -129,10 +193,14 @@
     var ordre = [];
     var parFam = {};
     carte.forEach(function (p) {
-      if (p.actif === false) return;
+      if (p.actif === false || !passeFiltre(p)) return;
       if (!parFam[p.fam]) { parFam[p.fam] = []; ordre.push(p.fam); }
       parFam[p.fam].push(p);
     });
+    if (!ordre.length && FILTRE_ALG) {
+      return '<p class="hs">Rien à la carte sans cet allergène pour le moment — ' +
+        'demandez-nous, la cuisine s’adapte souvent.</p>';
+    }
     return ordre.map(function (fam) {
       var prods = parFam[fam].map(function (p) {
         return '<article class="prod">' +
@@ -142,7 +210,7 @@
           '<span class="cat">' + echap(p.cat || p.fam) + '</span>' +
           '<h3>' + echap(p.nom) + '</h3>' +
           (p.desc ? '<p class="d">' + echap(p.desc) + '</p>' : '') +
-          '<div class="ligne-prix"><span class="pv">' + eur(p.pv) + '</span></div>' +
+          prixHTML(p) + algBadges(p) +
           '</div></article>';
       }).join('');
       return '<section class="famille"><h2>' + echap(fam) + '</h2>' +
@@ -150,7 +218,15 @@
     }).join('');
   }
 
+  function legender() {
+    var el = document.getElementById('legende-alg');
+    if (el) el.innerHTML = Object.keys(ALLERGENES).map(function (c) {
+      return '<span>' + ALLERGENES[c][1] + ' ' + ALLERGENES[c][0] + '</span>';
+    }).join('');
+  }
+
   function afficher(etat) {
+    dernierEtat = etat;
     var carte = etat.carte || [];
     var ardoises = etat.ardoises || {};
     var h = ORDRE_ARDOISES.map(function (cle) {
@@ -181,6 +257,12 @@
       new Date().toLocaleDateString('fr-FR',
         { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   } catch (e) { }
+
+  legender();
+  document.getElementById('filtre-alg').addEventListener('change', function (e) {
+    FILTRE_ALG = e.target.value;
+    if (dernierEtat) afficher(dernierEtat);
+  });
 
   rafraichir();
   setInterval(rafraichir, 60000);

@@ -18,6 +18,18 @@
   var SEUIL_MARGE = 5;            // …et marge inférieure à 5 € (vueAdmin de l'APK)
   var CLE_STOCK = 'trattoria_carte_v1';
   var CLE_ARDOISES = 'trattoria_ardoises_v1';
+  var EMPOTER_MIN = 1e-9;
+
+  // Les 14 allergènes à déclaration obligatoire (règlement UE 1169/2011).
+  var ALLERGENES = [
+    ['gluten', 'Gluten', '🌾'], ['crustaces', 'Crustacés', '🦐'],
+    ['oeufs', 'Œufs', '🥚'], ['poissons', 'Poissons', '🐟'],
+    ['arachides', 'Arachides', '🥜'], ['soja', 'Soja', '🌿'],
+    ['lactose', 'Lactose', '🥛'], ['fruitsacoque', 'Fruits à coque', '🌰'],
+    ['celeri', 'Céleri', '🥬'], ['moutarde', 'Moutarde', '🟡'],
+    ['sesame', 'Sésame', '◻️'], ['sulfites', 'Sulfites', '🍷'],
+    ['lupin', 'Lupin', '🌼'], ['mollusques', 'Mollusques', '🐚']
+  ];
   var ADRESSE = 'La Trattoria · Rue de La Poste · 17100 Saintes';
 
   var TYPES = { formule: 'Formule', plat: 'Plat', boisson: 'Boisson', cocktail: 'Cocktail' };
@@ -144,13 +156,83 @@
       pv: Math.max(0, Number(p.pv) || 0),
       cout: Math.max(0, Number(p.cout) || 0),
       tva: [0.2, 0.1, 0.055].indexOf(Number(p.tva)) >= 0 ? Number(p.tva) : 0.1,
+      tvaEmporter: (p.tvaEmporter != null && [0.2, 0.1, 0.055].indexOf(Number(p.tvaEmporter)) >= 0)
+        ? Number(p.tvaEmporter) : null,
       actif: p.actif !== false,
+      allergenes: (Object.prototype.toString.call(p.allergenes) === '[object Array]')
+        ? p.allergenes.filter(function (c) {
+            return ALLERGENES.some(function (a) { return a[0] === c; });
+          })
+        : semencerAllergenes(p),
+      formats: (Object.prototype.toString.call(p.formats) === '[object Array]')
+        ? p.formats.filter(function (f) {
+            return f && (String(f.nom || '').trim() || Number(f.pv) > 0);
+          }).map(function (f) {
+            return {
+              nom: String(f.nom || '').trim().slice(0, 40),
+              pv: Math.max(0, Math.round(Number(f.pv) * 100) / 100 || 0),
+              cout: Math.max(0, Math.round(Number(f.cout) * 100) / 100 || 0)
+            };
+          })
+        : [],
       photo: typeof p.photo === 'string' && p.photo.indexOf('data:image/') === 0 ? p.photo : null,
       margeManuelle: (p.margeManuelle && p.margeManuelle.valeur > 0)
         ? { unite: p.margeManuelle.unite === 'taux' ? 'taux' : 'eur', valeur: Number(p.margeManuelle.valeur) }
         : null
     };
   }
+
+  // Pré-remplissage des allergènes d'après les ingrédients (à vérifier).
+  var REGLES_ALG = [
+    ['gluten', /pizza|pate|tagliatelle|penne|lasagne|pain|focaccia|bruschetta|crouton|biscuit|speculoos|batonnet|tiramisu/],
+    ['crustaces', /crustac|crevette/],
+    ['oeufs', /oeuf/],
+    ['poissons', /poisson|saumon|anchois|thon/],
+    ['arachides', /arachide|cacahuete/],
+    ['soja', /soja/],
+    ['lactose', /mozzarella|parmesan|burrata|fromage|creme|ricotta|emmental|chevre|pecorino|bechamel|glace|chantilly|mascarpone|bleu|camembert|tiramisu|reblochon/],
+    ['fruitsacoque', /noix|noisette|pignon|amande|pistache/],
+    ['celeri', /celeri/],
+    ['moutarde', /moutarde/],
+    ['sesame', /sesame/],
+    ['sulfites', /vin|chianti|pinot|prosecco|rose|kir|spritz|pichet|amaretto|limoncello|vermouth|americano/],
+    ['lupin', /lupin/],
+    ['mollusques', /mollusque|moule|huitre|calamar/]
+  ];
+
+  function semencerAllergenes(p) {
+    var texte = norm(p.nom + ' ' + p.desc + ' ' + p.cat);
+    var trouves = {};
+    REGLES_ALG.forEach(function (r) {
+      if (r[1].test(texte)) trouves[r[0]] = 1;
+    });
+    if (p.fam === 'Pizzas' || p.fam === 'Pâtes') trouves.gluten = 1;
+    return Object.keys(trouves).filter(function (c) {
+      return ALLERGENES.some(function (a) { return a[0] === c; });
+    });
+  }
+
+  function allergenesInfo(codes) {
+    return (codes || []).map(function (c) {
+      for (var i = 0; i < ALLERGENES.length; i++)
+        if (ALLERGENES[i][0] === c) return ALLERGENES[i];
+      return null;
+    }).filter(Boolean);
+  }
+
+  /** Prix affiché : formats multiples le cas échéant, prix unique sinon. */
+  function prixAffiche(p) {
+    if (p.formats && p.formats.length) {
+      var min = Infinity;
+      p.formats.forEach(function (f) { if (f.pv > 0 && f.pv < min) min = f.pv; });
+      if (min < Infinity) return 'dès ' + eur(min);
+    }
+    return eur(p.pv);
+  }
+
+  /** TVA effective à l'emporté (dédiée, sinon celle de salle). */
+  function tvaEmporterEff(p) { return p.tvaEmporter != null ? p.tvaEmporter : p.tva; }
+  function margeEmporter(p) { return p.pv / (1 + tvaEmporterEff(p)) - p.cout; }
 
   function parId(id) {
     for (var i = 0; i < CARTE.length; i++) if (CARTE[i].id === id) return CARTE[i];
@@ -362,8 +444,21 @@
       '<span class="cat">' + echap(p.cat || p.fam) + '</span>' +
       '<h3>' + echap(p.nom) + '</h3>' +
       (p.desc ? '<p class="desc">' + echap(p.desc) + '</p>' : '') +
-      '<div class="ligne-prix"><span class="pv">' + eur(p.pv) + '</span>' +
+      '<div class="ligne-prix"><span class="pv">' + prixAffiche(p) + '</span>' +
       '<span class="marge ' + classeMarge(p) + '">' + eur(margeAuto(p)) + ' · ' + txtCoef(coef(p)) + '</span></div>' +
+      (p.formats && p.formats.length
+        ? '<div class="formats-mini">' + p.formats.map(function (f) {
+            return '<span><strong>' + echap(f.nom || '—') + '</strong> ' + eur(f.pv) +
+              (f.cout > 0 ? ' <em>(marge ' + eur(f.pv / (1 + p.tva) - f.cout) + ')</em>' : '') + '</span>';
+          }).join('') + '</div>' : '') +
+      (p.tvaEmporter != null ? '<div><span class="chip-emporter">à emporter TVA ' +
+        (p.tvaEmporter * 100).toFixed(p.tvaEmporter === 0.055 ? 1 : 0).replace('.', ',') +
+        ' % · marge ' + eur(margeEmporter(p)) + '</span></div>' : '') +
+      (p.allergenes && p.allergenes.length
+        ? '<div class="alg-mini" title="Allergènes déclarés">' +
+          allergenesInfo(p.allergenes).map(function (a) {
+            return '<span title="' + echap(a[1]) + '">' + a[2] + '</span>';
+          }).join('') + '</div>' : '') +
       (manuel ? '<div>' + manuel + '</div>' : '') +
       '</div>' +
       '<div class="actions-prod">' +
@@ -421,6 +516,7 @@
     var tauxMoy = actifs.reduce(function (s, p) { return s + tauxMarge(p); }, 0) / lg;
     var sous = actifs.filter(sousObjectif).length;
     var manuels = actifs.filter(function (p) { return p.margeManuelle; }).length;
+    var emportes = actifs.filter(function (p) { return p.tvaEmporter != null; }).length;
 
     $('#kpis').innerHTML =
       '<div class="kpi"><div class="v">' + actifs.length + '</div><div class="l">Produits à la carte</div></div>' +
@@ -428,7 +524,8 @@
       '<div class="kpi"><div class="v">' + pct(tauxMoy) + '</div><div class="l">Taux de marge moyen</div></div>' +
       '<div class="kpi' + (sous ? ' alerte' : '') + '"><div class="v">' + sous + '</div>' +
       '<div class="l">Sous l’objectif de coefficient</div></div>' +
-      '<div class="kpi"><div class="v">' + manuels + '</div><div class="l">Marges fixées à la main</div></div>';
+      '<div class="kpi"><div class="v">' + manuels + '</div><div class="l">Marges fixées à la main</div></div>' +
+      '<div class="kpi"><div class="v">' + emportes + '</div><div class="l">Vendus aussi à l’emporté</div></div>';
 
     var lignes = CARTE.slice().sort(function (a, b) {
       var va = valeurTri(a, TRI.cle), vb = valeurTri(b, TRI.cle);
@@ -453,8 +550,19 @@
           ? echap(libelleCible(p)) + (sugg && Math.abs(sugg - p.pv) > 0.001
               ? '<br><span class="type-mini">→ ' + eur(sugg) + ' TTC</span>' : '')
           : '<span class="type-mini">auto</span>') + '</td>' +
+        '<td class="num">' + (p.tvaEmporter != null
+          ? eur(margeEmporter(p)) + '<br><span class="type-mini">TVA ' +
+            (p.tvaEmporter * 100).toFixed(p.tvaEmporter === 0.055 ? 1 : 0).replace('.', ',') + ' %</span>'
+          : '<span class="type-mini">—</span>') + '</td>' +
+        '<td>' + (p.formats && p.formats.length
+          ? p.formats.map(function (f) {
+              return '<span class="type-mini"><strong>' + echap(f.nom || '—') + '</strong> ' + eur(f.pv) +
+                (f.cout > 0 ? ' · ' + eur(f.pv / (1 + p.tva) - f.cout) + ' · ' +
+                  txtCoef(f.pv / (1 + p.tva) / f.cout) : '') + '</span>';
+            }).join('<br>')
+          : '<span class="type-mini">—</span>') + '</td>' +
         '<td class="num"><button type="button" class="btn btn-s btn-mini" data-editer="' +
-        echap(p.id) + '">Marge…</button></td>' +
+        echap(p.id) + '">⚙</button></td>' +
         '</tr>';
     }).join('');
     $('#table-marges tbody').innerHTML = h;
@@ -496,7 +604,7 @@
     var lignes = [];
     a.selection.forEach(function (id) {
       var p = parId(id);
-      if (p && p.actif) lignes.push({ nom: p.nom, desc: p.desc, prix: p.pv, id: id });
+      if (p && p.actif) lignes.push({ nom: p.nom, desc: p.desc, prix: p.pv, prixLib: prixAffiche(p), id: id });
     });
     a.libres.forEach(function (l, i) {
       lignes.push({ nom: l.nom, desc: l.desc, prix: l.prix, libre: i });
@@ -508,7 +616,8 @@
 
   function lignePapierHTML(l) {
     return '<div class="l"><div class="lg"><span class="nom">' + echap(l.nom) + '</span>' +
-      '<span class="pts" aria-hidden="true"></span><span class="prix">' + eur(l.prix) + '</span></div>' +
+      '<span class="pts" aria-hidden="true"></span><span class="prix">' +
+      (l.prixLib || eur(l.prix)) + '</span></div>' +
       (l.desc ? '<p class="d">' + echap(l.desc) + '</p>' : '') + '</div>';
   }
 
@@ -743,6 +852,62 @@
     }).map(function (p) { return '<option value="' + echap(p.cat) + '">'; }).join('');
   }
 
+  // -------- formats de prix (verre/bouteille, 25/50 cl…) --------
+  function ligneFormatHTML(f) {
+    return '<div class="format-ligne">' +
+      '<input type="text" data-f-nom maxlength="40" placeholder="Format (ex. Verre)" value="' +
+        echap(f && f.nom || '') + '">' +
+      '<input type="number" data-f-pv min="0" step="0.10" inputmode="decimal" placeholder="Prix €" value="' +
+        (f && f.pv ? f.pv : '') + '">' +
+      '<input type="number" data-f-cout min="0" step="0.05" inputmode="decimal" placeholder="Coût €" value="' +
+        (f && f.cout ? f.cout : '') + '">' +
+      '<button type="button" data-format-moins aria-label="Retirer ce format">×</button>' +
+      '</div>';
+  }
+
+  function remplirFormats(formats) {
+    $('#formats-liste').innerHTML = (formats && formats.length
+      ? formats.map(ligneFormatHTML).join('') : '');
+    var aideExistante = $('#pave-formats .aide-vide');
+    if (aideExistante) aideExistante.remove();
+    if (!formats || !formats.length) {
+      var p = document.createElement('p');
+      p.className = 'aide aide-vide';
+      p.textContent = 'Prix unique — ajoutez un format seulement si le produit existe en plusieurs contenances.';
+      $('#formats-liste').after(p);
+    }
+  }
+
+  function lireFormats() {
+    return $$('.format-ligne', $('#formats-liste')).map(function (l) {
+      var pv = parseFloat(String($('[data-f-pv]', l).value).replace(',', '.')) || 0;
+      return {
+        nom: $('[data-f-nom]', l).value.trim(),
+        pv: Math.round(pv * 100) / 100,
+        cout: Math.round((parseFloat(String($('[data-f-cout]', l).value)
+          .replace(',', '.')) || 0) * 100) / 100
+      };
+    }).filter(function (f) { return f.nom || f.pv > 0; });
+  }
+
+  // -------- allergènes --------
+  function dessinerAllergenes(coches) {
+    coches = coches || [];
+    $('#allergenes-grille').innerHTML = ALLERGENES.map(function (a) {
+      var ok = coches.indexOf(a[0]) >= 0;
+      return '<label class="alg-case' + (ok ? ' on' : '') + '"' +
+        ' title="' + echap(a[1]) + '">' +
+        '<input type="checkbox" data-alg="' + a[0] + '"' + (ok ? ' checked' : '') + '>' +
+        '<span class="alg-emoji">' + a[2] + '</span><span>' + a[1] + '</span></label>';
+    }).join('');
+  }
+
+  function lireAllergenes() {
+    return $$('#allergenes-grille input:checked').map(function (c) {
+      return c.getAttribute('data-alg');
+    });
+  }
+
   function ouvrirFiche(id) {
     var p = id ? parId(id) : null;
     EN_EDITION = p ? p.id : null;
@@ -763,7 +928,10 @@
     $('#f-pv').value = p ? p.pv : '';
     $('#f-cout').value = p && p.cout ? p.cout : '';
     $('#f-tva').value = p ? String(p.tva) : '0.10';
+    $('#f-tva-emporter').value = p && p.tvaEmporter != null ? String(p.tvaEmporter) : '';
     $('#f-actif').checked = p ? p.actif : true;
+    remplirFormats(p ? p.formats : []);
+    dessinerAllergenes(p ? p.allergenes : []);
 
     // marge manuelle existante
     var mm = p && p.margeManuelle;
@@ -825,6 +993,23 @@
     $('#m-taux').textContent = pct(tauxMarge(brouillon));
     $('#m-coef').textContent = txtCoef(coef(brouillon));
 
+    var empSel = $('#f-tva-emporter');
+    if (empSel) {
+      brouillon.tvaEmporter = empSel.value === '' ? null : parseFloat(empSel.value);
+      var ie = $('#m-emporter');
+      if (ie) {
+        if (brouillon.tvaEmporter != null && brouillon.cout > 0 && brouillon.pv > 0) {
+          ie.textContent = 'À l’emporté (TVA ' +
+            (brouillon.tvaEmporter * 100).toFixed(brouillon.tvaEmporter === 0.055 ? 1 : 0)
+              .replace('.', ',') + ' %) : marge de ' + eur(margeEmporter(brouillon)) +
+            ' au lieu de ' + eur(marge) + '.';
+          ie.hidden = false;
+        } else {
+          ie.textContent = '';
+          ie.hidden = true;
+        }
+      }
+    }
     var verdict = $('#m-verdict');
     if (brouillon.cout > 0 && brouillon.pv > 0) {
       if (sousObjectif(brouillon)) {
@@ -908,8 +1093,9 @@
       $('#f-nom').focus();
       return;
     }
-    if (!(pv > 0)) {
-      err.textContent = 'Indiquez un prix de vente supérieur à zéro.';
+    var formats = lireFormats();
+    if (!(pv > 0) && !formats.some(function (f) { return f.pv > 0; })) {
+      err.textContent = 'Indiquez un prix de vente (ou un format avec un prix).';
       err.hidden = false;
       $('#f-pv').focus();
       return;
@@ -930,6 +1116,9 @@
       pv: Math.round(pv * 100) / 100,
       cout: Math.round(lireNombre('#f-cout') * 100) / 100,
       tva: parseFloat($('#f-tva').value) || 0.1,
+      tvaEmporter: $('#f-tva-emporter').value === '' ? null : parseFloat($('#f-tva-emporter').value),
+      allergenes: lireAllergenes(),
+      formats: formats,
       actif: $('#f-actif').checked,
       photo: PHOTO_BROUILLON,
       margeManuelle: margeVal > 0 ? { unite: $('#f-marge-unite').value, valeur: margeVal } : null
@@ -975,7 +1164,7 @@
   function exporterJSON() {
     var paquet = {
       application: 'la-trattoria-carte',
-      version: 2,
+      version: 3,
       exporte: new Date().toISOString(),
       produits: CARTE,
       ardoises: ARDOISES
@@ -988,7 +1177,9 @@
   function exporterCSV() {
     var lignes = [['Produit', 'Type', 'Famille', 'Catégorie', 'Prix TTC', 'Coût matière',
       'TVA %', 'Prix HT', 'Marge €', 'Taux marge %', 'Coefficient',
-      'Marge cible (manuelle)', 'Prix TTC pour la cible', 'À la carte'].join(';')];
+      'Marge cible (manuelle)', 'Prix TTC pour la cible',
+      'TVA emporté %', 'Marge emporté €', 'Formats (nom=prix)', 'Allergènes',
+      'À la carte'].join(';')];
     CARTE.forEach(function (p) {
       var sugg = prixPourMargeCible(p);
       var dec = function (v) { return String(Number(v).toFixed(2)).replace('.', ','); };
@@ -999,6 +1190,13 @@
         p.cout > 0 ? coef(p).toFixed(2).replace('.', ',') : '',
         p.margeManuelle ? libelleCible(p) : '',
         sugg ? dec(sugg) : '',
+        p.tvaEmporter != null ? dec(p.tvaEmporter * 100) : '',
+        p.tvaEmporter != null ? dec(margeEmporter(p)) : '',
+        (p.formats || []).map(function (f) {
+          return (f.nom || '—') + '=' + dec(f.pv) +
+            (f.cout > 0 ? ' (marge ' + dec(f.pv / (1 + p.tva) - f.cout) + ')' : '');
+        }).join(' | '),
+        allergenesInfo(p.allergenes).map(function (a) { return a[1]; }).join(', '),
         p.actif ? 'oui' : 'non'
       ].map(function (c) { return /[;"\n]/.test(c) ? '"' + String(c).replace(/"/g, '""') + '"' : c; })
         .join(';'));
@@ -1135,6 +1333,20 @@
         toast('Prix ajusté — pensez à enregistrer');
         return;
       }
+      if (t.closest('#btn-format-plus')) {
+        var aideVide = $('#pave-formats .aide-vide');
+        if (aideVide) aideVide.remove();
+        $('#formats-liste').insertAdjacentHTML('beforeend', ligneFormatHTML(null));
+        var lignesFormats = $$('.format-ligne', $('#formats-liste'));
+        if (lignesFormats.length) $('[data-f-nom]', lignesFormats[lignesFormats.length - 1]).focus();
+        return;
+      }
+      var formatMoins = t.closest('[data-format-moins]');
+      if (formatMoins) {
+        formatMoins.closest('.format-ligne').remove();
+        if (!$$('.format-ligne', $('#formats-liste')).length) remplirFormats([]);
+        return;
+      }
       if (t.closest('#btn-marge-auto')) {
         $('#f-marge-valeur').value = '';
         $('#btn-marge-auto').hidden = true;
@@ -1246,6 +1458,10 @@
         majCategories($('#f-type').value, e.target.value);
       }
       if (e.target.id === 'f-marge-unite') majChiffresMarge();
+      if (e.target.id === 'f-tva-emporter') majChiffresMarge();
+      if (e.target.hasAttribute('data-alg')) {
+        e.target.closest('.alg-case').classList.toggle('on', e.target.checked);
+      }
       if (e.target.hasAttribute('data-cueillette')) {
         var id = e.target.getAttribute('data-cueillette');
         var i = CUEILLETTE ? CUEILLETTE.choisis.indexOf(id) : -1;

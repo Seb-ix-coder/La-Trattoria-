@@ -90,6 +90,8 @@
               <th data-tri="taux" class="num">Taux</th>
               <th data-tri="coef" class="num">Coeff.</th>
               <th data-tri="cible" class="num">Cible</th>
+              <th class="num">Marg. emporté</th>
+              <th>Formats</th>
               <th></th>
             </tr>
           </thead>
@@ -219,6 +221,36 @@
             </select>
           </label>
         </div>
+      </fieldset>
+
+      <!-- formats de prix : verre/bouteille, 25/50 cl… -->
+      <fieldset class="pave" id="pave-formats">
+        <legend>Formats et prix</legend>
+        <div id="formats-liste"></div>
+        <button type="button" class="btn btn-s btn-mini" id="btn-format-plus">+ Ajouter un format</button>
+      </fieldset>
+
+      <!-- vente à emporter -->
+      <fieldset class="pave">
+        <legend>Vente à emporter</legend>
+        <label class="champ">
+          <span>TVA appliquée à l'emporté</span>
+          <select id="f-tva-emporter">
+            <option value="">Comme en salle (défaut)</option>
+            <option value="0.055">5,5 % — emporté alimentaire</option>
+            <option value="0.10">10 %</option>
+            <option value="0.20">20 %</option>
+          </select>
+        </label>
+        <p class="verdict aide" id="m-emporter" hidden></p>
+      </fieldset>
+
+      <!-- allergènes -->
+      <fieldset class="pave">
+        <legend>Allergènes</legend>
+        <p class="aide">Les 14 allergènes à déclaration obligatoire, affichés sur la page
+          clients. Pré-remplis d'après les ingrédients — vérifiez chaque produit.</p>
+        <div id="allergenes-grille" class="allergenes-grille"></div>
       </fieldset>
 
       <!-- marge -->

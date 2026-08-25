@@ -71,6 +71,24 @@ Trois cartes prêtes à composer et à imprimer : **plats du jour**, **bières d
 
 Équivalent des « Ardoises » de l'application, en plus complet.
 
+### Allergènes (réglementation UE)
+- Les **14 allergènes déclarables** sont suivis produit par produit ;
+- **pré-remplis automatiquement** d'après les ingrédients de la carte d'origine
+  (63 produits sur 84 — à vérifier fiche par fiche) ;
+- affichés en pictogrammes sur les fiches et la **page clients**, avec légende
+  et filtres « sans gluten / sans lactose / sans œufs… ».
+
+### Formats et prix (verre / bouteille, 25/50 cl…)
+Un même produit peut avoir **plusieurs formats**, chacun avec son prix, son coût et
+donc **sa marge propre** (affichée fiche, tableau des marges, page clients). Sans
+format, le prix unique s'applique comme avant ; le prix affiché devient « dès X € »
+quand le produit n'a que des formats.
+
+### Vente à emporter
+- **TVA à l'emporté dédiée** par produit (5,5 % / 10 % / 20 %, sinon celle de salle) ;
+- la **marge à l'emporté** est calculée en regard (fiche + tableau + KPI
+  « vendus à l'emporté ») et exportée dans le CSV.
+
 ### Synchronisation entre tablettes + page clients
 Lancer **`serveur_carte.py`** (Python 3, sans dépendance) sur un appareil du restaurant :
 

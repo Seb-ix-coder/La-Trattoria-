@@ -131,7 +131,7 @@ main{padding:18px 0 80px}
 .carte-bloc.danger{border-color:var(--rouge)}
 
 .table-wrap{overflow-x:auto;margin-top:8px}
-table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:820px}
 th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--gris);
   text-align:left;padding:8px 10px;border-bottom:2px solid var(--trait);
   cursor:pointer;user-select:none;white-space:nowrap}
@@ -210,6 +210,26 @@ textarea{padding:10px 12px;resize:vertical;font-size:14.5px}
 
 .case{display:flex;gap:9px;align-items:flex-start;font-size:13.5px}
 .case input{width:18px;height:18px;margin-top:2px;accent-color:var(--rouge)}
+
+/* ---------------- formats de prix / emporté / allergènes ---------------- */
+.format-ligne{display:grid;grid-template-columns:1.3fr .8fr .8fr auto;gap:8px;margin-bottom:8px}
+.format-ligne input{min-height:40px;font-size:14px}
+.format-ligne button{width:40px;height:40px;border-radius:10px;border:1px solid var(--trait);
+  background:var(--beige);color:var(--rouge);font-size:16px}
+.formats-mini{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--gris);
+  background:var(--fond);border-radius:8px;padding:7px 10px}
+.formats-mini em{font-style:normal;font-size:11.5px;color:var(--vert-f)}
+.chip-emporter{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;
+  color:#5B4A78;background:#EDE6F2;border-radius:11px;padding:2px 9px}
+.alg-mini{display:flex;gap:4px;flex-wrap:wrap}
+.alg-mini span{font-size:14px;background:var(--beige);border-radius:8px;padding:2px 6px}
+.allergenes-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:7px}
+.alg-case{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--trait);
+  border-radius:10px;background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;user-select:none}
+.alg-case.on{border-color:var(--olive);background:#f4f6ec}
+.alg-case input{width:16px;height:16px;accent-color:var(--rouge);flex:none}
+.alg-emoji{font-size:15px}
+table .type-mini{display:inline}
 
 /* ---------------- toast ---------------- */
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);
