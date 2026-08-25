@@ -72,7 +72,7 @@ def _read(path: str) -> str:
 
 
 def patch_site_js(source: str) -> str:
-    """Applique le correctif B1 puis ajoute l'addon QR à site.js."""
+    """Applique le correctif B1 puis ajoute les addons QR + conformité."""
     # -- B1 (idempotent)
     if 'Correctif durci 11.1' not in source:
         if source.count(ANCRE) != 1:
@@ -84,23 +84,32 @@ def patch_site_js(source: str) -> str:
         print('[patch] site.js : découverte automatique de l\'API locale (B1)')
 
     # -- addon QR (idempotent)
-    if 'QR code du menu' in source:
-        print('[info] site.js : addon QR déjà présent')
-        return source
-    addon = _read(os.path.join(os.path.dirname(__file__), 'qr_addon.js'))
-    source = source.rstrip('\n') + '\n\n' + addon + '\n'
-    print('[patch] site.js : encodeur QR + interface tactile (QR)')
+    if 'QR code du menu' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__), 'qr_addon.js'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.js : encodeur QR + interface tactile (QR)')
+
+    # -- addon outils de conformité (idempotent)
+    if 'Outils de conformité' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__),
+                                   'outils_conformite.js'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.js : e-reporting + registre Factur-X (CONFORMITÉ)')
     return source
 
 
 def patch_site_css(source: str) -> str:
-    """Ajoute les styles de l'interface QR à site.css (idempotent)."""
-    if 'QR code du menu' in source:
-        print('[info] site.css : styles QR déjà présents')
-        return source
-    addon = _read(os.path.join(os.path.dirname(__file__), 'qr_addon.css'))
-    source = source.rstrip('\n') + '\n\n' + addon + '\n'
-    print('[patch] site.css : styles de l\'interface QR (QR)')
+    """Ajoute les styles QR + conformité à site.css (idempotent)."""
+    if 'QR code du menu' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__), 'qr_addon.css'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.css : styles de l\'interface QR (QR)')
+
+    if 'Outils de conformité' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__),
+                                   'outils_conformite.css'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.css : styles des outils de conformité')
     return source
 
 

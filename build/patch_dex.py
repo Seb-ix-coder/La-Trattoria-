@@ -186,6 +186,47 @@ class DexTables:
             out.append(i)
             start = i + 1
 
+    def class_method_code_off(self, class_desc: str, name: str,
+                              param_descs, return_desc: str) -> int:
+        """Offset fichier du code_item d'une méthode d'une classe.
+
+        Parcourt les class_defs pour trouver la classe, puis le
+        class_data_item (liste des méthodes encodées : idx_diff uleb,
+        access uleb, code_off uleb) pour retrouver la méthode demandée.
+        """
+        midx = self.method_idx(class_desc, name, param_descs, return_desc)
+        cd = None
+        for i in range(self.class_defs_size):
+            o = self.class_defs_off + 32 * i
+            cidx = struct.unpack_from('<I', self.data, o)[0]
+            if self.types[cidx] == class_desc:
+                cd = o
+                break
+        if cd is None:
+            raise ValueError('classe introuvable : %s' % class_desc)
+        class_data_off = struct.unpack_from('<I', self.data, cd + 24)[0]
+        if class_data_off == 0:
+            raise ValueError('classe sans données : %s' % class_desc)
+        off = class_data_off
+        static_fields, off = self._uleb(self.data, off)
+        instance_fields, off = self._uleb(self.data, off)
+        direct_methods, off = self._uleb(self.data, off)
+        virtual_methods, off = self._uleb(self.data, off)
+        # champs encodés : 2 uleb chacun (idx_diff, access)
+        for _ in range(static_fields + instance_fields):
+            _, off = self._uleb(self.data, off)
+            _, off = self._uleb(self.data, off)
+        # méthodes encodées : 3 uleb chacun (idx_diff, access, code_off)
+        idx = 0
+        for _ in range(direct_methods + virtual_methods):
+            diff, off = self._uleb(self.data, off)
+            access, off = self._uleb(self.data, off)
+            code_off, off = self._uleb(self.data, off)
+            idx += diff
+            if idx == midx:
+                return code_off
+        raise ValueError('méthode sans code : %s.%s' % (class_desc, name))
+
 
 # ---------------------------------------------------------------------------
 #  Correctifs
@@ -269,6 +310,73 @@ def patch_strip_cout(dt: DexTables) -> list:
     return patches
 
 
+def patch_route_site_ventes(dt: DexTables) -> list:
+    """[P6] Route `/site/ventes` : ventes du jour pour l'export e-reporting.
+
+    Le site local (page servie par la tablette) ne connaît pas la clé API :
+    les routes `/api/v1/*` exigent `X-Cle-Api`. On expose donc les ventes
+    via une route `/site/*` (non authentifiée, mais uniquement accessible
+    depuis le réseau local du restaurant).
+
+    Dans `Reseau.routerSite`, le bloc « route inconnue » (la cible des
+    branches if, à l'offset 0x118 des insns) construit
+    `{"ok":0,"motif":"inconnu","detail":"Route inconnue."}` puis le
+    retourne. On le remplace — À TAILLE IDENTIQUE (19 code units) — par :
+        return ApiPublique.ventes(Reseau.parametre(chemin, "jour")).toString();
+    Registres de la méthode : v7=p7 (méthode), v8=p8 (chemin), v9=p9
+    (corps), v10=p10 (IP) ; v5 est libre pour les temporaires.
+    """
+    reseau = 'Lcom/trattoria/commande/Reseau;'
+    code_off = dt.class_method_code_off(
+        reseau, 'routerSite',
+        ['Ljava/lang/String;', 'Ljava/lang/String;', 'Ljava/lang/String;',
+         'Ljava/lang/String;'], 'Ljava/lang/String;')
+    insns_off = code_off + 16   # en-tête du code_item : 16 octets
+    bloc = insns_off + 0x118    # offset du bloc « route inconnue » (constaté)
+
+    attendu_tete = bytes.fromhex('22070c0d7010275f0700')  # new JSONObject...
+    if dt.data[bloc:bloc + 10] != attendu_tete:
+        raise RuntimeError('[P6] bloc « route inconnue » introuvable @%#x'
+                           % bloc)
+    before = dt.data[bloc:bloc + 38]
+
+    # index des références
+    j_idx = dt.string_idx('jour')
+    p_idx = dt.method_idx(reseau, 'parametre',
+                          ['Ljava/lang/String;', 'Ljava/lang/String;'],
+                          'Ljava/lang/String;')
+    v_idx = dt.method_idx('Lcom/trattoria/commande/ApiPublique;', 'ventes',
+                          ['Ljava/lang/String;'], 'Lorg/json/JSONObject;')
+    t_idx = dt.method_idx('Lorg/json/JSONObject;', 'toString', [],
+                          'Ljava/lang/String;')
+    for nom, i in (('jour', j_idx), ('parametre', p_idx),
+                   ('ventes', v_idx), ('toString', t_idx)):
+        if i >= 0x10000:
+            raise RuntimeError('[P6] index %s trop grand : %d' % (nom, i))
+
+    # nouvelle séquence (15 units) + 4 nops pour conserver la taille (19).
+    # NB : une code unit est un uint16 dont l'OCTET DE POIDS FAIBLE est
+    # l'opcode — ex. const-string v5 = octets [1A 05] => uint16 0x051A.
+    units = [
+        (0x051A, j_idx),                    # const-string v5, "jour"
+        (0x2071, p_idx), (0x0058,),          # invoke-static {v8,v5}, parametre
+        (0x050A,),                          # move-result-object v5
+        (0x1071, v_idx), (0x0500,),          # invoke-static {v5}, ventes
+        (0x050A,),                          # move-result-object v5
+        (0x106E, t_idx), (0x0500,),          # invoke-virtual {v5}, toString
+        (0x050A,),                          # move-result-object v5
+        (0x0511,),                          # return-object v5
+        (0x0000,), (0x0000,), (0x0000,), (0x0000,),
+    ]
+    nouveau = b''
+    for u in units:
+        nouveau += struct.pack('<H', u[0]) if len(u) == 1 \
+            else struct.pack('<HH', u[0], u[1])
+    assert len(nouveau) == 38, 'taille inattendue : %d' % len(nouveau)
+    return [('route /site/ventes (export e-reporting) @%#x' % bloc,
+             bloc, before, nouveau)]
+
+
 def fix_checksums(data: bytes) -> bytes:
     """Recalcule la signature (sha1) et le checksum (adler32) du DEX."""
     buff = bytearray(data)
@@ -296,6 +404,7 @@ def main() -> None:
     all_patches = []
     all_patches += patch_timeout_accept_loop(dt)
     all_patches += patch_strip_cout(dt)
+    all_patches += patch_route_site_ventes(dt)
 
     out = bytearray(data)
     for label, off, before, after in all_patches:

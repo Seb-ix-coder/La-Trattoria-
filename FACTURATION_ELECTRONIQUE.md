@@ -56,12 +56,28 @@ ou un export périodique (cf. `build/export_e_reporting.py`).
 
 ---
 
-## 3. Ce qui est livré dans ce dépôt
+## 3. Ce qui est livré (intégré à l'application ET en scripts)
+
+### 🏠 Intégré à l'application (APK 11.2, déjà installé)
+Depuis la page servie par la tablette (`http://<ip-tablette>:8720`) :
+
+| Outil | Accès | Fonction |
+|---|---|---|
+| **Export e-reporting** | `…/#ereporting` | Choisissez la période → tableau des ventes par jour → **Télécharger le CSV / XML** (données via la nouvelle route locale `/site/ventes`) |
+| **Registre Factur-X** | `…/#factures` | Déposez une facture fournisseur (XML Factur-X ou PDF) → contrôle des champs → ajout au **registre local** → export du registre en CSV |
+
+Ces écrans sont accessibles sur la tablette elle-même ou depuis un poste
+du bureau (même réseau), et s'ouvrent automatiquement via le hash de
+l'URL. L'APK 11.2 s'installe **par-dessus** la version actuelle (même clé),
+données conservées.
+
+### 🖥️ En scripts (poste du bureau)
 
 | Outil | Fichier | Rôle |
 |---|---|---|
-| Export e-reporting | `build/export_e_reporting.py` | Interroge l'API de la tablette (`/api/v1/ventes`) et génère un **CSV e-reporting** par jour (CA TTC/HT, TVA, tickets) + un fichier XML |
-| Archivage Factur-X | `build/facturx_archivage.py` | Contrôle et archive les **factures fournisseurs Factur-X** reçues (validation, extraction fournisseur/montant/TVA, suivi CSV) |
+| Export e-reporting | `build/export_e_reporting.py` | Interroge l'API de la tablette (`/api/v1/ventes`, clé API) et génère un **CSV+XML e-reporting** par jour |
+| **Planification auto** | `build/planifier_export.sh --install` | Export **quotidien automatique** de la veille (06h10) dans `~/ereporting/AAAAMM/` |
+| Archivage Factur-X | `build/facturx_archivage.py` | Contrôle et archive les **factures Factur-X** reçues (XML ou PDF), registre CSV 10 ans |
 | Mentions légales | `MENTIONS_LEGALES_2027.md` | Nouvelles mentions obligatoires + textes prêts à l'emploi |
 | Ce guide | `FACTURATION_ELECTRONIQUE.md` | Synthèse + checklist |
 
@@ -75,7 +91,8 @@ ou un export périodique (cf. `build/export_e_reporting.py`).
 - [ ] Test : recevoir une facture électronique de test et l'archiver (script Factur-X)
 
 **Avant septembre 2027 (émission + e-reporting)**
-- [ ] Hiboutik : module e-reporting activé (ou export périodique via le script)
+- [ ] Hiboutik : module e-reporting activé (ou export via l'app `/#ereporting` ou le script)
+- [ ] **Planifier l'export automatique** : `bash build/planifier_export.sh --install` (une fois, avec IP + clé)
 - [ ] Mentions légales mises à jour (dont mention franchise si concerné)
 - [ ] Procédure « facture client professionnel > 150 € HT » au format électronique
-- [ ] Archivage 10 ans des factures (règle comptable) — les scripts facilitent le suivi
+- [ ] Archivage 10 ans des factures (règle comptable) — registre intégré `/#factures` + scripts

@@ -114,6 +114,11 @@ stock) :
    page du site. Un QR imprimé reste possible (`qr/QR-site-web.png`,
    à régénérer avec l'IP réelle — cf. `qr/README.md`).
 
+7. **Outils de conformité intégrés** (facturation électronique) : depuis
+   la page du site — `http://<ip-tablette>:8720/#ereporting` (export
+   e-reporting CSV/XML) et `http://<ip-tablette>:8720/#factures`
+   (registre Factur-X). Détails : `FACTURATION_ELECTRONIQUE.md`.
+
 ## 7. Verrouillage des tablettes (mode kiosque)
 
 L'application ne possède pas de code PIN : protégez l'accès au niveau

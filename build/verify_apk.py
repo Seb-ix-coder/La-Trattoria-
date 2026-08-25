@@ -118,6 +118,19 @@ def check_dex(apk_path: str) -> None:
     print('[ok] DEX : prix de revient retiré de /carte, '
           'sérialisation des tickets intacte')
 
+    # d) la route /site/ventes (export e-reporting) est en place
+    c2 = dex.get_class('Lcom/trattoria/commande/Reseau;')
+    found_ventes = False
+    for m in c2.get_methods():
+        if m.get_name() != 'routerSite':
+            continue
+        for ins in m.get_instructions():
+            out = ins.get_output()
+            if 'ApiPublique;->ventes' in out:
+                found_ventes = True
+    assert found_ventes, 'route /site/ventes absente du DEX'
+    print('[ok] DEX : route /site/ventes (export e-reporting) ajoutée')
+
 
 # ---------------------------------------------------------------------------
 #  3. site.js
@@ -131,8 +144,12 @@ def check_site_js(apk_path: str) -> None:
     assert 'TrattoriaQR' in js, 'encodeur QR absent'
     assert "location.pathname === '/qr'" in js, 'ouverture auto /qr absente'
     assert '#qr-overlay' in css, 'styles QR absents'
-    print('[ok] site.js : API locale + encodeur QR intégré (testé en Node)')
-    print('[ok] site.css : styles de l\'interface QR présents')
+    assert 'Outils de conformité' in js, 'outils de conformité absents'
+    assert "'#ereporting'" in js or '#ereporting' in js, 'e-reporting absent'
+    assert "'#factures'" in js or '#factures' in js, 'registre Factur-X absent'
+    assert '#oc-overlay' in css, 'styles conformité absents'
+    print('[ok] site.js : API locale + QR + outils de conformité intégrés')
+    print('[ok] site.css : styles QR + conformité présents')
 
 
 # ---------------------------------------------------------------------------
