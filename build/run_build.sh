@@ -68,16 +68,17 @@ echo "==> Correctif 3/3 : assets (API locale + générateur QR intégré)"
 python3 "$BUILD/patch_assets.py" extracted/assets/site.js extracted/assets/site.css \
         site_js_patched.js site_css_patched.css
 
-echo "==> Reconstruction de l'APK non signé"
-python3 "$BUILD/build_apk.py" "$APK_SRC" manifest_patched.xml classes_patched.dex \
-        site_js_patched.js unsigned.apk \
-        site_css_patched.css
-
-echo "==> Signature v1 (JAR)"
-python3 "$BUILD/sign_v1.py" unsigned.apk "$KEYSTORE" "$PASSWORD" signed_v1.apk
-
-echo "==> Signature v2 (APK Signature Scheme v2)"
-python3 "$BUILD/sign_v2.py" signed_v1.apk "$KEYSTORE" "$PASSWORD" "$OUT/trato-11.1-durci.apk"
+echo "==> Reconstruction + signature (ZIP original préservé)"
+# Le script resign.py reconstruit l'APK en gardant les octets compressés
+# bruts de toutes les entrées non modifiées (méthodes et alignement
+# préservés : resources.arsc en STORE aligné 4, comme l'original), puis
+# ajoute la signature v1 et le bloc v2. C'est ce qui rend l'APK
+# installable — la recompression complète faisait échouer l'installation.
+python3 "$BUILD/resign.py" "$APK_SRC" "$KEYSTORE" "$PASSWORD" "$OUT/trato-11.1-durci.apk" \
+        --replace=AndroidManifest.xml=manifest_patched.xml \
+        --replace=classes.dex=classes_patched.dex \
+        --replace=assets/site.js=site_js_patched.js \
+        --replace=assets/site.css=site_css_patched.css
 
 echo "==> Vérifications finales"
 python3 "$BUILD/verify_apk.py" "$OUT/trato-11.1-durci.apk" "$APK_SRC"
