@@ -27,7 +27,11 @@ build déterministe.
 ### Installation
 > ⚠️ **Désinstaller toute version 11.x avant** — chaque release est signée avec un keystore local éphémère (jamais commité), Android refuse donc la mise à jour directe. Voir `GUIDE_INSTALLATION.md`.
 
-1. Installer `trato-11.4-stable.apk` sur la tablette
+**Télécharger l'APK** : fichier `trato-11.4-stable.apk` à la **racine du dépôt**
+(sur le tag `v11.4-stable`), comme pour toutes les versions du projet —
+https://github.com/Seb-ix-coder/La-Trattoria-/blob/v11.4-stable/trato-11.4-stable.apk
+
+1. Copier `trato-11.4-stable.apk` sur la tablette et l'installer
 2. Lancer l'app : serveur local sur le port `8720`
 3. Clients : QR `qr/QR-app-client.png` — Partenaires : `qr/QR-app-partenaire.png`
 
