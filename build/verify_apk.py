@@ -22,6 +22,7 @@ Usage :
 
 import hashlib
 import logging
+import os
 import struct
 import sys
 import zipfile
@@ -31,13 +32,14 @@ logging.disable(logging.CRITICAL)
 # ---------------------------------------------------------------------------
 #  1. Manifeste
 # ---------------------------------------------------------------------------
-def check_manifest(apk_path: str) -> None:
+def check_manifest(apk_path: str, version_code: str = '17',
+                   version_name: str = '11.2') -> None:
     from androguard.core.apk import APK
     a = APK(apk_path)
     assert a.get_package() == 'com.trattoria.commande', 'package'
-    assert a.get_androidversion_code() == '17', 'versionCode=%s' \
+    assert a.get_androidversion_code() == version_code, 'versionCode=%s' \
         % a.get_androidversion_code()
-    assert a.get_androidversion_name() == '11.2', 'versionName=%s' \
+    assert a.get_androidversion_name() == version_name, 'versionName=%s' \
         % a.get_androidversion_name()
     assert a.get_min_sdk_version() == '21', 'minSdk'
     assert a.get_target_sdk_version() == '34', 'targetSdk'
@@ -46,18 +48,40 @@ def check_manifest(apk_path: str) -> None:
     app = [el for el in xml.iter() if el.tag.endswith('application')][0]
     assert app.get('{http://schemas.android.com/apk/res/android}allowBackup') \
         == 'false', 'allowBackup != false'
-    print('[ok] manifeste : versionName=11.2 versionCode=17 '
-          'allowBackup=false minSdk=21 targetSdk=34')
+    print('[ok] manifeste : versionName=%s versionCode=%s '
+          'allowBackup=false minSdk=21 targetSdk=34'
+          % (version_name, version_code))
 
 
 # ---------------------------------------------------------------------------
 #  2. DEX
 # ---------------------------------------------------------------------------
-def check_dex(apk_path: str) -> None:
+def check_dex(apk_path: str, patched: bool = False,
+              orig_path: str | None = None) -> None:
+    """Vérifie le DEX.
+
+    Mode par défaut (patched=False, build 11.5+) : le moteur DEX doit être
+    d'ORIGINE, inchangé byte à byte par rapport à l'APK source (les patchs
+    byte-à-byte du DEX provoquent un crash silencieux au lancement — voir
+    DIAGNOSTIQUE_CRASH.md). L'argument orig_path (APK source) est alors requis.
+
+    Mode patched=True (builds historiques 11.1–11.4, NE PAS UTILISER) :
+    vérifie les patchs setSoTimeout/« cout »/route /site/ventes.
+    """
     from androguard.core.dex import DEX
     z = zipfile.ZipFile(apk_path)
-    dex = DEX(z.read('classes.dex'))
+    data = z.read('classes.dex')
+    dex = DEX(data)
     assert len(list(dex.get_classes())) > 2000, 'classes'
+
+    if not patched:
+        assert orig_path, 'DEX d\'origine : il faut l\'APK source en argument'
+        with zipfile.ZipFile(orig_path) as zo:
+            assert data == zo.read('classes.dex'), \
+                'classes.dex MODIFIÉ par rapport à l\'APK source !'
+        print('[ok] DEX : moteur d\'origine intact (byte à byte, zéro patch — '
+              'correctif crash au lancement)')
+        return
 
     # a) timeout du serveur local : const/16 v1, 2000 avant setSoTimeout
     c = dex.get_class('Lcom/trattoria/commande/Reseau$2;')
@@ -359,10 +383,13 @@ def fingerprints(apk_path: str) -> None:
 def main() -> None:
     apk = sys.argv[1]
     orig = sys.argv[2] if len(sys.argv) > 2 else None
+    # PATCH_DEX=1 : vérifie les patchs DEX (builds historiques 11.1–11.4,
+    # qui crashent au lancement). Par défaut : DEX d'origine exigé.
+    patched = os.environ.get('PATCH_DEX', '0') == '1'
     print('== Vérification de %s ==' % apk)
     check_zip(apk, orig)
     check_manifest(apk)
-    check_dex(apk)
+    check_dex(apk, patched=patched, orig_path=orig)
     check_site_js(apk)
     check_v1(apk)
     check_v2(apk)

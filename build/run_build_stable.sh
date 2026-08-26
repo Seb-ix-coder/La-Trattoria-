@@ -26,8 +26,8 @@ APK_SRC="${APK_SRC:-$ROOT/trato.apk}"
 CARTE_DIR="$ROOT/carte"
 
 # --- options de version -----------------------------------------------------
-VERSION_NAME="11.4"
-VERSION_CODE="19"
+VERSION_NAME="11.5"
+VERSION_CODE="20"
 for opt in "$@"; do
   case "$opt" in
     --version-name=*) VERSION_NAME="${opt#*=}" ;;
@@ -74,6 +74,17 @@ python3 "$HERE/integrer_carte.py" "$DURCI" "$CARTE_DIR" "$KEYSTORE" "$PASSWORD" 
 echo ""
 echo "==> [3/4] Vérifications de l'APK unifié"
 python3 "$HERE/verify_unifie.py" "$OUT_APK" "$DURCI" "$VERSION_NAME" "$VERSION_CODE"
+
+# Garantie critique du correctif crash : le DEX final doit être celui de
+# l'APK d'origine 11.0, byte à byte (voir DIAGNOSTIQUE_CRASH.md).
+python3 - "$OUT_APK" "$APK_SRC" <<'PY'
+import sys, zipfile
+a = zipfile.ZipFile(sys.argv[1]).read('classes.dex')
+b = zipfile.ZipFile(sys.argv[2]).read('classes.dex')
+assert a == b, 'classes.dex final != DEX d\'origine !'
+print("[ok] DEX final == moteur d'origine 11.0 (byte à byte) — "
+      'aucun crash de moteur possible')
+PY
 
 # --- étape 4 : livraison ----------------------------------------------------
 echo ""

@@ -59,7 +59,7 @@ pip install -r build/requirements.txt
 
 # 2. build complet de la version stable (keystore généré au premier lancement)
 ./build/run_build_stable.sh
-#    → trato-11.4-stable.apk : durci + module carte + signature v1/v2 + vérifs
+#    → trato-11.5-stable.apk : durci (moteur DEX intact) + module carte + v1/v2 + vérifs
 #    options : --version-name=11.5 --version-code=20
 
 # 3. build durci seul (étape 1 du pipeline, pour diagnostic)

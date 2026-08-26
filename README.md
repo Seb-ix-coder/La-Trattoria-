@@ -11,7 +11,7 @@ social, cartes imprimables. **Tout le projet vit dans cette branche.**
 | `trato.apk` | Application Android v11.0 (`com.trattoria.commande`) — artefact d'origine (moteur DEX de référence) |
 | `trato-11.5-stable.apk` | **⭐ Version stable recommandée** (versionCode 20) : moteur DEX 11.0 **intact** (zéro patch DEX — correctif du crash au lancement) + toutes les fonctions couche web + manifeste durci — produite par `build/run_build_stable.sh` |
 | `trato-11.4.apk` | Build 11.4 corrigé (versionCode 19) : première APK sans patch DEX (branche parallèle) |
-| `trato-11.4-stable.apk` | ⚠️ **NE PAS INSTALLER** — build 11.4 avec DEX patché, **provoque le crash au lancement** (conservé pour l'historique) |
+| `trato-11.4-stable.apk` | ⚠️ build 11.4 avec DEX patché — **provoquait le crash au lancement**, retirée du dépôt (voir `DIAGNOSTIQUE_CRASH.md`) |
 | `trato-11.1-durci.apk` | APK durci v11.2 (versionCode 17, signé v1+v2) : correctifs sécurité + QR intégré + outils de conformité + pourboire + paiement/fidélité + module social — ⚠️ DEX patché (crash au lancement) |
 | `trato-11.3-unifie.apk` | Application unifiée 11.3 (versionCode 18) : tout le 11.2 **+ le module « carte » intégré** — voir `APK_UNIFIE_11.3.md` — ⚠️ DEX patché (crash au lancement) |
 | `trato-11.1-temoin.apk`, `trato-temoin-chirurgical.apk` | Variantes témoins du build 11.1 |
