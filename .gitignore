@@ -46,3 +46,8 @@ communaute/__pycache__/
 
 # build intermédiaire
 *.apk.v1
+
+# build affiche (outillage local)
+affiche/build/node_modules/
+affiche/build/*.png
+affiche/build/*.pdf

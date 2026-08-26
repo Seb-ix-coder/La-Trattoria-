@@ -1,5 +1,0 @@
-# Dépendances Python du pipeline de build/signature de l'APK durci.
-# (liste figée pour des builds reproductibles — à adapter selon vos besoins)
-cryptography>=41.0
-asn1crypto>=1.5.1
-androguard>=4.0

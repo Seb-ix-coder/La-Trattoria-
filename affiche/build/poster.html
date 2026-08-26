@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>La Trattoria — Affiche A4</title>
+<style>
+@font-face{font-family:'Caveat';font-weight:400;src:url('node_modules/@fontsource/caveat/files/caveat-latin-400-normal.woff2') format('woff2');}
+@font-face{font-family:'Caveat';font-weight:700;src:url('node_modules/@fontsource/caveat/files/caveat-latin-700-normal.woff2') format('woff2');}
+@font-face{font-family:'Fredericka the Great';font-weight:400;src:url('node_modules/@fontsource/fredericka-the-great/files/fredericka-the-great-latin-400-normal.woff2') format('woff2');}
+@font-face{font-family:'Patrick Hand';font-weight:400;src:url('node_modules/@fontsource/patrick-hand/files/patrick-hand-latin-400-normal.woff2') format('woff2');}
+@font-face{font-family:'Shadows Into Light';font-weight:400;src:url('node_modules/@fontsource/shadows-into-light/files/shadows-into-light-latin-400-normal.woff2') format('woff2');}
+
+@page{size:210mm 297mm;margin:0;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:794px;height:1123px;overflow:hidden;}
+body{
+  background:#1C1C1A;
+  position:relative;
+  color:#F2EDE2;
+  font-family:'Patrick Hand',cursive;
+}
+:root{
+  --craie:#F2EDE2;
+  --craie-douce:#CFC8B9;
+  --craie-faible:#948D80;
+  --rouge-craie:#E0A0A0;
+  --vert-craie:#A9B07E;
+}
+
+/* ---- texture ardoise ---- */
+.grain{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:.5;}
+.vignette{position:absolute;inset:0;z-index:5;pointer-events:none;
+  background:radial-gradient(ellipse 118% 94% at 50% 44%, rgba(0,0,0,0) 45%, rgba(0,0,0,.52) 100%);}
+.smudge{position:absolute;border-radius:50%;filter:blur(38px);
+  background:rgba(242,237,226,.04);z-index:1;pointer-events:none;}
+
+/* ---- cadre ---- */
+.frame{position:absolute;inset:16px;z-index:6;pointer-events:none;}
+
+/* ---- contenu ---- */
+.page{position:absolute;inset:0;z-index:3;padding:44px 54px 40px;
+  display:flex;flex-direction:column;align-items:center;}
+
+/* logo */
+.logo-zone{position:relative;margin-top:6px;}
+.logo-zone .cercle-craie{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:0;pointer-events:none;}
+.logo{position:relative;z-index:1;width:226px;height:226px;border-radius:50%;
+  display:block;box-shadow:0 0 44px rgba(0,0,0,.5);}
+.farine span{position:absolute;border-radius:50%;background:var(--craie);
+  opacity:.5;z-index:2;}
+
+.kicker{margin-top:18px;font-family:'Shadows Into Light',cursive;font-size:19px;
+  letter-spacing:5px;color:var(--craie-faible);filter:url(#craie-petit);}
+.titre{margin-top:6px;font-family:'Caveat',cursive;font-weight:700;font-size:60px;
+  line-height:1.02;text-align:center;letter-spacing:1px;
+  text-shadow:0 0 18px rgba(242,237,226,.16);filter:url(#craie-grand);}
+.titre .accent{color:var(--rouge-craie);}
+.flourish{margin-top:6px;}
+.intro{margin-top:14px;max-width:560px;text-align:center;font-size:19.5px;
+  line-height:1.55;color:var(--craie-douce);filter:url(#craie-petit);}
+.intro strong{color:var(--craie);font-weight:400;}
+
+/* ---- points vendeurs ---- */
+.points{margin-top:20px;width:100%;max-width:600px;}
+.point{display:flex;align-items:center;gap:20px;padding:10px 0;
+  border-bottom:2px dotted rgba(242,237,226,.22);}
+.point:last-child{border-bottom:none;}
+.point .ico{flex:0 0 62px;height:62px;display:flex;align-items:center;justify-content:center;}
+.point .txt{flex:1;}
+.point .t{font-family:'Caveat',cursive;font-weight:700;font-size:30px;line-height:1;
+  letter-spacing:.5px;filter:url(#craie-petit);}
+.point .d{font-size:16.5px;color:var(--craie-douce);margin-top:5px;line-height:1.35;
+  filter:url(#craie-petit);}
+
+/* ---- QR ---- */
+.qr-zone{margin-top:20px;display:flex;align-items:center;gap:26px;}
+.qr-card{background:var(--craie);padding:10px;border-radius:14px;
+  transform:rotate(-1.2deg);box-shadow:0 8px 26px rgba(0,0,0,.5);}
+.qr-card img{width:172px;height:172px;display:block;border-radius:4px;}
+.qr-txt .l1{font-family:'Caveat',cursive;font-weight:700;font-size:31px;line-height:1.05;
+  filter:url(#craie-petit);}
+.qr-txt .l2{font-size:15.5px;color:var(--craie-douce);margin-top:8px;line-height:1.4;
+  max-width:280px;filter:url(#craie-petit);}
+.qr-txt .l2 b{color:var(--craie);font-weight:400;}
+
+/* ---- pied ---- */
+.pied{margin-top:auto;padding-top:12px;text-align:center;}
+.pied .res{font-family:'Caveat',cursive;font-weight:700;font-size:30px;
+  letter-spacing:.5px;filter:url(#craie-petit);}
+.pied .res .num{color:var(--rouge-craie);}
+.pied .adr{margin-top:7px;font-size:15.5px;color:var(--craie-faible);
+  letter-spacing:1px;filter:url(#craie-petit);}
+.pied .etoi{color:var(--vert-craie);font-size:15px;}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="craie-grand" x="-8%" y="-14%" width="116%" height="128%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="3" seed="8" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="craie-petit" x="-8%" y="-14%" width="116%" height="128%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="21" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.5" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="craie-ligne" x="-6%" y="-6%" width="112%" height="112%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="grainf">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.06" intercept="0"/></feComponentTransfer>
+    </filter>
+  </defs>
+</svg>
+
+<svg class="grain" width="794" height="1123"><rect width="794" height="1123" fill="#fff" filter="url(#grainf)"/></svg>
+
+<div class="smudge" style="left:-80px;top:90px;width:380px;height:260px;transform:rotate(-18deg)"></div>
+<div class="smudge" style="right:-90px;top:480px;width:420px;height:300px;transform:rotate(12deg)"></div>
+<div class="smudge" style="left:160px;bottom:-90px;width:460px;height:280px;transform:rotate(-8deg)"></div>
+
+<svg class="frame" width="762" height="1091" viewBox="0 0 762 1091">
+  <path id="cadre-dehors" fill="none" stroke="#EDE7DA" stroke-width="3" stroke-linecap="round" opacity=".75" filter="url(#craie-ligne)"/>
+  <path id="cadre-dedans" fill="none" stroke="#EDE7DA" stroke-width="1.4" stroke-linecap="round" opacity=".28" filter="url(#craie-ligne)"/>
+</svg>
+
+<div class="page">
+
+  <!-- ============ LOGO ============ -->
+  <div class="logo-zone" id="logo-zone">
+    <svg class="cercle-craie" width="258" height="258" viewBox="0 0 280 280">
+      <path id="anneau" fill="none" stroke="#F2EDE2" stroke-width="2.5" opacity=".5"
+            stroke-linecap="round" filter="url(#craie-ligne)"
+            stroke-dasharray="14 9 22 7 17 10"/>
+      <path d="M40,34 L40,54 M30,44 L50,44" stroke="#A9B07E" stroke-width="2" opacity=".7" filter="url(#craie-ligne)"/>
+      <path d="M238,226 L238,246 M228,236 L248,236" stroke="#A9B07E" stroke-width="2" opacity=".7" filter="url(#craie-ligne)"/>
+    </svg>
+    <img class="logo" src="logo-cercle.png" alt="La Trattoria">
+  </div>
+
+  <div class="kicker">PIZZERIA ARTISANALE · SAINTES</div>
+
+  <h1 class="titre">Ici, tout est <span class="accent">fait maison</span>.</h1>
+
+  <svg class="flourish" width="330" height="16" viewBox="0 0 330 16">
+    <path d="M8 9 C 40 3, 74 13, 110 8 S 176 3, 212 9 S 288 12, 322 6"
+      stroke="#E0A0A0" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".8" filter="url(#craie-petit)"/>
+  </svg>
+
+  <p class="intro">
+    Chaque jour, nos pizzas naissent de <strong>farines choisies</strong> et d'une
+    <strong>pâte à pizza maturée</strong> lentement. Des produits
+    <strong>frais</strong>, en <strong>circuit court</strong>,
+    et <strong>bio</strong> quand c'est possible.
+  </p>
+
+  <!-- ============ POINTS VENDEURS ============ -->
+  <div class="points">
+    <div class="point">
+      <div class="ico">
+        <svg width="58" height="62" viewBox="0 0 58 66" fill="none" stroke="#F2EDE2" stroke-width="2.6" stroke-linecap="round" filter="url(#craie-ligne)">
+          <path d="M29,62 C30,44 30,26 29,8" opacity=".9"/>
+          <path d="M29,16 C21,12 17,4 19,-2 C27,1 31,9 29,16 Z" stroke-width="2.2"/>
+          <path d="M29,16 C37,12 41,4 39,-2 C31,1 27,9 29,16 Z" stroke-width="2.2"/>
+          <path d="M29,30 C21,26 17,18 19,12 C27,15 31,23 29,30 Z" stroke-width="2.2"/>
+          <path d="M29,30 C37,26 41,18 39,12 C31,15 27,23 29,30 Z" stroke-width="2.2"/>
+          <path d="M29,44 C21,40 17,32 19,26 C27,29 31,37 29,44 Z" stroke-width="2.2"/>
+          <path d="M29,44 C37,40 41,32 39,26 C31,29 27,37 29,44 Z" stroke-width="2.2"/>
+          <path d="M29,8 L25,-6 M29,8 L33,-6 M29,8 L29,-8" stroke-width="1.8" opacity=".7"/>
+        </svg>
+      </div>
+      <div class="txt">
+        <div class="t">Pâte à pizza maturée</div>
+        <div class="d">Une lente maturation pour une pâte légère, digeste et pleine de goût.</div>
+      </div>
+    </div>
+
+    <div class="point">
+      <div class="ico">
+        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" stroke="#F2EDE2" stroke-width="2.6" stroke-linecap="round" filter="url(#craie-ligne)">
+          <path d="M10,52 C14,30 28,12 52,8 C50,32 34,50 12,52 Z" stroke-width="2.4"/>
+          <path d="M14,50 C24,38 34,26 48,12" stroke-width="1.8" opacity=".75"/>
+          <path d="M20,44 L26,38 M28,36 L34,30 M36,28 L42,22" stroke-width="1.5" opacity=".55"/>
+        </svg>
+      </div>
+      <div class="txt">
+        <div class="t">Circuit court &amp; bio</div>
+        <div class="d">Des produits frais, choisis près de chez nous, et bio quand c'est possible.</div>
+      </div>
+    </div>
+
+    <div class="point">
+      <div class="ico">
+        <svg width="58" height="58" viewBox="0 0 58 58" fill="none" stroke="#F2EDE2" stroke-width="2.6" stroke-linecap="round" filter="url(#craie-ligne)">
+          <path d="M29,50 C10,36 6,22 14,14 C21,8 29,12 29,20 C29,12 37,8 44,14 C52,22 48,36 29,50 Z" stroke-width="2.4"/>
+          <path d="M20,24 C24,21 27,22 29,25" stroke-width="1.6" opacity=".6"/>
+        </svg>
+      </div>
+      <div class="txt">
+        <div class="t">100 % fait maison</div>
+        <div class="d">Pâte, sauces et pizzas préparées sur place, chaque jour, avec le cœur.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ QR ============ -->
+  <div class="qr-zone">
+    <div class="qr-card"><img src="qr-site.png" alt="QR code"></div>
+    <div class="qr-txt">
+      <div class="l1">Découvrez la carte<br>&amp; commandez en ligne</div>
+      <div class="l2">Scannez avec votre téléphone : <b>menu, cartes du jour et commande en ligne</b> sur latrattoria-saintes.fr</div>
+    </div>
+  </div>
+
+  <!-- ============ PIED ============ -->
+  <div class="pied">
+    <div class="res"><span class="etoi">✦</span> Réservations : <span class="num">06 27 21 31 90</span> <span class="etoi">✦</span></div>
+    <div class="adr">Rue de la Poste, 17100 Saintes — Produits frais · Fait maison · Pâte maturée</div>
+  </div>
+
+</div>
+
+<div class="vignette"></div>
+
+<script>
+/* cadre ondulé "tracé à la craie" */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function wobbleRect(w,h,r,amp,seed){
+  var rand=mulberry32(seed), pts=[];
+  function addArc(cx,cy,a0,a1,n){for(var i=0;i<=n;i++){var a=a0+(a1-a0)*i/n;pts.push({x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)});}}
+  function addEdge(x0,y0,x1,y1,n){for(var i=0;i<=n;i++){var t=i/n;pts.push({x:x0+(x1-x0)*t,y:y0+(y1-y0)*t});}}
+  var n=26;
+  addEdge(r,0,w-r,0,n);
+  addArc(w-r,r,-Math.PI/2,0,n);
+  addEdge(w,r,w,h-r,n);
+  addArc(w-r,h-r,0,Math.PI/2,n);
+  addEdge(w-r,h,r,h,n);
+  addArc(r,h-r,Math.PI/2,Math.PI,n);
+  addEdge(0,h-r,0,r,n);
+  addArc(r,r,Math.PI,Math.PI*1.5,n);
+  var drift=0;
+  pts.forEach(function(p){drift+=(rand()-0.5)*1.1;drift*=0.92;
+    p.x+=drift+(rand()-0.5)*amp; p.y+=drift+(rand()-0.5)*amp;});
+  var d='M '+pts[0].x.toFixed(1)+' '+pts[0].y.toFixed(1);
+  for(var i=1;i<pts.length;i++){
+    var nx=i+1<pts.length?i+1:0;
+    d+=' Q '+pts[i].x.toFixed(1)+' '+pts[i].y.toFixed(1)+' '+
+       ((pts[i].x+pts[nx].x)/2).toFixed(1)+' '+((pts[i].y+pts[nx].y)/2).toFixed(1);
+  }
+  return d+' Z';
+}
+document.getElementById('cadre-dehors').setAttribute('d', wobbleRect(756,1085,26,3.4,11));
+document.getElementById('cadre-dedans').setAttribute('d', wobbleRect(740,1069,20,2.6,23));
+/* anneau craie autour du logo */
+(function(){
+  var rand=mulberry32(42), pts=[];
+  for(var i=0;i<=120;i++){
+    var a=i/120*Math.PI*2;
+    var r=132+(rand()-0.5)*5+Math.sin(a*3)*1.5;
+    pts.push({x:140+r*Math.cos(a), y:140+r*Math.sin(a)});
+  }
+  var d='M '+pts[0].x.toFixed(1)+' '+pts[0].y.toFixed(1);
+  for(var i=1;i<pts.length;i++){
+    var nx=i+1<pts.length?i+1:0;
+    d+=' Q '+pts[i].x.toFixed(1)+' '+pts[i].y.toFixed(1)+' '+
+       ((pts[i].x+pts[nx].x)/2).toFixed(1)+' '+((pts[i].y+pts[nx].y)/2).toFixed(1);
+  }
+  document.getElementById('anneau').setAttribute('d', d+' Z');
+})();
+/* miettes de farine autour du logo */
+(function(){
+  var z=document.getElementById('logo-zone'), rand=mulberry32(7);
+  for(var i=0;i<26;i++){
+    var s=document.createElement('span');
+    var a=rand()*Math.PI*2, r=140+rand()*26;
+    var sz=1.5+rand()*2.5;
+    s.style.left=(140+Math.cos(a)*r-sz/2-16)+'px';
+    s.style.top=(140+Math.sin(a)*r-sz/2-16)+'px';
+    s.style.width=sz+'px'; s.style.height=sz+'px';
+    s.style.opacity=(0.25+rand()*0.4).toFixed(2);
+    z.appendChild(s);
+  }
+})();
+</script>
+</body>
+</html>

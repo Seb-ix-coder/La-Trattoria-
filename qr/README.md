@@ -65,6 +65,6 @@ fait maison », circuit court & bio si possible, pâte maturée, logo,
 illustrations à la craie, **QR code** (`qr/QR-site-poster.png`) et
 réservations.
 
-⚠️ Le QR de l'affiche encode `http://192.168.1.50:8720/` (IP d'exemple de la
-tablette). Si l'IP réelle de la tablette est différente, régénérer :
-`python3 build/make_qrcode.py "http://<IP-TABLETTE>:8720/" qr/QR-site-poster.png`.
+Le QR de l'affiche pointe vers le site public du restaurant :
+`https://latrattoria-saintes.fr/` (menu, cartes du jour, commande en ligne).
+Régénérer si besoin : `node affiche/build/prep.js` (recrée `qr/QR-site-poster.png`).
