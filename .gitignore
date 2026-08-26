@@ -36,3 +36,10 @@ __pycache__/
 carte/donnees-serveur.json
 carte/__pycache__/
 carte/gestion-de-la-carte.zip
+
+# Données d'exécution du réseau social local
+communaute/communaute.db*
+communaute/photos/
+communaute/avatars/
+communaute/logos/
+communaute/__pycache__/

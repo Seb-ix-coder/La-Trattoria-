@@ -36,6 +36,7 @@ tablette sert **toute** l'offre sur le Wi-Fi local du restaurant (port
 | **Module carte (intégré)** | `http://<tablette>:8720/?carte` (ou bouton 📋) | Gestion de la carte : 84 produits, photos, marges, cartes du jour, données |
 | **App Client** | `http://<tablette>:8720/?client` | Menu, cartes spéciales du jour, **module social** (avis Google/Facebook/Tripadvisor, appeler) |
 | **App Partenaire** | `http://<tablette>:8720/?partenaire` | Comme le client + Espace Partenaires (message au restaurant) |
+| **Communauté** | `http://<machine>:8721/` | Réseau social local : comptes, avatar, posts photos, commentaires, messages, offres partenaires (voir `COMMUNAUTE.md`) |
 
 Le module carte reste aussi disponible en **PWA standalone** (dossier
 `carte/`, `serveur_carte.py`) pour la synchronisation multi-tablettes —
@@ -43,13 +44,14 @@ données compatibles avec le module intégré (même modèle, export JSON).
 
 ### Installer
 
-1. Installer `trato-11.1-durci.apk` sur la tablette (désinstaller la 11.0 avant —
-   voir `GUIDE_INSTALLATION.md` pour la clé de signature).
+1. Installer `trato-11.3-unifie.apk` sur la tablette (désinstaller la 11.2 avant —
+   clé de signature différente ; voir `APK_UNIFIE_11.3.md`).
 2. Lancer l'application : le serveur local démarre sur le port `8720`.
 3. Les clients/partenaires scannent le QR `qr/QR-app-client.png` (salle) ou
    `qr/QR-app-partenaire.png` et ajoutent la page à leur écran d'accueil.
-4. Le module carte est disponible sur `http://<tablette>:8720/carte/`
-   (installable comme une application, fonctionne hors ligne).
+4. Le module carte s'ouvre via le bouton 📋 ou `http://<tablette>:8720/?carte`.
+5. Le réseau social : `python3 communaute/serveur_communaute.py` sur la machine
+   du réseau (port 8721), QR `qr/QR-communaute.png` en salle — voir `COMMUNAUTE.md`.
 
 ## Régénérer les éléments imprimables
 

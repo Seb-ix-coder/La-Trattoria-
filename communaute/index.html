@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#A51822">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="La Commu">
+<title>La Trattoria — Communauté</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icones/icone-192.png">
+<link rel="icon" type="image/png" href="icones/icone-192.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- ================= écran de connexion ================= -->
+<div id="ecran-auth" class="auth" hidden>
+  <div class="auth-carte">
+    <div class="marque"><span class="logo">LT</span>
+      <div><span class="n">La Trattoria</span>
+      <span class="s">La communauté</span></div></div>
+    <p class="auth-p">Le coin des habitués et de nos partenaires :
+      photos, bonnes adresses, offres du moment et petites surprises.</p>
+    <div id="auth-form">
+      <label for="a-tel">Téléphone</label>
+      <input id="a-tel" type="tel" autocomplete="tel"
+             placeholder="Ex. 06 12 34 56 78">
+      <label for="a-mdp">Code secret</label>
+      <input id="a-mdp" type="password" autocomplete="current-password"
+             placeholder="Votre code (4 caractères min.)">
+      <button id="a-ok" class="btn btn-p btn-bloc">Se connecter</button>
+      <p class="aide" id="a-err"></p>
+      <p class="auth-alt">Pas encore de compte ?
+        <a href="#" id="a-insc">Je m'inscris</a></p>
+      <div id="a-insc-box" hidden>
+        <label for="a-nom">Votre nom</label>
+        <input id="a-nom" type="text" maxlength="40" placeholder="Ex. Marie D.">
+        <label class="check"><input type="checkbox" id="a-part">
+          <span>Je suis <strong>partenaire</strong> (boutique, caviste, hôtel…)</span></label>
+        <button id="a-insc-ok" class="btn btn-p btn-bloc">Créer mon compte</button>
+      </div>
+    </div>
+    <p class="auth-note">🔒 Vos données restent sur le réseau du restaurant.<br>
+      Un compte partenaire est validé sur place (demandez au personnel).</p>
+  </div>
+</div>
+
+<!-- ================= application ================= -->
+<div id="app" hidden>
+  <header class="barre">
+    <div class="marque"><span class="logo">LT</span>
+      <div><span class="n">La communauté</span>
+      <span class="s" id="barre-p"></span></div></div>
+    <div class="barre-droite">
+      <button id="btn-notifs" class="ic" title="Messages">✉<span id="nb-nouveaux" hidden></span></button>
+      <button id="btn-profil" class="ic ic-profil" title="Mon profil"></button>
+    </div>
+  </header>
+
+  <!-- compo post -->
+  <div class="compo conteneur" id="compo" hidden>
+    <div class="compo-tete"><img id="compo-avatar" alt="" class="ava" hidden>
+      <span class="compo-titre">Partager un moment avec la communauté</span></div>
+    <textarea id="compo-texte" rows="2" maxlength="1000"
+      placeholder="Un plat qui vous a régalé, une question, une découverte…"></textarea>
+    <div class="compo-pied">
+      <label class="btn btn-s btn-fich">📷 Photos
+        <input type="file" id="compo-fich" accept="image/*" multiple hidden></label>
+      <span id="compo-apercu" class="compo-apercu"></span>
+      <span class="flex1"></span>
+      <span id="compo-pts" class="pts" title="Vos points de fidélité communauté"></span>
+      <button id="compo-poster" class="btn btn-p">Publier</button>
+    </div>
+  </div>
+
+  <!-- onglets fil -->
+  <nav class="onglets conteneur" id="onglets-fil">
+    <button class="onglet actif" data-fil="tous">Tout le monde</button>
+    <button class="onglet" data-fil="partenaires">Partenaires</button>
+    <button class="onglet" data-fil="offres">🔥 Offres du moment</button>
+  </nav>
+
+  <main class="conteneur" id="contenu"></main>
+
+  <!-- pied / navigation mobile -->
+  <nav class="pied">
+    <button class="pied-b actif" data-nav="fil">🏠<span>Accueil</span></button>
+    <button class="pied-b" data-nav="messages">✉<span>Messages</span></button>
+    <button class="pied-b" data-nav="profil">🙂<span>Profil</span></button>
+  </nav>
+</div>
+
+<!-- ================= vue messages ================= -->
+<div id="vue-messages" class="vue" hidden>
+  <header class="barre"><button id="msg-retour" class="ic">←</button>
+    <div class="marque"><span class="n">Messages</span><span class="s"></span></div>
+    <span class="flex1"></span></header>
+  <div class="conteneur" id="msg-corps"></div>
+</div>
+
+<!-- ================= vue profil ================= -->
+<div id="vue-profil" class="vue" hidden>
+  <header class="barre"><button id="prof-retour" class="ic">←</button>
+    <div class="marque"><span class="n" id="prof-titre">Profil</span><span class="s"></span></div>
+    <span class="flex1"></span></header>
+  <div class="conteneur" id="prof-corps"></div>
+</div>
+
+<!-- ================= vue partenaire ================= -->
+<div id="vue-partenaire" class="vue" hidden>
+  <header class="barre"><button id="part-retour" class="ic">←</button>
+    <div class="marque"><span class="n" id="part-titre">Partenaire</span><span class="s"></span></div>
+    <span class="flex1"></span></header>
+  <div class="conteneur" id="part-corps"></div>
+</div>
+
+<!-- bandeau de charge -->
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
