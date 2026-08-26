@@ -10,7 +10,8 @@ social, cartes imprimables. **Tout le projet vit dans cette branche.**
 |---|---|
 | `trato.apk` | Application Android v11.0 (`com.trattoria.commande`) — artefact d'origine |
 | `trato-11.1-durci.apk` | APK durci v11.2 (versionCode 17, signé v1+v2) : correctifs sécurité + QR intégré + outils de conformité + pourboire + paiement/fidélité + module social |
-| `trato-11.3-unifie.apk` | **⭐ L'application unique** (versionCode 18) : tout le 11.2 **+ le module « carte » intégré** (bouton 📋 ou `/?carte`) — voir `APK_UNIFIE_11.3.md` |
+| `trato-11.3-unifie.apk` | Application unifiée 11.3 (versionCode 18) : tout le 11.2 **+ le module « carte » intégré** (bouton 📋 ou `/?carte`) — voir `APK_UNIFIE_11.3.md` |
+| `trato-11.4-stable.apk` | **⭐ Version stable recommandée** (versionCode 19) : tout le 11.3, produite par le pipeline reproductible `build/run_build_stable.sh` (build déterministe, vérifications automatiques) — voir `VERSION_STABLE_11.4.md` |
 | `trato-11.1-temoin.apk`, `trato-temoin-chirurgical.apk` | Variantes témoins du build 11.1 |
 | `build/` | Outillage reproductible du build APK (patch AXML/DEX/assets, signature v1/v2, vérifications) |
 | `build/mode_app.js` / `mode_app.css` | **Module social** + modes client/partenaire (barre sociale : avis Google/Facebook/Tripadvisor, appeler ; espace partenaires) |
@@ -26,7 +27,8 @@ social, cartes imprimables. **Tout le projet vit dans cette branche.**
 
 ## L'application unique
 
-Installer `trato-11.3-unifie.apk` (voir `APK_UNIFIE_11.3.md`) : la
+Installer **`trato-11.4-stable.apk`** (version stable, voir
+`VERSION_STABLE_11.4.md`) : la
 tablette sert **toute** l'offre sur le Wi-Fi local du restaurant (port
 `8720`) :
 
@@ -43,8 +45,8 @@ données compatibles avec le module intégré (même modèle, export JSON).
 
 ### Installer
 
-1. Installer `trato-11.1-durci.apk` sur la tablette (désinstaller la 11.0 avant —
-   voir `GUIDE_INSTALLATION.md` pour la clé de signature).
+1. Installer `trato-11.4-stable.apk` sur la tablette (désinstaller la 11.0/11.3
+   avant — voir `GUIDE_INSTALLATION.md` pour la clé de signature).
 2. Lancer l'application : le serveur local démarre sur le port `8720`.
 3. Les clients/partenaires scannent le QR `qr/QR-app-client.png` (salle) ou
    `qr/QR-app-partenaire.png` et ajoutent la page à leur écran d'accueil.

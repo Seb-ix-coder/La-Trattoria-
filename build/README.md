@@ -46,7 +46,8 @@ build/
 ├── facturx_archivage.py  # contrôle + archivage des factures Factur-X reçues
 ├── planifier_export.sh   # export e-reporting quotidien automatique (cron)
 ├── generate_keystore.py # génération du keystore PKCS#12 (local uniquement)
-├── run_build.sh         # orchestration complète du build
+├── run_build.sh         # orchestration complète du build durci
+├── run_build_stable.sh  # pipeline complet de la version stable (durci + carte)
 └── requirements.txt     # dépendances Python (cryptography, asn1crypto, androguard)
 ```
 
@@ -56,7 +57,12 @@ build/
 # 1. dépendances
 pip install -r build/requirements.txt
 
-# 2. build complet (génère le keystore au premier lancement si absent)
+# 2. build complet de la version stable (keystore généré au premier lancement)
+./build/run_build_stable.sh
+#    → trato-11.4-stable.apk : durci + module carte + signature v1/v2 + vérifs
+#    options : --version-name=11.5 --version-code=20
+
+# 3. build durci seul (étape 1 du pipeline, pour diagnostic)
 bash build/run_build.sh
 #    → build/out/trato-11.1-durci.apk
 #    → ~/trattoria-keystore/trattoria-release.p12 (+ mot de passe à côté)

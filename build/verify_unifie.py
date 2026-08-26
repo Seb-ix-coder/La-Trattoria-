@@ -30,13 +30,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 
-def check_manifest(apk_path: str) -> None:
+def check_manifest(apk_path: str, version_name: str = '11.3',
+                   version_code: str = '18') -> None:
     from androguard.core.apk import APK
     a = APK(apk_path)
     assert a.get_package() == 'com.trattoria.commande', 'package'
-    assert a.get_androidversion_code() == '18', 'versionCode=%s' \
+    assert a.get_androidversion_code() == version_code, 'versionCode=%s' \
         % a.get_androidversion_code()
-    assert a.get_androidversion_name() == '11.3', 'versionName=%s' \
+    assert a.get_androidversion_name() == version_name, 'versionName=%s' \
         % a.get_androidversion_name()
     assert a.get_min_sdk_version() == '21', 'minSdk'
     assert a.get_target_sdk_version() == '34', 'targetSdk'
@@ -44,8 +45,8 @@ def check_manifest(apk_path: str) -> None:
     app = [el for el in xml.iter() if el.tag.endswith('application')][0]
     assert app.get('{http://schemas.android.com/apk/res/android}allowBackup') \
         == 'false', 'allowBackup'
-    print('[ok] manifeste : com.trattoria.commande 11.3 (vc 18), '
-          'allowBackup=false')
+    print('[ok] manifeste : com.trattoria.commande %s (vc %s), '
+          'allowBackup=false' % (version_name, version_code))
 
 
 def check_dex_unchanged(apk_path: str, orig_path: str) -> None:
@@ -127,30 +128,31 @@ def check_v2(apk_path: str) -> None:
 def empreintes(apk_path: str) -> None:
     data = open(apk_path, 'rb').read()
     print('[i] SHA-256 APK : %s' % hashlib.sha256(data).hexdigest())
-    from cryptography.hazmat.primitives.serialization import pkcs12  # noqa
-    # certificat depuis la signature v1
-    zf = zipfile.ZipFile(apk_path)
-    sf = zf.read('META-INF/CERT.SF').decode('utf-8', 'replace')
-    import re
-    m = re.search(r'SHA256-Digest-Certificate:([A-Za-z0-9+/=\\\n]+)', sf)
-    print('[i] Certificat SHA-256 : %s' % (
-        m.group(1).replace('\\', '').replace('\n', '').strip()[:80]
-        + '…' if m else 'n/d'))
+    # certificat depuis la signature v1 (même logique que verify_apk.py)
+    from asn1crypto import cms
+    cert = zipfile.ZipFile(apk_path).read('META-INF/CERT.RSA')
+    c = cms.ContentInfo.load(cert)['content']['certificates'][0].chosen
+    print('[i] certificat : %s' % c.subject.human_friendly)
+    print('[i] Certificat SHA-256 : %s'
+          % hashlib.sha256(c.dump()).hexdigest())
 
 
 def main() -> None:
-    if len(sys.argv) != 3:
+    if len(sys.argv) not in (3, 5):
         print(__doc__)
         sys.exit(1)
     out, orig = sys.argv[1], sys.argv[2]
-    check_manifest(out)
+    version_name = sys.argv[3] if len(sys.argv) == 5 else '11.3'
+    version_code = sys.argv[4] if len(sys.argv) == 5 else '18'
+    check_manifest(out, version_name, version_code)
     check_dex_unchanged(out, orig)
     check_site_js(out)
     check_zip(out, orig)
     check_v1(out)
     check_v2(out)
     empreintes(out)
-    print('\n==== APK unifié 11.3 : TOUTES LES VÉRIFICATIONS PASSENT ====\n')
+    print('\n==== APK unifié %s : TOUTES LES VÉRIFICATIONS PASSENT ====\n'
+          % version_name)
 
 
 if __name__ == '__main__':

@@ -37,7 +37,8 @@ sans toucher au bytecode :
     (resign.py).
 
 Usage :
-  python3 build/integrer_carte.py SRC_APK CARTE_DIR KEYSTORE.p12 MOT_DE_PASSE OUT_APK
+  python3 build/integrer_carte.py SRC_APK CARTE_DIR KEYSTORE.p12 MOT_DE_PASSE OUT_APK \
+      [--version-code=18] [--version-name=11.3]
 """
 
 import base64
@@ -227,27 +228,35 @@ def patcher_site_js(site_js: str, carte_dir: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-#  3. Manifeste : versionCode 17 → 18, versionName 11.2 → 11.3
+#  3. Manifeste : versionCode/versionName paramétrables
+#     (par défaut : 17→18 et 11.2→11.3, comportement historique conservé)
 # ---------------------------------------------------------------------------
-def patcher_manifest(manifest: bytes) -> bytes:
+def patcher_manifest(manifest: bytes, version_code: int = 18,
+                     version_name: str = '11.3',
+                     src_version: str = '11.2') -> bytes:
     axml = AXML(manifest)
-    axml.patch_int_attr('manifest', 'versionCode', 18)
-    axml.patch_string('11.2', '11.3')
+    axml.patch_int_attr('manifest', 'versionCode', version_code)
+    axml.patch_string(src_version, version_name)
     return axml.data
 
 
 def main() -> None:
-    if len(sys.argv) != 6:
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    opts = {a.split('=', 1)[0]: a.split('=', 1)[1]
+            for a in sys.argv[1:] if a.startswith('--') and '=' in a}
+    if len(args) != 5:
         print(__doc__)
         sys.exit(1)
-    src_apk, carte_dir, keystore, password, dst_apk = sys.argv[1:6]
+    src_apk, carte_dir, keystore, password, dst_apk = args
+    version_code = int(opts.get('--version-code', 18))
+    version_name = opts.get('--version-name', '11.3')
 
     import zipfile
     with zipfile.ZipFile(src_apk) as z:
         manifest = z.read('AndroidManifest.xml')
         site_js = z.read('assets/site.js').decode('utf-8')
 
-    manifest_out = patcher_manifest(manifest)
+    manifest_out = patcher_manifest(manifest, version_code, version_name)
     site_js_out = patcher_site_js(site_js, carte_dir)
 
     work = os.path.join(HERE, 'work')
