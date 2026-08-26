@@ -56,3 +56,15 @@ print(data)
 2. Scannez avec un téléphone **en conditions réelles** (salle éclairée,
    distance d'affichage) : le téléphone doit ouvrir le menu.
 3. Vérifiez aussi le bouton « QR » sur la page d'accueil du site.
+
+## Affiche A4 (affiches/)
+
+`affiche/affiche-la-trattoria-A4.png` / `.pdf` — affiche de présentation du
+restaurant (fond ardoise, écriture à la craie) : présentation, « tout est
+fait maison », circuit court & bio si possible, pâte maturée, logo,
+illustrations à la craie, **QR code** (`qr/QR-site-poster.png`) et
+réservations.
+
+Le QR de l'affiche pointe vers le site public du restaurant :
+`https://latrattoria-saintes.fr/` (menu, cartes du jour, commande en ligne).
+Régénérer si besoin : `node affiche/build/prep.js` (recrée `qr/QR-site-poster.png`).

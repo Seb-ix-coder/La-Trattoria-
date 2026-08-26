@@ -39,3 +39,18 @@ carte/gestion-de-la-carte.zip
 
 # Environnement virtuel Python local
 .venv/
+
+# Données d'exécution du réseau social local
+communaute/communaute.db*
+communaute/photos/
+communaute/avatars/
+communaute/logos/
+communaute/__pycache__/
+
+# build intermédiaire
+*.apk.v1
+
+# build affiche (outillage local)
+affiche/build/node_modules/
+affiche/build/*.png
+affiche/build/*.pdf

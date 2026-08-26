@@ -8,27 +8,31 @@ social, cartes imprimables. **Tout le projet vit dans cette branche.**
 
 | Élément | Description |
 |---|---|
-| `trato.apk` | Application Android v11.0 (`com.trattoria.commande`) — artefact d'origine |
-| `trato-11.1-durci.apk` | APK durci v11.2 (versionCode 17, signé v1+v2) : correctifs sécurité + QR intégré + outils de conformité + pourboire + paiement/fidélité + module social |
-| `trato-11.3-unifie.apk` | Application unifiée 11.3 (versionCode 18) : tout le 11.2 **+ le module « carte » intégré** (bouton 📋 ou `/?carte`) — voir `APK_UNIFIE_11.3.md` |
-| `trato-11.4-stable.apk` | **⭐ Version stable recommandée** (versionCode 19) : tout le 11.3, produite par le pipeline reproductible `build/run_build_stable.sh` (build déterministe, vérifications automatiques) — voir `VERSION_STABLE_11.4.md` |
+| `trato.apk` | Application Android v11.0 (`com.trattoria.commande`) — artefact d'origine (moteur DEX de référence) |
+| `trato-11.5-stable.apk` | **⭐ Version stable recommandée** (versionCode 20) : moteur DEX 11.0 **intact** (zéro patch DEX — correctif du crash au lancement) + toutes les fonctions couche web + manifeste durci — produite par `build/run_build_stable.sh` |
+| `trato-11.4.apk` | Build 11.4 corrigé (versionCode 19) : première APK sans patch DEX (branche parallèle) |
+| `trato-11.4-stable.apk` | ⚠️ **NE PAS INSTALLER** — build 11.4 avec DEX patché, **provoque le crash au lancement** (conservé pour l'historique) |
+| `trato-11.1-durci.apk` | APK durci v11.2 (versionCode 17, signé v1+v2) : correctifs sécurité + QR intégré + outils de conformité + pourboire + paiement/fidélité + module social — ⚠️ DEX patché (crash au lancement) |
+| `trato-11.3-unifie.apk` | Application unifiée 11.3 (versionCode 18) : tout le 11.2 **+ le module « carte » intégré** — voir `APK_UNIFIE_11.3.md` — ⚠️ DEX patché (crash au lancement) |
 | `trato-11.1-temoin.apk`, `trato-temoin-chirurgical.apk` | Variantes témoins du build 11.1 |
-| `build/` | Outillage reproductible du build APK (patch AXML/DEX/assets, signature v1/v2, vérifications) |
+| `build/` | Outillage reproductible du build APK (patch AXML/assets, **zéro patch DEX**, signature v1/v2, vérifications) |
 | `build/mode_app.js` / `mode_app.css` | **Module social** + modes client/partenaire (barre sociale : avis Google/Facebook/Tripadvisor, appeler ; espace partenaires) |
 | `carte/` | **Gestion de la carte** (PWA autonome et hors ligne) : produits, photos, marges, cartes du jour, synchro tablettes, page publique clients |
+| `communaute/` | **Communauté** (build 3) : réseau social local pro — feed, fidélité, **gaming avancé** (niveaux, missions, badges, récompenses, classement), messages, offres partenaires, **envoi de client avec réservation auto**, **validation au comptoir** + **consentement** — voir `COMMUNAUTE.md` |
 | `carte-de-visite.html` | Carte de visite 85 × 55 mm (recto/verso), charte du site, QR de téléchargement |
 | `generer-carte.py`, `recuperer-logo.py` | Régénération de la carte de visite (QR + logo) |
 | `qr/` | QR codes livrés (app client, app partenaire, site web, téléchargement APK, carte de visite) + logo |
 | `carte-plats-du-jour.pdf` / `.png` | **Carte A4 des plats du jour** (style craie, logo, QR de téléchargement) — à imprimer |
 | `ANALYSE_TRATO.md`, `docs/ANALYSE.md` | Analyses de l'APK (rétro-ingénierie) et chemin d'intégration |
+| `DIAGNOSTIQUE_CRASH.md` | **Diagnostic du crash au lancement** (cause : patchs byte-à-byte du DEX) et correctif |
 | `GUIDE_INSTALLATION.md` | Installation/mise en service de l'APK durci 11.1 |
 | `APP_CLIENT_PARTENAIRE.md` | Application client & partenaire (QR, modes, module social) |
 | `FIDELITE_PAIEMENT_PRODUITS.md`, `FACTURATION_ELECTRONIQUE.md`, `MENTIONS_LEGALES_2027.md` | Fonctionnalités et conformité |
 
 ## L'application unique
 
-Installer **`trato-11.4-stable.apk`** (version stable, voir
-`VERSION_STABLE_11.4.md`) : la
+Installer **`trato-11.5-stable.apk`** (version stable, voir
+`VERSION_STABLE_11.5.md`) : la
 tablette sert **toute** l'offre sur le Wi-Fi local du restaurant (port
 `8720`) :
 
@@ -38,6 +42,7 @@ tablette sert **toute** l'offre sur le Wi-Fi local du restaurant (port
 | **Module carte (intégré)** | `http://<tablette>:8720/?carte` (ou bouton 📋) | Gestion de la carte : 84 produits, photos, marges, cartes du jour, données |
 | **App Client** | `http://<tablette>:8720/?client` | Menu, cartes spéciales du jour, **module social** (avis Google/Facebook/Tripadvisor, appeler) |
 | **App Partenaire** | `http://<tablette>:8720/?partenaire` | Comme le client + Espace Partenaires (message au restaurant) |
+| **Communauté** | `http://<machine>:8721/` | Réseau social local : feed, fidélité, **gaming** (niveaux/missions/badges/récompenses/classement), messages, offres, **envoi de client + réservation auto**, validation & consentement (voir `COMMUNAUTE.md`) |
 
 Le module carte reste aussi disponible en **PWA standalone** (dossier
 `carte/`, `serveur_carte.py`) pour la synchronisation multi-tablettes —
@@ -45,13 +50,16 @@ données compatibles avec le module intégré (même modèle, export JSON).
 
 ### Installer
 
-1. Installer `trato-11.4-stable.apk` sur la tablette (désinstaller la 11.0/11.3
-   avant — voir `GUIDE_INSTALLATION.md` pour la clé de signature).
+1. Installer `trato-11.5-stable.apk` sur la tablette (désinstaller toute
+   version 11.x avant — clé de signature différente ; voir
+   `GUIDE_INSTALLATION.md` et `DIAGNOSTIQUE_CRASH.md` pour l'historique du
+   crash au lancement).
 2. Lancer l'application : le serveur local démarre sur le port `8720`.
 3. Les clients/partenaires scannent le QR `qr/QR-app-client.png` (salle) ou
    `qr/QR-app-partenaire.png` et ajoutent la page à leur écran d'accueil.
-4. Le module carte est disponible sur `http://<tablette>:8720/carte/`
-   (installable comme une application, fonctionne hors ligne).
+4. Le module carte s'ouvre via le bouton 📋 ou `http://<tablette>:8720/?carte`.
+5. Le réseau social : `python3 communaute/serveur_communaute.py` sur la machine
+   du réseau (port 8721), QR `qr/QR-communaute.png` en salle — voir `COMMUNAUTE.md`.
 
 ## Régénérer les éléments imprimables
 
