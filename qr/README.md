@@ -56,3 +56,15 @@ print(data)
 2. Scannez avec un téléphone **en conditions réelles** (salle éclairée,
    distance d'affichage) : le téléphone doit ouvrir le menu.
 3. Vérifiez aussi le bouton « QR » sur la page d'accueil du site.
+
+## Affiche A4 (affiches/)
+
+`affiche/affiche-la-trattoria-A4.png` / `.pdf` — affiche de présentation du
+restaurant (fond ardoise, écriture à la craie) : présentation, « tout est
+fait maison », circuit court & bio si possible, pâte maturée, logo,
+illustrations à la craie, **QR code** (`qr/QR-site-poster.png`) et
+réservations.
+
+⚠️ Le QR de l'affiche encode `http://192.168.1.50:8720/` (IP d'exemple de la
+tablette). Si l'IP réelle de la tablette est différente, régénérer :
+`python3 build/make_qrcode.py "http://<IP-TABLETTE>:8720/" qr/QR-site-poster.png`.
