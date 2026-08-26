@@ -94,6 +94,9 @@ def init_db() -> None:
           avatar TEXT,                            -- nom de fichier
           logo TEXT,                              -- nom de fichier (partenaires)
           pts INTEGER NOT NULL DEFAULT 0,
+          verifie INTEGER NOT NULL DEFAULT 0,    -- validé par le personnel
+          consent TEXT NOT NULL DEFAULT '{}',    -- {classement, offres_contact, notifs_son}
+          badges TEXT NOT NULL DEFAULT '[]',     -- liste d'ids de badges
           cree_le REAL NOT NULL
         );
         CREATE TABLE IF NOT EXISTS sessions (
@@ -181,19 +184,60 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS evenements (
           id TEXT PRIMARY KEY,
           dest_id TEXT NOT NULL,       -- id user
-          type TEXT NOT NULL,          -- message|reservation|envoi|accepte|refuse|achat
+          type TEXT NOT NULL,          -- message|reservation|envoi|accepte|refuse|achat|mention|badge
           data TEXT NOT NULL,
           lu INTEGER NOT NULL DEFAULT 0,
           cree_le REAL NOT NULL
         );
+        -- ===== Gaming & consentement (build 3) =====
+        CREATE TABLE IF NOT EXISTS reactions (
+          post_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          emoji TEXT NOT NULL,
+          PRIMARY KEY (post_id, user_id, emoji)
+        );
+        CREATE TABLE IF NOT EXISTS follows (
+          follower_id TEXT NOT NULL,
+          followee_id TEXT NOT NULL,
+          cree_le REAL NOT NULL,
+          PRIMARY KEY (follower_id, followee_id)
+        );
+        CREATE TABLE IF NOT EXISTS missions_faites (
+          user_id TEXT NOT NULL,
+          mission_id TEXT NOT NULL,
+          cree_le REAL NOT NULL,
+          PRIMARY KEY (user_id, mission_id)
+        );
+        CREATE TABLE IF NOT EXISTS recompenses (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          reward_id TEXT NOT NULL,
+          points INTEGER NOT NULL,
+          cree_le REAL NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS offres_essayees (
+          offre_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          cree_le REAL NOT NULL,
+          PRIMARY KEY (offre_id, user_id)
+        );
         ''')
+    # migration : colonnes manquantes sur une base existante
+    for col, typ in (('verifie', 'INTEGER NOT NULL DEFAULT 0'),
+                     ('consent', "TEXT NOT NULL DEFAULT '{}'"),
+                     ('badges', "TEXT NOT NULL DEFAULT '[]'")):
+        try:
+            with db() as c:
+                c.execute('ALTER TABLE users ADD COLUMN %s %s' % (col, typ))
+        except Exception:
+            pass
     # compte staff « La Trattoria » (messagerie pro, enregistrement des achats)
     sel = secrets.token_hex(16)
     with db() as c:
         c.execute('''INSERT OR IGNORE INTO users
-                     (id,type,nom,tel,mdp,sel,pts,cree_le)
+                     (id,type,nom,tel,mdp,sel,pts,verifie,cree_le)
                      VALUES ('trattoria','staff','La Trattoria','0000000000',
-                             ?,?,0,?)''',
+                             ?,?,0,1,?)''',
                   (hache('trattoria', sel), sel, time.time()))
 
 
@@ -205,21 +249,112 @@ def hache(mdp: str, sel: str) -> str:
 #  Requêtes métier
 # ---------------------------------------------------------------------------
 def user_row(u: sqlite3.Row) -> dict:
+    try:
+        consent = json.loads(u['consent'] or '{}') if 'consent' in u.keys() else {}
+    except Exception:
+        consent = {}
+    try:
+        badges = json.loads(u['badges'] or '[]') if 'badges' in u.keys() else []
+    except Exception:
+        badges = []
     return {
         'id': u['id'], 'type': u['type'], 'nom': u['nom'], 'tel': u['tel'],
         'email': u['email'] or '', 'bio': u['bio'] or '',
         'avatar': '/avatar/' + u['avatar'] if u['avatar'] else None,
         'logo': '/logo/' + u['logo'] if u['logo'] else None,
         'pts': u['pts'], 'cree_le': u['cree_le'],
+        'verifie': bool(u['verifie']) if 'verifie' in u.keys() else False,
+        'consent': consent, 'badges': badges,
     }
 
 
+# ---------------------------------------------------------------------------
+#  Gaming : niveaux, badges, missions, récompenses
+# ---------------------------------------------------------------------------
+NIVEAUX = [
+    {'id': 'platine', 'nom': 'Platine', 'seuil': 1000, 'icone': '💎'},
+    {'id': 'or', 'nom': 'Or', 'seuil': 400, 'icone': '🥇'},
+    {'id': 'argent', 'nom': 'Argent', 'seuil': 150, 'icone': '🥈'},
+    {'id': 'bronze', 'nom': 'Bronze', 'seuil': 0, 'icone': '🥉'},
+]
+
+
+def niveau_info(pts: int) -> dict:
+    for n in NIVEAUX:
+        if pts >= n['seuil']:
+            cur = n
+            break
+    else:
+        cur = NIVEAUX[-1]
+    suivant = next((x for x in NIVEAUX if x['seuil'] > pts), None)
+    base = cur['seuil']
+    cible = suivant['seuil'] if suivant else cur['seuil']
+    prog = 100 if not suivant else round(100 * (pts - base) / (cible - base))
+    return {'nom': cur['nom'], 'id': cur['id'], 'icone': cur['icone'],
+            'seuil': base, 'prochain': suivant['nom'] if suivant else None,
+            'reste': (suivant['seuil'] - pts) if suivant else 0,
+            'progression': prog}
+
+
 def niveau(pts: int) -> str:
-    if pts >= 500:
-        return 'Or'
-    if pts >= 150:
-        return 'Argent'
-    return 'Bronze'
+    return niveau_info(pts)['nom']
+
+
+# Badges (définitions). L'attribution se fait dans _badge().
+BADGES = [
+    {'id': 'premier_post', 'nom': 'Premier pas', 'icone': '✍️',
+     'desc': 'Publier son premier post'},
+    {'id': 'photographe', 'nom': 'Photographe', 'icone': '📷',
+     'desc': 'Partager une photo'},
+    {'id': 'converseur', 'nom': 'Causeur', 'icone': '💬',
+     'desc': '5 commentaires'},
+    {'id': 'vedette', 'nom': 'Vedette', 'icone': '❤️',
+     'desc': 'Un post avec 5 réactions'},
+    {'id': 'premier_envoi', 'nom': 'Ambassadeur', 'icone': '🤝',
+     'desc': 'Envoyer un premier client'},
+    {'id': 'maitre_jeu', 'nom': 'Maître du jeu', 'icone': '🎯',
+     'desc': '3 demandes acceptées'},
+    {'id': 'fidele', 'nom': 'Habitué', 'icone': '🍕',
+     'desc': '5 achats enregistrés'},
+    {'id': 'argent', 'nom': 'Argent', 'icone': '🥈', 'desc': 'Atteindre le niveau Argent'},
+    {'id': 'or', 'nom': 'Or', 'icone': '🥇', 'desc': 'Atteindre le niveau Or'},
+    {'id': 'platine', 'nom': 'Platine', 'icone': '💎', 'desc': 'Atteindre le niveau Platine'},
+    {'id': 'generos', 'nom': 'Générosité', 'icone': '🎁',
+     'desc': 'Échanger une récompense'},
+]
+
+
+def badge_def(bid):
+    return next((b for b in BADGES if b['id'] == bid), None)
+
+
+# Missions (quêtes en cours). progressif est calculé côté serveur.
+MISSIONS = [
+    {'id': 'm_post', 'nom': 'Partager un moment', 'icone': '✍️', 'pts': 10,
+     'desc': 'Publier 1 post', 'cible': 1, 'type': 'posts'},
+    {'id': 'm_photo', 'nom': 'Côté cuisine', 'icone': '📷', 'pts': 15,
+     'desc': 'Partager 1 photo', 'cible': 1, 'type': 'photos'},
+    {'id': 'm_com', 'nom': 'Rejoindre la conversation', 'icone': '💬', 'pts': 15,
+     'desc': 'Écrire 3 commentaires', 'cible': 3, 'type': 'commentaires'},
+    {'id': 'm_envoi', 'nom': 'Ambassadeur (pro)', 'icone': '🤝', 'pts': 30,
+     'desc': 'Envoyer 2 clients à des partenaires', 'cible': 2, 'type': 'envois',
+     'pro': True},
+    {'id': 'm_achat', 'nom': 'Habitué', 'icone': '🍕', 'pts': 25,
+     'desc': '5 achats enregistrés', 'cible': 5, 'type': 'achats'},
+]
+
+
+# Récompenses à échanger contre des points (conversion vers le restaurant).
+RECOMPENSES = [
+    {'id': 'boisson', 'nom': 'Une boisson offerte', 'icone': '🥤', 'cout': 100,
+     'desc': 'À présenter au comptoir (1 boisson au choix du menu)'},
+    {'id': 'cafe', 'nom': 'Café + petite pâtisserie', 'icone': '☕', 'cout': 150,
+     'desc': 'Le combo digestif de la maison'},
+    {'id': 'dessert', 'nom': 'Le dessert du jour offert', 'icone': '🍰', 'cout': 200,
+     'desc': 'À présenter au comptoir'},
+    {'id': 'reduc10', 'nom': '-10 % sur votre prochaine commande', 'icone': '🏷️', 'cout': 250,
+     'desc': 'Valable 30 jours, à présenter au comptoir'},
+]
 
 
 def post_json(p: sqlite3.Row, photos: list, nb_likes: int, nb_com: int,
@@ -445,6 +580,84 @@ class H(BaseHTTPRequestHandler):
                   (uuid.uuid4().hex, dest_id, etype,
                    json.dumps(data, ensure_ascii=False), time.time()))
 
+    # ===== helpers gaming / consentement / validation (build 3) ==========
+    def _consent(self, u_row: dict, cle: str, par_defaut: bool) -> bool:
+        cons = u_row.get('consent') or {}
+        return bool(cons.get(cle, par_defaut))
+
+    def _bloque_non_verifie(self, moi: dict) -> bool:
+        """Vrai si l'action doit être bloquée (compte non validé)."""
+        return (not moi.get('verifie')) and moi.get('type') != 'staff'
+
+    def _reponse_non_verifie(self):
+        self._json({'ok': False, 'code': 'non_verifie',
+                    'erreur': 'Compte en attente de validation — '
+                              'demandez au personnel du restaurant (ou montrez '
+                              'cette page au comptoir).'}, 403)
+
+    def _badge(self, c: sqlite3.Connection, user_id: str, bid: str) -> bool:
+        """Attribue un badge s'il n'est pas déjà acquis. Vrai si nouveau."""
+        r = c.execute('SELECT badges FROM users WHERE id=?', (user_id,)).fetchone()
+        if not r:
+            return False
+        try:
+            cur = json.loads(r['badges'] or '[]')
+        except Exception:
+            cur = []
+        if bid in cur:
+            return False
+        cur.append(bid)
+        c.execute('UPDATE users SET badges=? WHERE id=?',
+                  (json.dumps(cur), user_id))
+        b = badge_def(bid)
+        self._evenement(c, user_id, 'badge',
+                        {'id': bid, 'nom': b['nom'] if b else bid,
+                         'icone': b['icone'] if b else '🏅'})
+        return True
+
+    def _gagner(self, c: sqlite3.Connection, user_id: str, nb: int) -> int:
+        """Ajoute des points et attribue les badges de niveau. Renvoie nb."""
+        c.execute('UPDATE users SET pts = pts + ? WHERE id=?', (nb, user_id))
+        r = c.execute('SELECT pts FROM users WHERE id=?', (user_id,)).fetchone()
+        pts = r['pts'] if r else 0
+        info = niveau_info(pts)
+        for bid in ('argent', 'or', 'platine'):
+            if info['id'] == bid:
+                self._badge(c, user_id, bid)
+                break
+        return nb
+
+    def _mentions(self, c: sqlite3.Connection, texte: str, auteur_id: str):
+        """Détecte les @Mention sur les vrais noms de membres et notifie
+        si le consentement le permet."""
+        if not texte or '@' not in texte:
+            return
+        auteur = c.execute('SELECT nom FROM users WHERE id=?',
+                           (auteur_id,)).fetchone()
+        auteur_nom = (auteur['nom'] if auteur else '')
+        noms = [r['nom'] for r in c.execute(
+            'SELECT nom FROM users').fetchall() if r['nom']]
+        # plus longs d'abord : « La Trattoria » avant « La »
+        for nom in sorted(noms, key=len, reverse=True):
+            if nom.lower() == auteur_nom.lower():
+                continue
+            if ('@' + nom) in texte or ('@' + nom.lower()) in texte.lower():
+                cible = c.execute(
+                    'SELECT * FROM users WHERE lower(nom)=lower(?)',
+                    (nom,)).fetchone()
+                if not cible or cible['id'] == auteur_id:
+                    continue
+                try:
+                    consent = json.loads(cible['consent'] or '{}')
+                except Exception:
+                    consent = {}
+                autorise = (cible['type'] in ('staff', 'partenaire')
+                            or consent.get('offres_contact'))
+                if not autorise or not cible['verifie']:
+                    continue
+                self._evenement(c, cible['id'], 'mention',
+                                {'de': auteur_id, 'texte': texte[:120]})
+
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -532,6 +745,18 @@ class H(BaseHTTPRequestHandler):
             self.pro_moi()
         elif p == '/api/realtime':
             self.realtime()
+        elif p == '/api/verification':
+            self.verification_moi()
+        elif p == '/api/classement':
+            self.classement()
+        elif p == '/api/missions':
+            self.missions_moi()
+        elif p == '/api/badges':
+            self.badges_moi()
+        elif p == '/api/recompenses':
+            self.recompenses_liste()
+        elif p == '/api/consent':
+            self.consent_moi()
         elif p == '/api/partenaire':
             q = parse_qs(u.query)
             nom = q.get('nom', [''])[0]
@@ -593,6 +818,20 @@ class H(BaseHTTPRequestHandler):
                 self.envoi_client()
             elif p == '/api/envois/repondre':
                 self.envoi_repondre()
+            elif p == '/api/verifier':
+                self.verifier_membre()
+            elif p == '/api/mission':
+                self.mission_faire()
+            elif p == '/api/recompense':
+                self.recompense_acheter()
+            elif p == '/api/reaction':
+                self.reaction_toggle()
+            elif p == '/api/suivre':
+                self.suivre_toggle()
+            elif p == '/api/offres/essayer':
+                self.offres_essayer()
+            elif p == '/api/consent':
+                self.consent_mettre()
             else:
                 self._json({'ok': False, 'erreur': 'route inconnue'}, 404)
         except Exception as e:  # ne jamais faire planter le serveur
@@ -653,6 +892,8 @@ class H(BaseHTTPRequestHandler):
         if not moi:
             self._json({'ok': False, 'erreur': 'non connecté'}, 401)
             return
+        if self._bloque_non_verifie(moi):
+            self._reponse_non_verifie(); return
         d = self._multipart()
         texte = (d.get('texte') or '').strip()[:TEXTE_MAX]
         if not texte:
@@ -671,7 +912,11 @@ class H(BaseHTTPRequestHandler):
                       (pid, moi['id'], texte, time.time()))
             for i, f in enumerate(fichiers):
                 c.execute('INSERT INTO post_photos VALUES (?,?,?)', (pid, f, i))
-        self._points(moi['id'], 10)
+            self._mentions(c, texte, moi['id'])
+            self._badge(c, moi['id'], 'premier_post')
+            if fichiers:
+                self._badge(c, moi['id'], 'photographe')
+            self._gagner(c, moi['id'], 10)
         self._json({'ok': True, 'id': pid, 'pts': 10})
 
     def toggle_like(self):
@@ -700,6 +945,8 @@ class H(BaseHTTPRequestHandler):
         if not moi:
             self._json({'ok': False, 'erreur': 'non connecté'}, 401)
             return
+        if self._bloque_non_verifie(moi):
+            self._reponse_non_verifie(); return
         d = self._json_corps()
         pid = d.get('id') or ''
         texte = (d.get('texte') or '').strip()[:300]
@@ -712,7 +959,12 @@ class H(BaseHTTPRequestHandler):
                 return
             c.execute('INSERT INTO commentaires VALUES (?,?,?,?,?)',
                       (uuid.uuid4().hex, pid, moi['id'], texte, time.time()))
-        self._points(moi['id'], 5)
+            self._mentions(c, texte, moi['id'])
+            nb = c.execute('SELECT COUNT(*) n FROM commentaires WHERE user_id=?',
+                           (moi['id'],)).fetchone()['n']
+            if nb >= 5:
+                self._badge(c, moi['id'], 'converseur')
+            self._gagner(c, moi['id'], 5)
         self._json({'ok': True, 'pts': 5})
 
     def nouveau_message(self):
@@ -720,6 +972,8 @@ class H(BaseHTTPRequestHandler):
         if not moi:
             self._json({'ok': False, 'erreur': 'non connecté'}, 401)
             return
+        if self._bloque_non_verifie(moi):
+            self._reponse_non_verifie(); return
         d = self._json_corps()
         vers = d.get('vers') or ''
         texte = (d.get('texte') or '').strip()[:500]
@@ -807,6 +1061,8 @@ class H(BaseHTTPRequestHandler):
         if not moi or moi['type'] != 'partenaire':
             self._json({'ok': False, 'erreur': 'réservé aux partenaires'}, 403)
             return
+        if self._bloque_non_verifie(moi):
+            self._reponse_non_verifie(); return
         d = self._multipart()
         titre = (d.get('titre') or '').strip()[:80]
         texte = (d.get('texte') or '').strip()[:300]
@@ -943,10 +1199,17 @@ class H(BaseHTTPRequestHandler):
             carte = self._carte_fidelite(c, tel)
             u = c.execute('SELECT id FROM users WHERE tel=?', (tel,)).fetchone()
             if u:
-                c.execute('UPDATE users SET pts = pts + ? WHERE id=?', (5, u['id']))
+                self._gagner(c, u['id'], 5)
                 self._evenement(c, u['id'], 'achat',
                                 {'montant': montant, 'mode': mode,
                                  'points': pts_achat + bonus})
+            f2 = c.execute('SELECT nb_achats FROM fidelite WHERE tel=?',
+                           (tel,)).fetchone()
+            if f2 and f2['nb_achats'] >= 5:
+                u3 = c.execute('SELECT id FROM users WHERE tel=?',
+                               (tel,)).fetchone()
+                if u3:
+                    self._badge(c, u3['id'], 'fidele')
         self._json({'ok': True, 'carte': carte, 'points': pts_achat + bonus})
 
     def pro_moi(self):
@@ -1033,6 +1296,8 @@ class H(BaseHTTPRequestHandler):
         if not moi or moi['type'] != 'partenaire':
             self._json({'ok': False, 'erreur': 'réservé aux partenaires'}, 403)
             return
+        if self._bloque_non_verifie(moi):
+            self._reponse_non_verifie(); return
         d = self._json_corps()
         vers = d.get('vers_id') or ''
         client = (d.get('client_nom') or '').strip()[:60]
@@ -1055,6 +1320,8 @@ class H(BaseHTTPRequestHandler):
                          VALUES (?, ?, ?, ?, ?, ?, 'en_attente', ?)''',
                       (eid, moi['id'], vers, client, detail, quand, now))
             self._pro_pts(c, moi['id'], 25, 'nb_envois')
+            self._badge(c, moi['id'], 'premier_envoi')
+            self._gagner(c, moi['id'], 25)
             # demande de réservation automatique chez le partenaire concerné
             self._evenement(c, vers, 'reservation',
                             {'id': eid, 'de': moi['nom'], 'client': client,
@@ -1103,6 +1370,10 @@ class H(BaseHTTPRequestHandler):
                 c.execute('''UPDATE pro_loyaute SET points = points + 5,
                              nb_acceptes = nb_acceptes + 1 WHERE user_id=?''',
                           (e['de_id'],))
+                r2 = c.execute('SELECT nb_acceptes FROM pro_loyaute WHERE user_id=?',
+                               (e['de_id'],)).fetchone()
+                if r2 and r2['nb_acceptes'] >= 3:
+                    self._badge(c, e['de_id'], 'maitre_jeu')
                 self._evenement(c, e['de_id'], 'accepte',
                                 {'id': eid, 'vers': moi['nom'],
                                  'client': e['client_nom']})
@@ -1138,6 +1409,341 @@ class H(BaseHTTPRequestHandler):
         self._json({'ok': True, 'evenements': evenements,
                     'nb_messages': nb_msg})
 
+
+    # ===== Validation, consentement, gaming (build 3) ====================
+    def verification_moi(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        out = {'ok': True, 'verifie': moi.get('verifie', False),
+               'type': moi['type']}
+        if moi['type'] == 'staff':
+            with db() as c:
+                rows = c.execute(
+                    "SELECT id, nom, tel, type, cree_le FROM users "
+                    "WHERE verifie=0 AND type!='staff' ORDER BY cree_le").fetchall()
+            out['en_attente'] = [{'id': r['id'], 'nom': r['nom'],
+                                  'tel': r['tel'], 'type': r['type'],
+                                  'cree_le': r['cree_le']} for r in rows]
+        self._json(out)
+
+    def verifier_membre(self):
+        moi = self._user()
+        if not moi or moi['type'] != 'staff':
+            self._json({'ok': False, 'erreur': 'réservé au personnel'}, 403)
+            return
+        d = self._json_corps()
+        uid = d.get('user_id') or ''
+        tel = d.get('tel') or ''
+        with db() as c:
+            if uid:
+                cible = c.execute('SELECT id FROM users WHERE id=?',
+                                  (uid,)).fetchone()
+            elif tel:
+                cible = c.execute('SELECT id FROM users WHERE tel=?',
+                                  (re.sub(r'[\s.\-]', '', tel)[:15],)).fetchone()
+            else:
+                self._json({'ok': False, 'erreur': 'user_id ou tel requis'})
+                return
+            if not cible:
+                self._json({'ok': False, 'erreur': 'membre introuvable'}, 404)
+                return
+            c.execute('UPDATE users SET verifie=1 WHERE id=?', (cible['id'],))
+        self._json({'ok': True})
+
+    def consent_moi(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        self._json({'ok': True, 'consent': moi.get('consent', {})})
+
+    def consent_mettre(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        d = self._json_corps()
+        cur = dict(moi.get('consent', {}) or {})
+        for k in ('classement', 'offres_contact', 'notifs_son'):
+            if k in d:
+                cur[k] = bool(d[k])
+        with db() as c:
+            c.execute('UPDATE users SET consent=? WHERE id=?',
+                      (json.dumps(cur), moi['id']))
+        self._json({'ok': True, 'consent': cur})
+
+    def classement(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        with db() as c:
+            rows = c.execute(
+                "SELECT id, nom, type, pts, avatar, logo, consent FROM users "
+                "WHERE verifie=1 ORDER BY pts DESC LIMIT 30").fetchall()
+        out = []
+        for r in rows:
+            try:
+                cons = json.loads(r['consent'] or '{}')
+            except Exception:
+                cons = {}
+            if not cons.get('classement'):
+                continue   # consentement : opt-in pour figurer au classement
+            out.append({'rang': len(out) + 1, 'id': r['id'], 'nom': r['nom'],
+                        'type': r['type'], 'pts': r['pts'],
+                        'niveau': niveau(r['pts']),
+                        'avatar': '/avatar/' + r['avatar'] if r['avatar'] else None,
+                        'logo': '/logo/' + r['logo'] if r['logo'] else None,
+                        'moi': r['id'] == moi['id']})
+        self._json({'ok': True, 'classement': out,
+                    'mes_rang': next((x['rang'] for x in out if x['moi']), None)})
+
+    def missions_moi(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        with db() as c:
+            faits = {r['mission_id'] for r in c.execute(
+                'SELECT mission_id FROM missions_faites WHERE user_id=?',
+                (moi['id'],)).fetchall()}
+            compteurs = {
+                'posts': c.execute('SELECT COUNT(*) n FROM posts WHERE auteur_id=?',
+                                   (moi['id'],)).fetchone()['n'],
+                'photos': c.execute(
+                    'SELECT COUNT(*) n FROM post_photos pp '
+                    'JOIN posts p ON p.id=pp.post_id WHERE p.auteur_id=?',
+                    (moi['id'],)).fetchone()['n'],
+                'commentaires': c.execute(
+                    'SELECT COUNT(*) n FROM commentaires WHERE user_id=?',
+                    (moi['id'],)).fetchone()['n'],
+                'envois': c.execute('SELECT COUNT(*) n FROM envois WHERE de_id=?',
+                                    (moi['id'],)).fetchone()['n'],
+                'achats': 0,
+            }
+            f = c.execute('SELECT nb_achats n FROM fidelite WHERE tel=?',
+                          (moi['tel'],)).fetchone()
+            if f:
+                compteurs['achats'] = f['n']
+        out = []
+        for m in MISSIONS:
+            if m.get('pro') and moi['type'] != 'partenaire':
+                continue
+            if m.get('type') == 'achats' and moi['type'] != 'client':
+                continue
+            prog = min(compteurs.get(m['type'], 0), m['cible'])
+            fait = m['id'] in faits or prog >= m['cible']
+            out.append({'id': m['id'], 'nom': m['nom'], 'icone': m['icone'],
+                        'desc': m['desc'], 'pts': m['pts'], 'cible': m['cible'],
+                        'progression': prog, 'fait': fait})
+        self._json({'ok': True, 'missions': out})
+
+    def mission_faire(self):
+        """Encaisse les points d'une mission dont la condition est remplie."""
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        d = self._json_corps()
+        mid = d.get('id') or ''
+        m = next((x for x in MISSIONS if x['id'] == mid), None)
+        if not m:
+            self._json({'ok': False, 'erreur': 'mission inconnue'})
+            return
+        with db() as c:
+            if c.execute('SELECT 1 FROM missions_faites WHERE user_id=? AND mission_id=?',
+                         (moi['id'], mid)).fetchone():
+                self._json({'ok': False, 'erreur': 'déjà accomplie'})
+                return
+            t = m['type']
+            if t == 'posts':
+                compte = c.execute('SELECT COUNT(*) n FROM posts WHERE auteur_id=?',
+                                   (moi['id'],)).fetchone()['n']
+            elif t == 'photos':
+                compte = c.execute(
+                    'SELECT COUNT(*) n FROM post_photos pp '
+                    'JOIN posts p ON p.id=pp.post_id WHERE p.auteur_id=?',
+                    (moi['id'],)).fetchone()['n']
+            elif t == 'commentaires':
+                compte = c.execute(
+                    'SELECT COUNT(*) n FROM commentaires WHERE user_id=?',
+                    (moi['id'],)).fetchone()['n']
+            elif t == 'envois':
+                compte = c.execute('SELECT COUNT(*) n FROM envois WHERE de_id=?',
+                                   (moi['id'],)).fetchone()['n']
+            else:  # achats
+                f = c.execute('SELECT nb_achats n FROM fidelite WHERE tel=?',
+                              (moi['tel'],)).fetchone()
+                compte = f['n'] if f else 0
+            if compte < m['cible']:
+                self._json({'ok': False, 'erreur': 'condition non remplie'})
+                return
+            c.execute('INSERT INTO missions_faites VALUES (?,?,?)',
+                      (moi['id'], mid, time.time()))
+            self._gagner(c, moi['id'], m['pts'])
+        self._json({'ok': True, 'pts': m['pts']})
+
+    def badges_moi(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        acquis = moi.get('badges', []) or []
+        out = [{'id': b['id'], 'nom': b['nom'], 'icone': b['icone'],
+                'desc': b['desc'], 'acquis': b['id'] in acquis} for b in BADGES]
+        self._json({'ok': True, 'badges': out,
+                    'nb_acquis': sum(1 for x in out if x['acquis'])})
+
+    def recompenses_liste(self):
+        self._json({'ok': True, 'recompenses': RECOMPENSES})
+
+    def recompense_acheter(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        if self._bloque_non_verifie(moi):
+            self._reponse_non_verifie()
+            return
+        d = self._json_corps()
+        rid = d.get('reward_id') or ''
+        r = next((x for x in RECOMPENSES if x['id'] == rid), None)
+        if not r:
+            self._json({'ok': False, 'erreur': 'récompense inconnue'})
+            return
+        with db() as c:
+            u = c.execute('SELECT pts FROM users WHERE id=?',
+                          (moi['id'],)).fetchone()
+            if not u or u['pts'] < r['cout']:
+                self._json({'ok': False, 'erreur':
+                            'Points insuffisants (' + str(r['cout']) + ' nécessaires).'})
+                return
+            c.execute('UPDATE users SET pts = pts - ? WHERE id=?',
+                      (r['cout'], moi['id']))
+            c.execute('INSERT INTO recompenses VALUES (?,?,?,?,?)',
+                      (uuid.uuid4().hex, moi['id'], rid, r['cout'], time.time()))
+            self._badge(c, moi['id'], 'generos')
+        self._json({'ok': True, 'reward': r['nom'], 'cout': r['cout']})
+
+    def reaction_toggle(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        if self._bloque_non_verifie(moi):
+            self._reponse_non_verifie()
+            return
+        d = self._json_corps()
+        pid = d.get('id') or ''
+        emoji = d.get('emoji') or ''
+        if emoji not in ('❤️', '😍', '👏', '🤝'):
+            self._json({'ok': False, 'erreur': 'réaction inconnue'})
+            return
+        with db() as c:
+            if not c.execute('SELECT 1 FROM posts WHERE id=?', (pid,)).fetchone():
+                self._json({'ok': False, 'erreur': 'post introuvable'}, 404)
+                return
+            deja = c.execute(
+                'SELECT 1 FROM reactions WHERE post_id=? AND user_id=? AND emoji=?',
+                (pid, moi['id'], emoji)).fetchone()
+            if deja:
+                c.execute('DELETE FROM reactions WHERE post_id=? AND user_id=? AND emoji=?',
+                          (pid, moi['id'], emoji))
+                act = False
+            else:
+                c.execute('INSERT INTO reactions VALUES (?,?,?)',
+                          (pid, moi['id'], emoji))
+                act = True
+                a = c.execute('SELECT auteur_id FROM posts WHERE id=?',
+                              (pid,)).fetchone()
+                if a and a['auteur_id'] != moi['id']:
+                    au = c.execute('SELECT * FROM users WHERE id=?',
+                                   (a['auteur_id'],)).fetchone()
+                    if au and au['verifie']:
+                        try:
+                            cons = json.loads(au['consent'] or '{}')
+                        except Exception:
+                            cons = {}
+                        if au['type'] in ('staff', 'partenaire') or cons.get('offres_contact'):
+                            self._evenement(c, a['auteur_id'], 'mention',
+                                            {'de': moi['id'],
+                                             'texte': 'réagit ' + emoji + ' à votre post'})
+            nb = c.execute('SELECT COUNT(*) n FROM reactions WHERE post_id=?',
+                           (pid,)).fetchone()['n']
+            if nb >= 5:
+                a = c.execute('SELECT auteur_id FROM posts WHERE id=?',
+                              (pid,)).fetchone()
+                if a:
+                    self._badge(c, a['auteur_id'], 'vedette')
+        self._json({'ok': True, 'active': act})
+
+    def suivre_toggle(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        d = self._json_corps()
+        target = d.get('id') or ''
+        if target == moi['id']:
+            self._json({'ok': False, 'erreur': 'vous ne pouvez pas vous suivre'})
+            return
+        with db() as c:
+            tgt = c.execute('SELECT * FROM users WHERE id=?', (target,)).fetchone()
+            if not tgt:
+                self._json({'ok': False, 'erreur': 'membre introuvable'}, 404)
+                return
+            deja = c.execute(
+                'SELECT 1 FROM follows WHERE follower_id=? AND followee_id=?',
+                (moi['id'], target)).fetchone()
+            if deja:
+                c.execute('DELETE FROM follows WHERE follower_id=? AND followee_id=?',
+                          (moi['id'], target))
+                act = False
+            else:
+                c.execute('INSERT INTO follows VALUES (?,?,?)',
+                          (moi['id'], target, time.time()))
+                act = True
+                if tgt['verifie']:
+                    try:
+                        cons = json.loads(tgt['consent'] or '{}')
+                    except Exception:
+                        cons = {}
+                    if tgt['type'] in ('staff', 'partenaire') or cons.get('offres_contact'):
+                        self._evenement(c, target, 'mention',
+                                        {'de': moi['id'],
+                                         'texte': 'vous suit maintenant'})
+        self._json({'ok': True, 'suivi': act})
+
+    def offres_essayer(self):
+        """Un client « essaie » une offre : conversion croisée (points part + client)."""
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        d = self._json_corps()
+        oid = d.get('id') or ''
+        with db() as c:
+            o = c.execute('SELECT * FROM offres WHERE id=? AND active=1',
+                          (oid,)).fetchone()
+            if not o or o['fin'] < time.time():
+                self._json({'ok': False, 'erreur': 'offre expirée'}, 404)
+                return
+            deja = c.execute(
+                'SELECT 1 FROM offres_essayees WHERE offre_id=? AND user_id=?',
+                (oid, moi['id'])).fetchone()
+            if deja:
+                self._json({'ok': False, 'erreur': 'déjà essayé'})
+                return
+            c.execute('INSERT INTO offres_essayees VALUES (?,?,?)',
+                      (oid, moi['id'], time.time()))
+            self._gagner(c, moi['id'], 15)
+            self._gagner(c, o['partenaire_id'], 10)
+            self._evenement(c, o['partenaire_id'], 'mention',
+                            {'de': moi['id'],
+                             'texte': 'a essayé votre offre « ' + o['titre'] + ' »'})
+        self._json({'ok': True, 'pts': 15})
 
     def log_message(self, *a):
         pass

@@ -15,121 +15,152 @@
 </head>
 <body>
 
-<!-- ================= écran de connexion ================= -->
+<!-- ================= AUTH ================= -->
 <div id="ecran-auth" class="auth" hidden>
-  <div class="auth-carte">
-    <div class="marque"><span class="logo">LT</span>
-      <div><span class="n">La Trattoria</span>
-      <span class="s">La communauté</span></div></div>
-    <p class="auth-p">Le coin des habitués et de nos partenaires :
-      photos, bonnes adresses, offres du moment et petites surprises.</p>
-    <div id="auth-form">
+  <div class="box">
+    <div class="logo-lg">LT</div>
+    <h1>La communauté</h1>
+    <p class="sub">Le coin des habitués de La Trattoria : photos, avis,
+      offres des partenaires et petits avantages entre membres.</p>
+    <div class="form">
       <label for="a-tel">Téléphone</label>
-      <input id="a-tel" type="tel" autocomplete="tel"
+      <input id="a-tel" type="tel" inputmode="tel" autocomplete="tel"
              placeholder="Ex. 06 12 34 56 78">
       <label for="a-mdp">Code secret</label>
       <input id="a-mdp" type="password" autocomplete="current-password"
              placeholder="Votre code (4 caractères min.)">
+      <p class="aide" id="a-err" style="color:var(--danger);min-height:16px;margin-top:8px"></p>
       <button id="a-ok" class="btn btn-p btn-bloc">Se connecter</button>
-      <p class="aide" id="a-err"></p>
-      <p class="auth-alt">Pas encore de compte ?
-        <a href="#" id="a-insc">Je m'inscris</a></p>
-      <div id="a-insc-box" hidden>
+      <p style="text-align:center;font-size:13.5px;margin-top:14px">Pas encore de compte ?
+        <a href="#" id="a-insc">S’inscrire en 20 secondes</a></p>
+      <div id="a-insc-box" hidden style="border-top:1px solid var(--trait);padding-top:14px">
         <label for="a-nom">Votre nom</label>
-        <input id="a-nom" type="text" maxlength="40" placeholder="Ex. Marie D.">
-        <label class="check"><input type="checkbox" id="a-part">
+        <input id="a-nom" type="text" maxlength="40" placeholder="Ex. Marie Dupont">
+        <label class="check" style="margin-top:12px">
+          <input type="checkbox" id="a-part">
           <span>Je suis <strong>partenaire</strong> (boutique, caviste, hôtel…)</span></label>
         <button id="a-insc-ok" class="btn btn-p btn-bloc">Créer mon compte</button>
+        <p class="note">Inscription rapide, <strong>sans e-mail</strong>. Vos services
+          seront débloqués après une <strong>validation rapide au comptoir</strong>.</p>
       </div>
     </div>
-    <p class="auth-note">🔒 Vos données restent sur le réseau du restaurant.<br>
-      Un compte partenaire est validé sur place (demandez au personnel).</p>
+    <p class="note">🔒 Vos données restent sur le réseau local du restaurant.<br>
+      Aucun e-mail, aucun compte externe.</p>
   </div>
 </div>
 
-<!-- ================= application ================= -->
+<!-- ================= APP ================= -->
 <div id="app" hidden>
-  <header class="barre">
-    <div class="marque"><span class="logo">LT</span>
-      <div><span class="n">La communauté</span>
-      <span class="s" id="barre-p"></span></div></div>
-    <div class="barre-droite">
-      <button id="btn-notifs" class="ic" title="Messages">✉<span id="nb-nouveaux" hidden></span></button>
-      <button id="btn-profil" class="ic ic-profil" title="Mon profil"></button>
-    </div>
-  </header>
 
-  <!-- compo post -->
-  <div class="compo conteneur" id="compo" hidden>
-    <div class="compo-tete"><img id="compo-avatar" alt="" class="ava" hidden>
-      <span class="compo-titre">Partager un moment avec la communauté</span></div>
-    <textarea id="compo-texte" rows="2" maxlength="1000"
-      placeholder="Un plat qui vous a régalé, une question, une découverte…"></textarea>
-    <div class="compo-pied">
-      <label class="btn btn-s btn-fich">📷 Photos
-        <input type="file" id="compo-fich" accept="image/*" multiple hidden></label>
-      <span id="compo-apercu" class="compo-apercu"></span>
-      <span class="flex1"></span>
-      <span id="compo-pts" class="pts" title="Vos points de fidélité communauté"></span>
-      <button id="compo-poster" class="btn btn-p">Publier</button>
+  <!-- ===== ACCUEIL (feed) ===== -->
+  <section id="vue-accueil" class="vue">
+    <header class="barre">
+      <div class="marque"><span class="n">La communauté</span>
+        <span class="s" id="acc-sous">La Trattoria · Saintes</span></div>
+      <div class="actions">
+        <button class="ic" id="btn-classement" title="Classement">🏆</button>
+      </div>
+    </header>
+    <div id="ban-verif-zone"></div>
+    <div class="conteneur" style="padding-top:12px">
+      <!-- composer -->
+      <div class="cart cart-pad" id="compo" style="padding:14px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div class="ava ava-m" id="compo-ava" style="display:none"></div>
+          <textarea id="compo-texte" rows="2" maxlength="1000"
+            style="flex:1;border:none;background:none;font-size:15px;resize:none"
+            placeholder="Partager un moment… (@ pour mentionner)"></textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+          <label class="btn btn-s" style="min-height:40px;font-size:13.5px;padding:8px 13px">📷 Photo
+            <input type="file" id="compo-fich" accept="image/*" multiple hidden></label>
+          <span id="compo-apercu" style="display:flex;gap:5px"></span>
+          <span class="flex1"></span>
+          <button id="compo-poster" class="btn btn-p" style="min-height:40px;font-size:14px">Publier</button>
+        </div>
+      </div>
+      <div class="tabs" id="tabs-fil">
+        <button class="tab actif" data-fil="tous">Tout le monde</button>
+        <button class="tab" data-fil="partenaires">Partenaires</button>
+        <button class="tab" data-fil="offres">🔥 Offres du moment</button>
+      </div>
+      <div id="contenu-feed" class="feed"></div>
     </div>
-  </div>
+  </section>
 
-  <!-- onglets fil -->
-  <nav class="onglets conteneur" id="onglets-fil">
-    <button class="onglet actif" data-fil="tous">Tout le monde</button>
-    <button class="onglet" data-fil="partenaires">Partenaires</button>
-    <button class="onglet" data-fil="offres">🔥 Offres du moment</button>
+  <!-- ===== FIDÉLITÉ ===== -->
+  <section id="vue-fidelite" class="vue" hidden>
+    <header class="barre">
+      <div class="marque"><span class="n" id="fid-titre">Fidélité</span>
+        <span class="s" id="fid-sous"></span></div>
+    </header>
+    <div class="conteneur" id="fid-corps" style="padding-top:12px;padding-bottom:24px"></div>
+  </section>
+
+  <!-- ===== GAMING ===== -->
+  <section id="vue-gaming" class="vue" hidden>
+    <header class="barre">
+      <div class="marque"><span class="n">Gaming</span>
+        <span class="s">Points, missions, badges & récompenses</span></div>
+    </header>
+    <div class="conteneur" id="gam-corps" style="padding-top:12px;padding-bottom:24px"></div>
+  </section>
+
+  <!-- ===== MESSAGES ===== -->
+  <section id="vue-messages" class="vue" hidden>
+    <header class="barre">
+      <div class="marque"><span class="n">Messages</span>
+        <span class="s" id="msg-sous">Vos conversations</span></div>
+    </header>
+    <div class="conteneur" id="msg-corps" style="padding-top:12px;padding-bottom:24px"></div>
+  </section>
+
+  <!-- ===== PROFIL ===== -->
+  <section id="vue-profil" class="vue" hidden>
+    <header class="barre">
+      <div class="marque"><span class="n">Mon profil</span>
+        <span class="s" id="prof-sous"></span></div>
+    </header>
+    <div class="conteneur" id="prof-corps" style="padding-top:12px;padding-bottom:24px"></div>
+  </section>
+
+  <!-- nav basse -->
+  <nav class="nav">
+    <button class="nav-b actif" data-nav="accueil">🏠<span>Accueil</span></button>
+    <button class="nav-b" data-nav="fidelite"><span>Fidélité</span></button>
+    <button class="nav-b" data-nav="gaming">⭐<span>Gaming</span></button>
+    <button class="nav-b" data-nav="messages">✉️<span>Messages</span><span class="badge-nb" id="nb-msg-badge" hidden></span></button>
+    <button class="nav-b" data-nav="profil">🙂<span>Profil</span></button>
   </nav>
 
-  <main class="conteneur" id="contenu"></main>
 
-  <!-- pied / navigation mobile -->
-  <nav class="pied">
-    <button class="pied-b actif" data-nav="fil">🏠<span>Accueil</span></button>
-    <button class="pied-b" data-nav="fidelite">⭐<span>Fidélité</span></button>
-    <button class="pied-b" data-nav="messages">✉<span>Messages</span><span id="nb-msg-badge" hidden></span></button>
-    <button class="pied-b" data-nav="profil">🙂<span>Profil</span></button>
-  </nav>
+
 </div>
+  <!-- ===== CLASSEMENT ===== -->
+  <section id="vue-classement" class="vue" hidden>
+    <header class="barre">
+      <button class="retour" id="cl-retour">←</button>
+      <div class="marque"><span class="n">Classement</span>
+        <span class="s">Les membres les plus actifs (volontaires)</span></div>
+    </header>
+    <div class="conteneur" id="cl-corps" style="padding-top:12px;padding-bottom:24px"></div>
+  </section>
 
-<!-- ================= vue messages ================= -->
-<div id="vue-messages" class="vue" hidden>
-  <header class="barre"><button id="msg-retour" class="ic">←</button>
-    <div class="marque"><span class="n">Messages</span><span class="s"></span></div>
-    <span class="flex1"></span></header>
-  <div class="conteneur" id="msg-corps"></div>
-</div>
+  <!-- ===== VALIDATION (staff) ===== -->
+  <section id="vue-validation" class="vue" hidden>
+    <header class="barre">
+      <button class="retour" id="val-retour">←</button>
+      <div class="marque"><span class="n">Validation des membres</span>
+        <span class="s">Personnel — valider au comptoir</span></div>
+    </header>
+    <div class="conteneur" id="val-corps" style="padding-top:12px;padding-bottom:24px"></div>
+  </section>
 
-<!-- ================= vue profil ================= -->
-<div id="vue-profil" class="vue" hidden>
-  <header class="barre"><button id="prof-retour" class="ic">←</button>
-    <div class="marque"><span class="n" id="prof-titre">Profil</span><span class="s"></span></div>
-    <span class="flex1"></span></header>
-  <div class="conteneur" id="prof-corps"></div>
-</div>
-
-<!-- ================= vue partenaire ================= -->
-<div id="vue-partenaire" class="vue" hidden>
-  <header class="barre"><button id="part-retour" class="ic">←</button>
-    <div class="marque"><span class="n" id="part-titre">Partenaire</span><span class="s"></span></div>
-    <span class="flex1"></span></header>
-  <div class="conteneur" id="part-corps"></div>
-</div>
-
-<!-- bandeau de charge -->
-<!-- ================= vue fidélité & partenaires ================= -->
-<div id="vue-fidelite" class="vue" hidden>
-  <header class="barre"><button id="fid-retour" class="ic">←</button>
-    <div class="marque"><span class="n" id="fid-titre">Fidélité</span><span class="s" id="fid-sous"></span></div>
-    <span class="flex1"></span></header>
-  <div class="conteneur" id="fid-corps"></div>
-</div>
-
-<!-- bandeau d'alerte (retour optique fort) -->
-<div id="alerte" class="alerte" hidden></div>
-
+<!-- ================= SUPERPOSITIONS ================= -->
+<div id="alerte" class="alerte a-info" hidden></div>
 <div id="toast" class="toast" hidden></div>
+<div id="modale-zone"></div>
+<div id="celebration-zone"></div>
 
 <script src="app.js"></script>
 </body>

@@ -15,6 +15,7 @@ social, cartes imprimables. **Tout le projet vit dans cette branche.**
 | `build/` | Outillage reproductible du build APK (patch AXML/DEX/assets, signature v1/v2, vérifications) |
 | `build/mode_app.js` / `mode_app.css` | **Module social** + modes client/partenaire (barre sociale : avis Google/Facebook/Tripadvisor, appeler ; espace partenaires) |
 | `carte/` | **Gestion de la carte** (PWA autonome et hors ligne) : produits, photos, marges, cartes du jour, synchro tablettes, page publique clients |
+| `communaute/` | **Communauté** (build 3) : réseau social local pro — feed, fidélité, **gaming avancé** (niveaux, missions, badges, récompenses, classement), messages, offres partenaires, **envoi de client avec réservation auto**, **validation au comptoir** + **consentement** — voir `COMMUNAUTE.md` |
 | `carte-de-visite.html` | Carte de visite 85 × 55 mm (recto/verso), charte du site, QR de téléchargement |
 | `generer-carte.py`, `recuperer-logo.py` | Régénération de la carte de visite (QR + logo) |
 | `qr/` | QR codes livrés (app client, app partenaire, site web, téléchargement APK, carte de visite) + logo |
@@ -36,7 +37,7 @@ tablette sert **toute** l'offre sur le Wi-Fi local du restaurant (port
 | **Module carte (intégré)** | `http://<tablette>:8720/?carte` (ou bouton 📋) | Gestion de la carte : 84 produits, photos, marges, cartes du jour, données |
 | **App Client** | `http://<tablette>:8720/?client` | Menu, cartes spéciales du jour, **module social** (avis Google/Facebook/Tripadvisor, appeler) |
 | **App Partenaire** | `http://<tablette>:8720/?partenaire` | Comme le client + Espace Partenaires (message au restaurant) |
-| **Communauté** | `http://<machine>:8721/` | Réseau social local : comptes, avatar, posts photos, commentaires, messages, offres partenaires (voir `COMMUNAUTE.md`) |
+| **Communauté** | `http://<machine>:8721/` | Réseau social local : feed, fidélité, **gaming** (niveaux/missions/badges/récompenses/classement), messages, offres, **envoi de client + réservation auto**, validation & consentement (voir `COMMUNAUTE.md`) |
 
 Le module carte reste aussi disponible en **PWA standalone** (dossier
 `carte/`, `serveur_carte.py`) pour la synchronisation multi-tablettes —

@@ -65,6 +65,56 @@ node -e "require('qrcode').toFile('qr/QR-communaute.png','http://VRAIE_IP:8721/'
 | **Messagerie instantanée avec la Trattoria** | L'envoi de client **active immédiatement** la messagerie privée : message automatique dans la boîte du partenaire + préavis au staff ; échanges de courts messages en temps réel (rafraîchi toutes les 5 s) entre partenaires et La Trattoria. |
 | **Suivi staff** | La Trattoria voit toutes les demandes (boîte globale), peut répondre, et est prévenue de chaque envoi/acceptation/refus. |
 
+### Build 3 — Refonte pro, validation, consentement & gaming avancé
+
+**Refonte professionnelle & ergonomique** : design system (couleurs, typographie
+serif/sans, espacements, ombres, états chargement/vide/erreur), navigation basse
+5 onglets (Accueil · Fidélité · Gaming · Messages · Profil), composants soignés,
+installable comme une application.
+
+**Inscription simple + validation systématique** :
+- Inscription en 2 champs (nom + téléphone + code), **sans e-mail**, sans compte
+  externe.
+- Tout nouveau compte démarre **« en attente de validation »** : les services
+  (publier, commenter, échanger, envoyer un client, échanger une récompense) sont
+  **restreints** jusqu'à validation.
+- **Rappel systématique par modale** : la modale de validation s'affiche à
+  l'inscription puis **à chaque action bloquée**, + un bandeau permanent.
+- Le **personnel valide au comptoir** (vue « Valider un membre » dans le profil
+  staff, par id ou téléphone). La validation débloque instantanément le compte.
+
+**Consentement (opt-in, respecté côté serveur)** :
+- *Apparaître au classement* (off par défaut) — le membre figure au classement
+  uniquement s'il l'a activé.
+- *Être contacté (offres & mentions)* — les mentions/contacts ne sont notifiés
+  que si le consentement est donné (staff & partenaires toujours notifiés).
+- *Sons & vibrations* — les retours sonores peuvent être coupés.
+
+**Gaming avancé** :
+- **Niveaux** Bronze → Argent (150) → Or (400) → Platine (1000) avec barre de
+  progression et célébration de palier.
+- **Missions** (quêtes) : poster, photo, commenter, envoyer des clients (pro),
+  achats — avec progression et gain de points.
+- **Badges** (11) : Premier pas, Photographe, Causeur, Vedette, Ambassadeur,
+  Maître du jeu, Habitué, niveaux Argent/Or/Platine, Générosité.
+- **Récompenses** à échanger contre des points (boisson, café+pâtisserie, dessert
+  offert, -10 %) — à présenter au comptoir (boucle de conversion).
+- **Classement** des membres (volontaires uniquement, consentement).
+
+**Interactions maximisées (utilisateurs / établissements / personnel)** :
+- **Mentions** `@Nom` dans les posts/commentaires → notification (selon
+  consentement) ; encadrées dans le texte.
+- **Réactions** (❤️ 😍  🤝) en plus du like.
+- **Suivre** un partenaire / membre.
+- **« J'essaie cette offre »** : le client signale qu'il essaie l'offre d'un
+  partenaire → points pour le client **+15** et le partenaire **+10**, et le
+  partenaire est notifié (conversion croisée).
+- **Envoi de client** (partenaire) : la demande de réservation part
+  automatiquement dans l'appli du partenaire concerné, la Trattoria est prévenue,
+  messagerie activée (points +25, +5 si accepté).
+- **Retours optiques & sonores puissants** : bandeau clignotant + son distinctif
+  (demande / acceptation / refus / message / badge / points) + vibration.
+
 ## Données
 
 ```
