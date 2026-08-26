@@ -143,7 +143,58 @@ def init_db() -> None:
           fin REAL NOT NULL,                       -- epoch (éphémère)
           active INTEGER NOT NULL DEFAULT 1
         );
+        -- ===== Fidélité & Partenaires (build 2) =====
+        CREATE TABLE IF NOT EXISTS fidelite (
+          tel TEXT PRIMARY KEY,
+          nom TEXT NOT NULL,
+          points INTEGER NOT NULL DEFAULT 0,
+          nb_achats INTEGER NOT NULL DEFAULT 0,
+          total REAL NOT NULL DEFAULT 0,
+          cree_le REAL NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS achats (
+          id TEXT PRIMARY KEY,
+          tel TEXT NOT NULL,
+          montant REAL NOT NULL,
+          mode TEXT NOT NULL,          -- sur_place | a_emporter
+          produits TEXT NOT NULL,
+          points INTEGER NOT NULL,
+          cree_le REAL NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS pro_loyaute (
+          user_id TEXT PRIMARY KEY,
+          points INTEGER NOT NULL DEFAULT 0,
+          nb_envois INTEGER NOT NULL DEFAULT 0,
+          nb_acceptes INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS envois (
+          id TEXT PRIMARY KEY,
+          de_id TEXT NOT NULL,         -- partenaire émetteur
+          vers_id TEXT NOT NULL,       -- partenaire destinataire
+          client_nom TEXT NOT NULL,
+          detail TEXT NOT NULL,
+          quand TEXT NOT NULL DEFAULT '',
+          statut TEXT NOT NULL DEFAULT 'en_attente',  -- en_attente|accepte|refuse
+          cree_le REAL NOT NULL,
+          reponse_le REAL
+        );
+        CREATE TABLE IF NOT EXISTS evenements (
+          id TEXT PRIMARY KEY,
+          dest_id TEXT NOT NULL,       -- id user
+          type TEXT NOT NULL,          -- message|reservation|envoi|accepte|refuse|achat
+          data TEXT NOT NULL,
+          lu INTEGER NOT NULL DEFAULT 0,
+          cree_le REAL NOT NULL
+        );
         ''')
+    # compte staff « La Trattoria » (messagerie pro, enregistrement des achats)
+    sel = secrets.token_hex(16)
+    with db() as c:
+        c.execute('''INSERT OR IGNORE INTO users
+                     (id,type,nom,tel,mdp,sel,pts,cree_le)
+                     VALUES ('trattoria','staff','La Trattoria','0000000000',
+                             ?,?,0,?)''',
+                  (hache('trattoria', sel), sel, time.time()))
 
 
 def hache(mdp: str, sel: str) -> str:
@@ -278,6 +329,7 @@ class H(BaseHTTPRequestHandler):
     def _json(self, obj, code=200, cookie=None, expire_cookie=False):
         data = json.dumps(obj, ensure_ascii=False).encode('utf-8')
         self.send_response(code)
+        self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(data)))
         self.send_header('Cache-Control', 'no-store')
@@ -293,6 +345,7 @@ class H(BaseHTTPRequestHandler):
 
     def _fichier(self, data: bytes, ctype: str):
         self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Content-Type', ctype)
         self.send_header('Content-Length', str(len(data)))
         self.send_header('Cache-Control', 'public, max-age=86400')
@@ -301,6 +354,7 @@ class H(BaseHTTPRequestHandler):
 
     def _page(self, nom: str, body: bytes):
         self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
         self.send_header('Cache-Control', 'no-store')
@@ -373,6 +427,32 @@ class H(BaseHTTPRequestHandler):
         with db() as c:
             c.execute('UPDATE users SET pts = pts + ? WHERE id=?', (nb, user_id))
 
+    def _pro_pts(self, c: sqlite3.Connection, user_id: str, nb: int,
+                 compteur: str = 'nb_envois') -> dict:
+        c.execute('INSERT OR IGNORE INTO pro_loyaute (user_id) VALUES (?)',
+                  (user_id,))
+        c.execute('''UPDATE pro_loyaute SET points = points + ?,
+                     %s = %s + 1 WHERE user_id=?''' % (compteur, compteur),
+                  (nb, user_id))
+        r = c.execute('SELECT * FROM pro_loyaute WHERE user_id=?',
+                      (user_id,)).fetchone()
+        return {'points': r['points'], 'nb_envois': r['nb_envois'],
+                'nb_acceptes': r['nb_acceptes']}
+
+    def _evenement(self, c: sqlite3.Connection, dest_id: str, etype: str,
+                   data: dict) -> None:
+        c.execute('INSERT INTO evenements VALUES (?,?,?,?,0,?)',
+                  (uuid.uuid4().hex, dest_id, etype,
+                   json.dumps(data, ensure_ascii=False), time.time()))
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers',
+                         'Content-Type, X-Jeton, X-Requested-With')
+        self.end_headers()
+
     # -- routes GET ---------------------------------------------------------
     def do_GET(self):
         u = urlparse(self.path)
@@ -440,6 +520,18 @@ class H(BaseHTTPRequestHandler):
                  'logo': '/logo/' + r['logo'] if r['logo'] else None,
                  'pts': r['pts'], 'niveau': niveau(r['pts'])}
                 for r in rows]})
+        elif p == '/api/fidelite/moi':
+            self.fidelite_moi()
+        elif p == '/api/fidelite':
+            self.fidelite_tel(u.query)
+        elif p == '/api/envois/recus':
+            self.envois_recus()
+        elif p == '/api/envois/envoyes':
+            self.envois_envoyes()
+        elif p == '/api/pro/moi':
+            self.pro_moi()
+        elif p == '/api/realtime':
+            self.realtime()
         elif p == '/api/partenaire':
             q = parse_qs(u.query)
             nom = q.get('nom', [''])[0]
@@ -495,6 +587,12 @@ class H(BaseHTTPRequestHandler):
                 self.nouvelle_offre()
             elif p == '/api/offres/fin':
                 self.fin_offre()
+            elif p == '/api/fidelite/achat':
+                self.fidelite_achat()
+            elif p == '/api/envoi':
+                self.envoi_client()
+            elif p == '/api/envois/repondre':
+                self.envoi_repondre()
             else:
                 self._json({'ok': False, 'erreur': 'route inconnue'}, 404)
         except Exception as e:  # ne jamais faire planter le serveur
@@ -743,6 +841,303 @@ class H(BaseHTTPRequestHandler):
             c.execute('''UPDATE offres SET active=0 WHERE id=?
                          AND partenaire_id=?''', (oid, moi['id']))
         self._json({'ok': True})
+
+    # ===== Fidélité & Partenaires (build 2) ==============================
+    def _carte_fidelite(self, c, tel):
+        r = c.execute('SELECT * FROM fidelite WHERE tel=?', (tel,)).fetchone()
+        if not r:
+            return None
+        pts = r['points']
+        niveau = 'Or' if pts >= 400 else ('Argent' if pts >= 150 else 'Bronze')
+        if niveau == 'Bronze':
+            prochain, base, cible = 'Argent', 0, 150
+        elif niveau == 'Argent':
+            prochain, base, cible = 'Or', 150, 400
+        else:
+            prochain, base, cible = None, 400, 400
+        return {
+            'tel': r['tel'], 'nom': r['nom'], 'points': pts,
+            'niveau': niveau, 'nb_achats': r['nb_achats'],
+            'total': r['total'], 'cree_le': r['cree_le'],
+            'prochain_niveau': prochain,
+            'reste': max(0, cible - pts) if prochain else 0,
+            'progression': 100 if not prochain
+                           else round(100 * (pts - base) / (cible - base)),
+        }
+
+    def fidelite_moi(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        if moi['type'] != 'client':
+            self._json({'ok': False, 'erreur': 'carte réservée aux clients'}, 404)
+            return
+        with db() as c:
+            carte = self._carte_fidelite(c, moi['tel'])
+            achats = c.execute(
+                'SELECT * FROM achats WHERE tel=? ORDER BY cree_le DESC LIMIT 10',
+                (moi['tel'],)).fetchall()
+        self._json({'ok': True, 'carte': carte, 'achats': [
+            {'id': a['id'], 'montant': a['montant'], 'mode': a['mode'],
+             'produits': a['produits'], 'points': a['points'],
+             'cree_le': a['cree_le']} for a in achats]})
+
+    def fidelite_tel(self, query):
+        moi = self._user()
+        if not moi or moi['type'] != 'staff':
+            self._json({'ok': False, 'erreur': 'réservé au personnel'}, 403)
+            return
+        tel = re.sub(r'[\s.\-]', '', parse_qs(query).get('tel', [''])[0])[:15]
+        if len(tel) < 6:
+            self._json({'ok': False, 'erreur': 'téléphone invalide'})
+            return
+        with db() as c:
+            carte = self._carte_fidelite(c, tel)
+            achats = c.execute(
+                'SELECT * FROM achats WHERE tel=? ORDER BY cree_le DESC LIMIT 20',
+                (tel,)).fetchall()
+        self._json({'ok': True, 'carte': carte, 'achats': [
+            {'id': a['id'], 'montant': a['montant'], 'mode': a['mode'],
+             'produits': a['produits'], 'points': a['points'],
+             'cree_le': a['cree_le']} for a in achats]})
+
+    def fidelite_achat(self):
+        moi = self._user()
+        if not moi or moi['type'] != 'staff':
+            self._json({'ok': False, 'erreur': 'réservé au personnel'}, 403)
+            return
+        d = self._json_corps()
+        tel = re.sub(r'[\s.\-]', '', d.get('tel') or '')[:15]
+        nom = (d.get('nom') or '').strip()[:40]
+        try:
+            montant = round(float(d.get('montant') or 0), 2)
+        except Exception:
+            montant = 0
+        mode = d.get('mode')
+        produits = (d.get('produits') or '').strip()[:200]
+        if len(tel) < 6 or montant <= 0 or mode not in ('sur_place', 'a_emporter'):
+            self._json({'ok': False, 'erreur':
+                        'Téléphone, montant > 0 et mode (sur_place/a_emporter) requis.'})
+            return
+        now = time.time()
+        with db() as c:
+            deja = c.execute('SELECT * FROM fidelite WHERE tel=?', (tel,)).fetchone()
+            pts_achat = int(montant)
+            bonus = 20 if not deja else 0
+            if deja:
+                c.execute(
+                    '''UPDATE fidelite SET
+                       nom = CASE WHEN ? = '' THEN nom ELSE ? END,
+                       points = points + ?, nb_achats = nb_achats + 1,
+                       total = total + ? WHERE tel=?''',
+                    (nom, nom, pts_achat + bonus, montant, tel))
+            else:
+                c.execute('''INSERT INTO fidelite
+                             (tel,nom,points,nb_achats,total,cree_le)
+                             VALUES (?,?,?,?,?,?)''',
+                          (tel, nom or 'Client', pts_achat + bonus, 1, montant, now))
+            c.execute('INSERT INTO achats VALUES (?,?,?,?,?,?,?)',
+                      (uuid.uuid4().hex, tel, montant, mode, produits,
+                       pts_achat + bonus, now))
+            carte = self._carte_fidelite(c, tel)
+            u = c.execute('SELECT id FROM users WHERE tel=?', (tel,)).fetchone()
+            if u:
+                c.execute('UPDATE users SET pts = pts + ? WHERE id=?', (5, u['id']))
+                self._evenement(c, u['id'], 'achat',
+                                {'montant': montant, 'mode': mode,
+                                 'points': pts_achat + bonus})
+        self._json({'ok': True, 'carte': carte, 'points': pts_achat + bonus})
+
+    def pro_moi(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        if moi['type'] != 'partenaire':
+            self._json({'ok': False, 'erreur': 'réservé aux partenaires'}, 403)
+            return
+        with db() as c:
+            r = c.execute('SELECT * FROM pro_loyaute WHERE user_id=?',
+                          (moi['id'],)).fetchone()
+            partenaires = c.execute(
+                "SELECT id, nom FROM users WHERE type='partenaire' AND id != ?"
+                ' ORDER BY nom', (moi['id'],)).fetchall()
+        pts = r['points'] if r else 0
+        self._json({'ok': True, 'pro': {
+            'points': pts,
+            'niveau': 'Or' if pts >= 400 else ('Argent' if pts >= 150 else 'Bronze'),
+            'nb_envois': r['nb_envois'] if r else 0,
+            'nb_acceptes': r['nb_acceptes'] if r else 0,
+        }, 'partenaires': [{'id': p['id'], 'nom': p['nom']}
+                           for p in partenaires]})
+
+    def _envoi_json(self, c, e, sens):
+        autre_id = e['de_id'] if sens == 'recu' else e['vers_id']
+        autre = c.execute('SELECT id, nom, logo, avatar FROM users WHERE id=?',
+                          (autre_id,)).fetchone()
+        return {'id': e['id'], 'de': {'id': e['de_id'], 'nom': None},
+                'vers': {'id': e['vers_id'], 'nom': None},
+                'client_nom': e['client_nom'], 'detail': e['detail'],
+                'quand': e['quand'], 'statut': e['statut'],
+                'cree_le': e['cree_le'], 'reponse_le': e['reponse_le'],
+                'autre': ({'id': autre['id'], 'nom': autre['nom'],
+                           'logo': '/logo/' + autre['logo'] if autre['logo'] else None,
+                           'avatar': '/avatar/' + autre['avatar'] if autre['avatar'] else None}
+                          if autre else None)}
+
+    def envois_recus(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        if moi['type'] not in ('partenaire', 'staff'):
+            self._json({'ok': False, 'erreur': 'réservé'}, 403)
+            return
+        with db() as c:
+            if moi['type'] == 'staff':
+                rows = c.execute('SELECT * FROM envois ORDER BY cree_le DESC LIMIT 100').fetchall()
+            else:
+                rows = c.execute('SELECT * FROM envois WHERE vers_id=? ORDER BY cree_le DESC LIMIT 100',
+                                 (moi['id'],)).fetchall()
+            out = []
+            for e in rows:
+                j = self._envoi_json(c, e, 'recu')
+                a = c.execute('SELECT nom FROM users WHERE id=?', (e['de_id'],)).fetchone()
+                b = c.execute('SELECT nom FROM users WHERE id=?', (e['vers_id'],)).fetchone()
+                j['de']['nom'] = a['nom'] if a else '?'
+                j['vers']['nom'] = b['nom'] if b else '?'
+                out.append(j)
+        self._json({'ok': True, 'envois': out})
+
+    def envois_envoyes(self):
+        moi = self._user()
+        if not moi or moi['type'] != 'partenaire':
+            self._json({'ok': False, 'erreur': 'réservé aux partenaires'}, 403)
+            return
+        with db() as c:
+            rows = c.execute('SELECT * FROM envois WHERE de_id=? ORDER BY cree_le DESC LIMIT 100',
+                             (moi['id'],)).fetchall()
+            out = []
+            for e in rows:
+                j = self._envoi_json(c, e, 'envoye')
+                a = c.execute('SELECT nom FROM users WHERE id=?', (e['de_id'],)).fetchone()
+                b = c.execute('SELECT nom FROM users WHERE id=?', (e['vers_id'],)).fetchone()
+                j['de']['nom'] = a['nom'] if a else '?'
+                j['vers']['nom'] = b['nom'] if b else '?'
+                out.append(j)
+        self._json({'ok': True, 'envois': out})
+
+    def envoi_client(self):
+        moi = self._user()
+        if not moi or moi['type'] != 'partenaire':
+            self._json({'ok': False, 'erreur': 'réservé aux partenaires'}, 403)
+            return
+        d = self._json_corps()
+        vers = d.get('vers_id') or ''
+        client = (d.get('client_nom') or '').strip()[:60]
+        detail = (d.get('detail') or '').strip()[:300]
+        quand = (d.get('quand') or '').strip()[:60]
+        if not client or not detail:
+            self._json({'ok': False, 'erreur': 'Nom du client et description requis.'})
+            return
+        with db() as c:
+            dest = c.execute("SELECT * FROM users WHERE id=? AND type='partenaire'",
+                             (vers,)).fetchone()
+            if not dest or dest['id'] == moi['id']:
+                self._json({'ok': False,
+                            'erreur': 'Destinataire invalide (autre partenaire).'})
+                return
+            now = time.time()
+            eid = uuid.uuid4().hex
+            c.execute('''INSERT INTO envois
+                         (id,de_id,vers_id,client_nom,detail,quand,statut,cree_le)
+                         VALUES (?, ?, ?, ?, ?, ?, 'en_attente', ?)''',
+                      (eid, moi['id'], vers, client, detail, quand, now))
+            self._pro_pts(c, moi['id'], 25, 'nb_envois')
+            # demande de réservation automatique chez le partenaire concerné
+            self._evenement(c, vers, 'reservation',
+                            {'id': eid, 'de': moi['nom'], 'client': client,
+                             'detail': detail, 'quand': quand})
+            # la Trattoria (staff) est informée
+            self._evenement(c, 'trattoria', 'envoi',
+                            {'id': eid, 'de': moi['nom'], 'vers': dest['nom'],
+                             'client': client, 'detail': detail})
+            # message automatique dans la messagerie du destinataire
+            c.execute('INSERT INTO messages VALUES (?,?,?,?,?,0)',
+                      (uuid.uuid4().hex, 'trattoria', vers,
+                       '📨 %s envoie un client : %s — %s'
+                       % (moi['nom'], client, detail), now))
+            self._evenement(c, vers, 'message', {'de': 'La Trattoria'})
+        self._json({'ok': True, 'id': eid, 'points': 25})
+
+    def envoi_repondre(self):
+        moi = self._user()
+        if not moi or moi['type'] not in ('partenaire', 'staff'):
+            self._json({'ok': False, 'erreur': 'réservé'}, 403)
+            return
+        d = self._json_corps()
+        eid = d.get('id') or ''
+        statut = d.get('statut')
+        if statut not in ('accepte', 'refuse'):
+            self._json({'ok': False, 'erreur': 'statut invalide'})
+            return
+        with db() as c:
+            e = c.execute('SELECT * FROM envois WHERE id=?', (eid,)).fetchone()
+            if not e:
+                self._json({'ok': False, 'erreur': 'envoi introuvable'}, 404)
+                return
+            if e['vers_id'] != moi['id'] and moi['type'] != 'staff':
+                self._json({'ok': False, 'erreur': 'réservé au destinataire'}, 403)
+                return
+            if e['statut'] != 'en_attente':
+                self._json({'ok': False, 'erreur': 'déjà répondu'})
+                return
+            now = time.time()
+            c.execute('UPDATE envois SET statut=?, reponse_le=? WHERE id=?',
+                      (statut, now, eid))
+            emetteur = c.execute('SELECT id, nom FROM users WHERE id=?',
+                                 (e['de_id'],)).fetchone()
+            de_nom = emetteur['nom'] if emetteur else '?'
+            if statut == 'accepte':
+                c.execute('''UPDATE pro_loyaute SET points = points + 5,
+                             nb_acceptes = nb_acceptes + 1 WHERE user_id=?''',
+                          (e['de_id'],))
+                self._evenement(c, e['de_id'], 'accepte',
+                                {'id': eid, 'vers': moi['nom'],
+                                 'client': e['client_nom']})
+                self._evenement(c, 'trattoria', 'accepte',
+                                {'id': eid, 'de': de_nom, 'vers': moi['nom'],
+                                 'client': e['client_nom']})
+            else:
+                self._evenement(c, e['de_id'], 'refuse',
+                                {'id': eid, 'vers': moi['nom']})
+                self._evenement(c, 'trattoria', 'refuse',
+                                {'id': eid, 'de': de_nom, 'vers': moi['nom']})
+        self._json({'ok': True})
+
+    def realtime(self):
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'erreur': 'non connecté'}, 401)
+            return
+        with db() as c:
+            rows = c.execute('''SELECT * FROM evenements
+                                WHERE dest_id=? AND lu=0
+                                ORDER BY cree_le DESC LIMIT 20''',
+                             (moi['id'],)).fetchall()
+            evenements = [{'id': r['id'], 'type': r['type'],
+                           'data': json.loads(r['data']),
+                           'cree_le': r['cree_le']} for r in rows]
+            if evenements:
+                c.execute('UPDATE evenements SET lu=1 WHERE dest_id=? AND lu=0',
+                          (moi['id'],))
+            nb_msg = c.execute('''SELECT COUNT(*) n FROM messages
+                                  WHERE vers_id=? AND lu=0''',
+                               (moi['id'],)).fetchone()['n']
+        self._json({'ok': True, 'evenements': evenements,
+                    'nb_messages': nb_msg})
+
 
     def log_message(self, *a):
         pass

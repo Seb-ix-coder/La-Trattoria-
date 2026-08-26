@@ -87,7 +87,8 @@
   <!-- pied / navigation mobile -->
   <nav class="pied">
     <button class="pied-b actif" data-nav="fil">🏠<span>Accueil</span></button>
-    <button class="pied-b" data-nav="messages">✉<span>Messages</span></button>
+    <button class="pied-b" data-nav="fidelite">⭐<span>Fidélité</span></button>
+    <button class="pied-b" data-nav="messages">✉<span>Messages</span><span id="nb-msg-badge" hidden></span></button>
     <button class="pied-b" data-nav="profil">🙂<span>Profil</span></button>
   </nav>
 </div>
@@ -117,6 +118,17 @@
 </div>
 
 <!-- bandeau de charge -->
+<!-- ================= vue fidélité & partenaires ================= -->
+<div id="vue-fidelite" class="vue" hidden>
+  <header class="barre"><button id="fid-retour" class="ic">←</button>
+    <div class="marque"><span class="n" id="fid-titre">Fidélité</span><span class="s" id="fid-sous"></span></div>
+    <span class="flex1"></span></header>
+  <div class="conteneur" id="fid-corps"></div>
+</div>
+
+<!-- bandeau d'alerte (retour optique fort) -->
+<div id="alerte" class="alerte" hidden></div>
+
 <div id="toast" class="toast" hidden></div>
 
 <script src="app.js"></script>
