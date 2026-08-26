@@ -43,3 +43,6 @@ communaute/photos/
 communaute/avatars/
 communaute/logos/
 communaute/__pycache__/
+
+# build intermédiaire
+*.apk.v1
