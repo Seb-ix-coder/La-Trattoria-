@@ -251,6 +251,7 @@ public class MainActivity extends Activity {
             case "objectifs": ecranObjectifs(); break;
             case "invendus": ecranInvendus(); break;
             case "personnel": ecranPersonnel(); break;
+            case "com": ecranCom(); break;
             case "admin": ecranAdmin(); break;
             case "cartes": ecranCartes(); break;
             case "standard": ecranStandard(); break;
@@ -275,6 +276,7 @@ public class MainActivity extends Activity {
         if ("objectifs".equals(ecran)) return "Objectifs";
         if ("invendus".equals(ecran)) return "Invendus — anti-gaspi";
         if ("personnel".equals(ecran)) return "Personnel";
+        if ("com".equals(ecran)) return "Communication — le site en direct";
         if ("ticket".equals(ecran)) return "Ticket";
         if ("cartes".equals(ecran)) return "Cartes — Éditer & produire";
         if ("standard".equals(ecran)) return "1 · La carte standard — catégories";
@@ -293,7 +295,7 @@ public class MainActivity extends Activity {
                 || "salle".equals(ecran) || "ventes".equals(ecran) || "site".equals(ecran)
                 || "admin".equals(ecran) || "stock".equals(ecran) || "compta".equals(ecran)
                 || "objectifs".equals(ecran) || "invendus".equals(ecran)
-                || "personnel".equals(ecran)) {
+                || "personnel".equals(ecran) || "com".equals(ecran)) {
             afficher("menu"); return;
         }
         if ("commande".equals(ecran)) { afficher("salle"); return; }
@@ -343,7 +345,8 @@ public class MainActivity extends Activity {
                 + (enLigne.length() > 0 ? "  ·  " + enLigne.length() + " commande(s) du site" : "")});
         tuiles.put("ventes", new String[]{"📈", "Ventes du jour — CA, tickets, meilleures ventes"});
         tuiles.put("cartes", new String[]{"🧾", "La carte standard, les cartes du moment, l'ardoise, l'impression"});
-        tuiles.put("site", new String[]{"🌐", "Site en ligne — commandes clients (serveur intégré)"});
+        tuiles.put("site", new String[]{"🌐", "Site en ligne — serveur, commandes clients, ouvrir et partager"});
+        tuiles.put("com", new String[]{"📣", "Communication — messages visuels du site (éditer, visualiser)"});
         tuiles.put("objectifs", new String[]{"🎯", "Objectifs — CA et couverts du jour"});
         tuiles.put("stock", new String[]{"📦", "Stock & commandes fournisseurs"});
         tuiles.put("compta", new String[]{"💼", "Comptabilité — TVA, résultat, dépenses"});
@@ -374,6 +377,7 @@ public class MainActivity extends Activity {
             else if ("objectifs".equals(nomT)) nomT = "Objectifs";
             else if ("invendus".equals(nomT)) nomT = "Invendus";
             else if ("personnel".equals(nomT)) nomT = "Personnel";
+            else if ("com".equals(nomT)) nomT = "Communication";
             else if ("admin".equals(nomT)) nomT = "Administration";
             else if ("donnees".equals(nomT)) nomT = "Données";
             tx.addView(texte(nomT, 17, ROUGE_F, true));
@@ -822,6 +826,21 @@ public class MainActivity extends Activity {
                         }
                     }));
         }
+        contenu.addView(espace(10));
+        contenu.addView(bouton("👁️ Ouvrir le site (aperçu intégré)", ROUGE, "#FFFFFF",
+                new View.OnClickListener() {
+                    public void onClick(View v) { ouvrirSiteApercu(); }
+                }));
+        contenu.addView(espace(6));
+        contenu.addView(bouton("🔗 Partager l'adresse aux clients", BEIGE, "#2B2B28",
+                new View.OnClickListener() {
+                    public void onClick(View v) { partagerSite(); }
+                }));
+        contenu.addView(espace(6));
+        contenu.addView(bouton("📣 Éditer les communications du site", BEIGE, "#2B2B28",
+                new View.OnClickListener() {
+                    public void onClick(View v) { afficher("com"); }
+                }));
         contenu.addView(espace(16));
 
         JSONArray enLigne = commandesEnLigne();
@@ -861,6 +880,7 @@ public class MainActivity extends Activity {
         arreterServeur();
         serveur = new ServeurSite(8721, new ServeurSite.Ecouteur() {
             public String catalogueJson() { return jarr(donnees, "carte").toString(); }
+            public String commJson() { return comms().toString(); }
             public String etablissementJson() {
                 try {
                     JSONObject conf = jobj(donnees, "config");
@@ -2133,6 +2153,176 @@ public class MainActivity extends Activity {
                                 .setNegativeButton("Annuler", null).show();
                     }
                 }));
+    }
+
+
+    // ==========================================================
+    //  ÉCRAN : COMMUNICATION (messages visuels du site)
+    // ==========================================================
+    private JSONArray comms() { return jarr(donnees, "comm"); }
+
+    private void ecranCom() {
+        contenu.addView(bouton("← Menu", BEIGE, "#2B2B28", new View.OnClickListener() {
+            public void onClick(View v) { afficher("menu"); }
+        }));
+        contenu.addView(espace(10));
+        contenu.addView(texte("Les communications affichées en haut du site clients : "
+                + "annonces, promotions, nouveautés. Modifiez-les puis visualisez le site.",
+                13.5f, GRIS, false));
+        contenu.addView(espace(10));
+        contenu.addView(bouton("👁️ Visualiser le site (avec les communications)", ROUGE, "#FFFFFF",
+                new View.OnClickListener() {
+                    public void onClick(View v) { ouvrirSiteApercu(); }
+                }));
+        contenu.addView(espace(12));
+
+        JSONArray cs = comms();
+        for (int i = 0; i < cs.length(); i++) {
+            final JSONObject m = cs.optJSONObject(i);
+            if (m == null) continue;
+            String type = s(m, "type", "info");
+            String icone = "promo".equals(type) ? "🔥" : ("nouveaute".equals(type) ? "🆕" : "📣");
+            LinearLayout l = colonne();
+            l.setBackground(fondBord("#FFFFFF", TRAIT, 10, 1));
+            l.setPadding(dp(12), dp(10), dp(12), dp(10));
+            LinearLayout ligne = new LinearLayout(this);
+            ligne.setOrientation(LinearLayout.HORIZONTAL);
+            ligne.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout infos = colonne();
+            infos.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            infos.addView(texte(icone + "  " + s(m, "titre", "—"), 14.5f, "#2B2B28", true));
+            String tx = s(m, "texte", "");
+            if (!tx.isEmpty()) infos.addView(texte(tx, 12.5f, GRIS, false));
+            ligne.addView(infos);
+            Button ed = bouton("✏️", BEIGE, "#2B2B28", new View.OnClickListener() {
+                public void onClick(View v) { editerComm(m); }
+            });
+            ed.setPadding(dp(12), 0, dp(12), 0);
+            ligne.addView(ed);
+            Button suppr = bouton("✕", BEIGE, "#7A1018", new View.OnClickListener() {
+                public void onClick(View v) {
+                    JSONArray garde = new JSONArray();
+                    JSONArray all = comms();
+                    for (int k = 0; k < all.length(); k++)
+                        if (all.opt(k) != m) garde.put(all.opt(k));
+                    try { donnees.put("comm", garde); } catch (Exception ignored) { }
+                    sauver(); afficher("com"); toast("Communication supprimée");
+                }
+            });
+            suppr.setPadding(dp(12), 0, dp(12), 0);
+            ligne.addView(suppr);
+            l.addView(ligne);
+            contenu.addView(l);
+            contenu.addView(espace(6));
+        }
+        if (cs.length() == 0)
+            contenu.addView(texte("Aucune communication — ajoutez une annonce, une promotion "
+                    + "ou une nouveauté.", 13, GRIS, false));
+        contenu.addView(espace(8));
+        contenu.addView(bouton("＋ Ajouter une communication", ARDOISE, JAUNE,
+                new View.OnClickListener() {
+                    public void onClick(View v) { editerComm(null); }
+                }));
+        contenu.addView(espace(12));
+        contenu.addView(texte("Astuce : les communications apparaissent aussi à l'impression ? "
+                + "Non — elles vivent uniquement sur le site clients et dans l'aperçu.",
+                11.5f, GRIS, false));
+    }
+
+    private void editerComm(final JSONObject existant) {
+        ScrollView form = new ScrollView(this);
+        LinearLayout l = colonne();
+        final EditText titre = champ(existant == null ? "" : s(existant, "titre", ""),
+                "Titre (ex. : Soirée moules-frites)");
+        final EditText texte = champ(existant == null ? "" : s(existant, "texte", ""),
+                "Message (facultatif)");
+        final android.widget.Spinner type = new android.widget.Spinner(this);
+        type.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"Annonce (info)", "Promotion", "Nouveauté"}));
+        if (existant != null) {
+            String t = s(existant, "type", "info");
+            type.setSelection("promo".equals(t) ? 1 : ("nouveaute".equals(t) ? 2 : 0));
+        }
+        l.addView(texte("Titre", 12, GRIS, false)); l.addView(titre);
+        l.addView(texte("Message", 12, GRIS, false)); l.addView(texte);
+        l.addView(texte("Type", 12, GRIS, false)); l.addView(type);
+        form.addView(l);
+        new AlertDialog.Builder(this)
+                .setTitle(existant == null ? "Nouvelle communication" : "Modifier la communication")
+                .setView(form)
+                .setPositiveButton("Enregistrer", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) {
+                        try {
+                            String t = titre.getText().toString().trim();
+                            if (t.isEmpty()) { toast("Titre requis"); return; }
+                            JSONObject cible = existant;
+                            if (cible == null) {
+                                cible = new JSONObject();
+                                cible.put("id", "co" + System.currentTimeMillis());
+                                comms().put(cible);
+                            }
+                            cible.put("titre", t);
+                            cible.put("texte", texte.getText().toString().trim());
+                            int pos = type.getSelectedItemPosition();
+                            cible.put("type", pos == 1 ? "promo" : (pos == 2 ? "nouveaute" : "info"));
+                            sauver(); afficher("com"); toast("Communication enregistrée");
+                        } catch (Exception e) { toast("Erreur : " + e.getMessage()); }
+                    }
+                })
+                .setNegativeButton("Annuler", null).show();
+    }
+
+    // ==========================================================
+    //  ACCÈS AU SITE : aperçu WebView intégré + partage
+    // ==========================================================
+    private void ouvrirSiteApercu() {
+        if (serveur == null || !serveur.estActif()) demarrerServeur();
+        final android.app.Dialog dlg =
+                new android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        LinearLayout l = colonne();
+        l.setBackgroundColor(c("#111814"));
+        LinearLayout barre = new LinearLayout(this);
+        barre.setOrientation(LinearLayout.HORIZONTAL);
+        barre.setGravity(Gravity.CENTER_VERTICAL);
+        barre.setBackgroundColor(c(ARDOISE));
+        barre.setPadding(dp(14), dp(8), dp(14), dp(8));
+        TextView t = texte("Aperçu du site clients — " + adresseLocale() + ":8721",
+                12.5f, JAUNE, true);
+        t.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        barre.addView(t);
+        Button partage = bouton("🔗", ARDOISE, JAUNE, new View.OnClickListener() {
+            public void onClick(View v) { partagerSite(); }
+        });
+        partage.setPadding(dp(14), 0, dp(14), 0);
+        barre.addView(partage);
+        Button fermer = bouton("✕", ARDOISE, "#FFFFFF", new View.OnClickListener() {
+            public void onClick(View v) { dlg.dismiss(); }
+        });
+        fermer.setPadding(dp(14), 0, dp(14), 0);
+        barre.addView(fermer);
+        l.addView(barre);
+        WebView wv = new WebView(this);
+        wv.getSettings().setJavaScriptEnabled(true);
+        wv.setWebViewClient(new WebViewClient());
+        wv.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        l.addView(wv);
+        dlg.setContentView(l);
+        wv.loadUrl("http://127.0.0.1:8721/");
+        dlg.show();
+    }
+
+    private void partagerSite() {
+        try {
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_SEND);
+            i.setType("text/plain");
+            i.putExtra(android.content.Intent.EXTRA_SUBJECT, "La Trattoria — commandez en ligne");
+            i.putExtra(android.content.Intent.EXTRA_TEXT,
+                    "Commandez chez La Trattoria (fait maison, pâte maturée 48 h) : "
+                            + "http://" + adresseLocale() + ":8721/"
+                            + " — sur le Wi-Fi du restaurant.");
+            startActivity(android.content.Intent.createChooser(i, "Partager l'adresse du site"));
+        } catch (Exception e) { toast("Partage impossible : " + e.getMessage()); }
     }
 
 

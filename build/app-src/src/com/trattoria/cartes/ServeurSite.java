@@ -24,6 +24,7 @@ public class ServeurSite implements Runnable {
     public interface Ecouteur {
         String catalogueJson();               // JSON de la carte
         String etablissementJson();           // {nom, adresse, telephone, promesses}
+        String commJson();                    // communications du restaurant
         void commandeRecue(JSONObject commande);
         String journal();                     // dernières lignes (debug)
     }
@@ -126,7 +127,7 @@ public class ServeurSite implements Runnable {
     }
 
     // ---------- page clients ----------
-    private String page() {
+    public String page() {
         StringBuilder h = new StringBuilder();
         h.append("<!DOCTYPE html><html lang='fr'><head><meta charset='utf-8'>")
                 .append("<meta name='viewport' content='width=device-width, initial-scale=1'>")
@@ -146,6 +147,11 @@ public class ServeurSite implements Runnable {
                 .append(".envoyer{width:100%;background:#A51822;color:#fff;font-weight:700;font-size:17px;padding:14px;margin-top:14px}")
                 .append(".q{min-width:36px;background:#F4F1EA}")
                 .append(".ok{background:#DFF0D8;border:1px solid #4a8a3a;border-radius:10px;padding:12px;margin-top:12px;display:none}")
+                .append(".com{background:#FDF3D7;border:1.5px dashed #E5C55B;border-radius:12px;padding:10px 12px;margin:0 0 14px}")
+                .append(".com-item{padding:6px 0;border-bottom:1px dotted #E5C55B}")
+                .append(".com-item:last-child{border-bottom:0}")
+                .append(".com-t{font-weight:700;color:#7A1018;font-size:15px}")
+                .append(".com-x{font-size:13px;color:#2B2B28;margin-top:2px}")
                 .append("footer{text-align:center;color:#6E6A63;font-size:12px;padding:18px}")
                 .append("</style></head><body><header><h1>La Trattoria</h1><p>Fait maison — pâte maturée 48 h</p></header><main>");
         try {
@@ -156,6 +162,23 @@ public class ServeurSite implements Runnable {
                 for (int i = 0; i < badges.length(); i++)
                     h.append(i > 0 ? " · " : "").append(badges.getString(i));
                 h.append("</p>");
+            }
+        } catch (Exception ignored) { }
+        try {
+            JSONArray comms = new JSONArray(ecouteur.commJson());
+            if (comms.length() > 0) {
+                h.append("<div class='com'>");
+                for (int i = 0; i < comms.length(); i++) {
+                    org.json.JSONObject m = comms.getJSONObject(i);
+                    String type = m.optString("type", "info");
+                    String icone = "promo".equals(type) ? "🔥" : ("nouveaute".equals(type) ? "🆕" : "📣");
+                    h.append("<div class='com-item'><div class='com-t'>").append(icone).append(" ")
+                            .append(ech(m.optString("titre", ""))).append("</div>");
+                    String tx = m.optString("texte", "");
+                    if (!tx.isEmpty()) h.append("<div class='com-x'>").append(ech(tx)).append("</div>");
+                    h.append("</div>");
+                }
+                h.append("</div>");
             }
         } catch (Exception ignored) { }
         h.append("<h2>La carte</h2>");
