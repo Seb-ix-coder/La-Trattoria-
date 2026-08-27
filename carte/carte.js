@@ -58,6 +58,7 @@
   var CF = null;              // objet configuration (voir configNormalisee)
   var PHOTO_ARDOISE_BROUILLON = null; // data-URL « photo d'ardoise » de la fiche
   var LIGNE_A_EDITER = null;  // id de ligne libre à éditer après le prochain rendu
+  var CPT_CRAIE = 0;          // alternance des couleurs de craie
 
   // ==========================================================
   //  Utilitaires
@@ -343,7 +344,8 @@
         titre: (d.pates && d.pates.titre) || 'Pâte à pizza maison',
         sous: (d.pates && d.pates.sous) || 'Fraîche, maturée 48 heures'
       },
-      fams: fams
+      fams: fams,
+      extras: extrasDefaut()
     };
   }
 
@@ -360,7 +362,8 @@
         titre: String((c.pates && c.pates.titre) || '').trim().slice(0, 60) || def.pates.titre,
         sous: String((c.pates && c.pates.sous) || '').trim().slice(0, 120) || def.pates.sous
       },
-      fams: {}
+      fams: {},
+      extras: {}
     };
     famsCatalogue().forEach(function (f) {
       var src = (c.fams && c.fams[f]) || def.fams[f] || {};
@@ -390,6 +393,10 @@
         ordre: ordre,
         libres: libres
       };
+    });
+    EXTRA_ORDRE.forEach(function (cle) {
+      var confStockee = (c.extras && typeof c.extras === 'object') ? c.extras[cle] : null;
+      out.extras[cle] = confExtraNormalisee(confStockee, cle, def.extras[cle]);
     });
     return out;
   }
@@ -437,56 +444,24 @@
       echap(cfg.pates.sous) + '</span></div>';
     h += '</header>';
 
-    var ci = 0;
+    CPT_CRAIE = 0;
+    var dansExtras = idsDansExtras();
     famsCatalogue().forEach(function (fam) {
       var conf = CF.fams[fam];
       if (!conf) return;
       var items = itemsFamille(fam).filter(function (it) {
-        return it.kind === 'l' || it.p.actif;
+        if (it.kind === 'p') {
+          if (!it.p.actif) return false;
+          if (dansExtras[it.p.id]) return false; // déjà dans une carte dédiée
+        }
+        return true;
       });
       if (!items.length) return;
-      var craie = CRAIE_CLASSES[ci % CRAIE_CLASSES.length];
-      ci++;
-      // première photo de la catégorie (photo d'ardoise, sinon photo)
-      var photo = null;
-      items.some(function (it) {
-        if (it.kind === 'p') { photo = photoArdoiseDe(it.p); return !!photo; }
-        return false;
-      });
-      h += '<section class="catArdoise' + (photo ? ' catAvecPhoto' : '') + '">' +
-        '<h2 class="' + craie + '">' + echap(conf.titre) + '</h2>' +
-        (conf.sous ? '<div class="sousCat">' + echap(conf.sous) + '</div>' : '');
-      if (photo) {
-        h += '<figure class="photoCraie"><img src="' + photo +
-          '" alt="Photo — ' + echap(conf.titre) + '" loading="lazy"></figure>';
-      }
-      h += '<ul class="itemsArdoise' + (items.length > 9 ? ' tailleModeree' : '') + '">';
-      items.forEach(function (it) {
-        if (it.kind === 'l') {
-          h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
-            echap(it.l.nom) + '</span><span class="pts"></span>' +
-            '<span class="prix craie--jaune">' + (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></div>' +
-            (it.l.sous ? '<span class="desc">' + echap(it.l.sous) + '</span>' : '') +
-            (it.l.desc ? '<span class="desc">' + echap(it.l.desc) + '</span>' : '') +
-            '</li>';
-        } else {
-          var q = it.p;
-          var sous = q.sous || q.desc || '';
-          var formats = (q.formats && q.formats.length)
-            ? q.formats.map(function (f) {
-                return echap(f.nom) + ' <b class="craie--jaune">' + eur(f.pv) + '</b>';
-              }).join(' · ')
-            : null;
-          h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
-            echap(q.nom) + '</span><span class="pts"></span>' +
-            '<span class="prix craie--jaune">' + eur(prixAffiche(q)) + '</span></div>' +
-            (sous ? '<span class="desc">' + echap(sous) + '</span>' : '') +
-            (formats ? '<span class="desc">' + formats + '</span>' : '') +
-            '</li>';
-        }
-      });
-      h += '</ul></section>';
+      h += htmlCategorieArdoise(conf.titre, conf.sous, items);
     });
+
+    // cartes additionnelles : formules, vins, glaces, bières
+    h += htmlArdoiseExtras(cfg);
 
     // bloc QR : accès direct au site
     h += '<div class="qrBlocArdoise">' +
@@ -563,10 +538,13 @@
     var hote = $('#liste-cf');
     if (!hote || !CF) return;
     var h = '';
+    var dansEx = idsDansExtras();
     famsCatalogue().forEach(function (fam) {
       var conf = CF.fams[fam];
       if (!conf) return;
-      var items = itemsFamille(fam);
+      var items = itemsFamille(fam).filter(function (it) {
+        return it.kind === 'l' || !dansEx[it.p.id];
+      });
       var nPhotos = items.filter(function (it) {
         return it.kind === 'p' && photoArdoiseDe(it.p);
       }).length;
@@ -632,6 +610,7 @@
       h += '</ol></div>';
     });
     hote.innerHTML = h;
+    dessinerCFExtras();
     if (LIGNE_A_EDITER) {
       var liE = hote.querySelector('li[data-cf-id="' + LIGNE_A_EDITER + '"]');
       var cardE = liE && liE.closest('.cf-fam');
@@ -647,8 +626,7 @@
   }
 
   function enregistrerTitreFamille(card) {
-    var fam = card.dataset.fam;
-    var conf = CF.fams[fam];
+    var conf = confDeCarte(card);
     if (!conf) return;
     conf.titre = String($('[data-cf-champ="titre"]', card).value || '').trim().slice(0, 60) || fam;
     conf.sous = String($('[data-cf-champ="sous"]', card).value || '').trim().slice(0, 120);
@@ -658,7 +636,7 @@
   }
 
   function deplacerLigneCF(card, id, delta) {
-    var conf = CF.fams[card.dataset.fam];
+    var conf = confDeCarte(card);
     if (!conf) return;
     var ordre = conf.ordre;
     var i = ordre.indexOf(id);
@@ -670,7 +648,7 @@
   }
 
   function ajouterLigneLibre(card) {
-    var conf = CF.fams[card.dataset.fam];
+    var conf = confDeCarte(card);
     if (!conf) return;
     if (conf.libres.length >= 30) { toast('Maximum 30 lignes libres par catégorie'); return; }
     var l = {
@@ -685,7 +663,7 @@
   }
 
   function editerLigneLibre(card, id) {
-    var conf = CF.fams[card.dataset.fam];
+    var conf = confDeCarte(card);
     var l = conf && conf.libres.filter(function (x) { return x.id === id; })[0];
     var li = card.querySelector('li[data-cf-id="' + id + '"]');
     if (!l || !li) return;
@@ -703,7 +681,7 @@
   }
 
   function enregistrerLigneLibre(card, id) {
-    var conf = CF.fams[card.dataset.fam];
+    var conf = confDeCarte(card);
     var l = conf && conf.libres.filter(function (x) { return x.id === id; })[0];
     var li = card.querySelector('li[data-cf-id="' + id + '"]');
     if (!l || !li) return;
@@ -719,7 +697,7 @@
   }
 
   function supprimerLigneLibre(card, id) {
-    var conf = CF.fams[card.dataset.fam];
+    var conf = confDeCarte(card);
     if (!conf) return;
     var l = conf.libres.filter(function (x) { return x.id === id; })[0];
     if (!l) return;
@@ -744,6 +722,7 @@
     if (a === 'titre-annule') { montrerEditionTitre(card, false); return true; }
     if (a === 'titre-ok') { enregistrerTitreFamille(card); return true; }
     if (a === 'ligne') { ajouterLigneLibre(card); return true; }
+    if (a === 'produit' && card.dataset.ex) { ouvrirCueilletteExtra(card.dataset.ex); return true; }
     if (a === 'monter' && id) { deplacerLigneCF(card, id, -1); return true; }
     if (a === 'descendre' && id) { deplacerLigneCF(card, id, +1); return true; }
     if (a === 'photo' && id) { CIBLE_PHOTO_ARDOISE = id; $('#champ-photo-ardoise').click(); return true; }
@@ -795,6 +774,264 @@
     };
     lecteur.onerror = function () { toast('Lecture impossible'); CIBLE_PHOTO_ARDOISE = null; };
     lecteur.readAsDataURL(fichier);
+  }
+
+
+  // ==========================================================
+  //  Cartes additionnelles de l'ardoise : Formules, Vins,
+  //  Glaces, Bières (produits du catalogue + lignes libres)
+  // ==========================================================
+
+  var EXTRA_DEFS = {
+    formules: { titre: 'Nos formules',        sous: 'Menus et formules du moment' },
+    vins:     { titre: 'La carte des vins',   sous: 'Au pichet et à la bouteille' },
+    glaces:   { titre: 'La carte des glaces', sous: 'Glaces et sorbets maison' },
+    bieres:   { titre: 'La carte des bières', sous: 'Pression et bouteilles' }
+  };
+  var EXTRA_ORDRE = ['formules', 'vins', 'glaces', 'bieres'];
+
+  // Produits du catalogue placés automatiquement dans une carte.
+  function extrasSeed(cle) {
+    return CARTE.filter(function (p) {
+      if (cle === 'formules') return p.type === 'formule';
+      if (cle === 'bieres') return norm(p.cat).indexOf('bier') >= 0;
+      if (cle === 'vins') {
+        return /vin|cave/i.test(String(p.cat || '')) ||
+               /chianti|pinot|prosecco|ros[eé]/i.test(String(p.nom || ''));
+      }
+      return false;
+    }).map(function (p) { return p.id; });
+  }
+
+  function ligneLibreNormalisee(l, i) {
+    if (!l || typeof l !== 'object') return null;
+    var nom = String(l.nom || '').trim().slice(0, 60);
+    if (!nom) return null;
+    return {
+      id: String(l.id || ('l' + Date.now().toString(36) + i)).slice(0, 24),
+      nom: nom,
+      sous: String(l.sous || '').trim().slice(0, 90),
+      desc: String(l.desc || '').trim().slice(0, 200),
+      prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0)
+    };
+  }
+
+  function extrasDefaut() {
+    var d = window.TRATTORIA_CONFIG_DEFAUT || {};
+    var out = {};
+    EXTRA_ORDRE.forEach(function (cle) {
+      var def = (d.extras && d.extras[cle]) || EXTRA_DEFS[cle];
+      out[cle] = {
+        titre: String(def.titre || '').trim() || EXTRA_DEFS[cle].titre,
+        sous: String(def.sous != null ? def.sous : EXTRA_DEFS[cle].sous).trim().slice(0, 120),
+        ordre: extrasSeed(cle),
+        libres: (Object.prototype.toString.call(def.libres) === '[object Array]')
+          ? def.libres.map(ligneLibreNormalisee).filter(Boolean)
+          : []
+      };
+      // les lignes libres par défaut occupent leur place dans l'ordre
+      out[cle].libres.forEach(function (l) { out[cle].ordre.push(l.id); });
+    });
+    return out;
+  }
+
+  function confExtraNormalisee(src, cle, defaut) {
+    var conf = {
+      titre: String((src && src.titre) || '').trim().slice(0, 60) || defaut.titre,
+      sous: String((src && src.sous) || '').trim().slice(0, 120),
+      ordre: [],
+      libres: []
+    };
+    conf.libres = ((src && Object.prototype.toString.call(src.libres) === '[object Array]')
+      ? src.libres : defaut.libres).slice(0, 40).map(ligneLibreNormalisee).filter(Boolean);
+    var idsValides = {};
+    CARTE.forEach(function (p) { idsValides[p.id] = true; });
+    conf.libres.forEach(function (l) { idsValides[l.id] = true; });
+    var ordre = ((src && Object.prototype.toString.call(src.ordre) === '[object Array]')
+      ? src.ordre : defaut.ordre);
+    ordre.forEach(function (id) {
+      if (idsValides[id] && conf.ordre.indexOf(id) < 0) conf.ordre.push(String(id));
+    });
+    // produit du catalogue jamais classé : il rejoint la fin de sa carte
+    if (!src) extrasSeed(cle).forEach(function (id) {
+      if (conf.ordre.indexOf(id) < 0) conf.ordre.push(id);
+    });
+    // les lignes libres sans position rejoignent la fin
+    conf.libres.forEach(function (l) {
+      if (conf.ordre.indexOf(l.id) < 0) conf.ordre.push(l.id);
+    });
+    return conf;
+  }
+
+  function itemsExtra(cle) {
+    var conf = CF.extras[cle];
+    if (!conf) return [];
+    var libres = {};
+    conf.libres.forEach(function (l) { libres[l.id] = l; });
+    return (conf.ordre || []).map(function (id) {
+      if (libres[id]) return { kind: 'l', l: libres[id] };
+      var p = parId(id);
+      return p ? { kind: 'p', p: p } : null;
+    }).filter(Boolean);
+  }
+
+  // Produits appartenant à une carte additionnelle : ils sortent
+  // de leur catégorie d'origine sur l'ardoise.
+  function idsDansExtras() {
+    var ids = {};
+    if (CF && CF.extras) {
+      Object.keys(CF.extras).forEach(function (cle) {
+        CF.extras[cle].ordre.forEach(function (id) { ids[id] = true; });
+      });
+    }
+    return ids;
+  }
+
+  function confDeCarte(card) {
+    if (!card) return null;
+    if (card.dataset.ex && CF.extras[card.dataset.ex]) return CF.extras[card.dataset.ex];
+    if (card.dataset.fam && CF.fams[card.dataset.fam]) return CF.fams[card.dataset.fam];
+    return null;
+  }
+
+  // ---------- éditeur : cartes additionnelles ----------
+  function libelleExtra(cle) {
+    return { formules: 'formule', vins: 'vin', glaces: 'glace', bieres: 'bière' }[cle] || 'ligne';
+  }
+
+  function dessinerCFExtras() {
+    var hote = $('#liste-cf');
+    if (!hote || !CF) return;
+    EXTRA_ORDRE.forEach(function (cle) {
+      var conf = CF.extras[cle];
+      if (!conf) return;
+      var items = itemsExtra(cle);
+      var carte = document.createElement('div');
+      carte.className = 'cf-fam cf-extras carte-bloc';
+      carte.setAttribute('data-ex', cle);
+      var html = '<div class="cf-tete">' +
+        '<div><b>🧾 ' + echap(conf.titre) + '</b>' +
+        '<span class="cf-meta">carte dédiée · ' + items.length + ' ligne' +
+        (items.length > 1 ? 's' : '') +
+        ' · ' + echap(cle) + '</span></div>' +
+        '<span class="cf-actions">' +
+          '<button type="button" class="btn btn-s btn-mini" data-cf="titre">✏️ Titre &amp; sous-titre</button>' +
+          '<button type="button" class="btn btn-s btn-mini" data-cf="produit">＋ Produit du catalogue</button>' +
+          '<button type="button" class="btn btn-s btn-mini" data-cf="ligne">+ ' +
+            (cle === 'formules' ? 'Nouvelle formule' : 'Ligne libre') + '</button>' +
+        '</span>' +
+        '</div>' +
+        '<div class="cf-edition-titre" hidden>' +
+          '<label class="champ"><span>Titre affiché</span>' +
+          '<input type="text" data-cf-champ="titre" maxlength="60" value="' + echap(conf.titre) + '"></label>' +
+          '<label class="champ"><span>Sous-titre de la carte</span>' +
+          '<input type="text" data-cf-champ="sous" maxlength="120" value="' + echap(conf.sous) + '"></label>' +
+          '<div class="cf-rangee"><button type="button" class="btn btn-p btn-mini" data-cf="titre-ok">Enregistrer</button>' +
+          '<button type="button" class="btn btn-s btn-mini" data-cf="titre-annule">Annuler</button></div>' +
+        '</div>' +
+        '<ol class="cf-lignes">';
+      items.forEach(function (it, i) {
+        var premier = i === 0, dernier = i === items.length - 1;
+        if (it.kind === 'p') {
+          var p = it.p;
+          html += '<li class="cf-ligne' + (p.actif ? '' : ' cf-inactif') + '" data-cf-id="' + echap(p.id) + '">' +
+            '<span class="cf-ordre">' +
+              '<button type="button" class="btn btn-mini" data-cf="monter"' + (premier ? ' disabled' : '') + '>▲</button>' +
+              '<button type="button" class="btn btn-mini" data-cf="descendre"' + (dernier ? ' disabled' : '') + '>▼</button>' +
+            '</span>' +
+            '<span class="cf-nom">' + echap(p.nom) +
+              '<small>' + echap(p.fam) + (p.cat ? ' · ' + echap(p.cat) : '') + '</small>' +
+              (!p.actif ? '<small class="cf-off">masqué de la carte</small>' : '') +
+            '</span>' +
+            '<span class="cf-prix">' + eur(prixAffiche(p)) + '</span>' +
+            '<span class="cf-actions">' +
+              '<button type="button" class="btn btn-mini" data-cf="editer" title="Modifier le produit">✏️</button>' +
+            '</span></li>';
+        } else {
+          var l = it.l;
+          html += '<li class="cf-ligne cf-libre" data-cf-id="' + echap(l.id) + '">' +
+            '<span class="cf-ordre">' +
+              '<button type="button" class="btn btn-mini" data-cf="monter"' + (premier ? ' disabled' : '') + '>▲</button>' +
+              '<button type="button" class="btn btn-mini" data-cf="descendre"' + (dernier ? ' disabled' : '') + '>▼</button>' +
+            '</span>' +
+            '<span class="cf-nom">' + echap(l.nom) +
+              '<small class="cf-badge">' + echap(libelleExtra(cle)) + '</small>' +
+              (l.sous ? '<small>' + echap(l.sous) + '</small>' : '') +
+            '</span>' +
+            '<span class="cf-prix">' + (l.prix > 0 ? eur(l.prix) : '—') + '</span>' +
+            '<span class="cf-actions">' +
+              '<button type="button" class="btn btn-mini" data-cf="libre-editer">✏️</button>' +
+              '<button type="button" class="btn btn-mini" data-cf="libre-supprimer">✕</button>' +
+            '</span></li>';
+        }
+      });
+      html += '</ol>';
+      carte.innerHTML = html;
+      hote.appendChild(carte);
+    });
+  }
+
+  // ---------- rendu ardoise : les cartes additionnelles ----------
+  function htmlArdoiseExtras(cfg) {
+    var dansExtras = idsDansExtras();
+    var h = '';
+    EXTRA_ORDRE.forEach(function (cle) {
+      var conf = CF.extras[cle];
+      if (!conf) return;
+      var items = itemsExtra(cle).filter(function (it) {
+        return it.kind === 'l' || it.p.actif;
+      });
+      if (!items.length) return;
+      h += htmlCategorieArdoise(conf.titre, conf.sous, items, 'carte-' + cle);
+    });
+    return h;
+  }
+
+  // Rendu d'un bloc catégorie (titre + sous-titre + items).
+  // Couleur de craie optionnelle (auto si null).
+  function htmlCategorieArdoise(titre, sous, items, variante) {
+    var craie = CRAIE_CLASSES[CPT_CRAIE % CRAIE_CLASSES.length];
+    CPT_CRAIE++;
+    var photo = null;
+    items.some(function (it) {
+      if (it.kind === 'p') { photo = photoArdoiseDe(it.p); return !!photo; }
+      return false;
+    });
+    var h = '<section class="catArdoise' + (photo ? ' catAvecPhoto' : '') +
+      (variante ? ' ' + variante : '') + '">' +
+      '<h2 class="' + craie + '">' + echap(titre) + '</h2>' +
+      (sous ? '<div class="sousCat">' + echap(sous) + '</div>' : '');
+    if (photo) {
+      h += '<figure class="photoCraie"><img src="' + photo +
+        '" alt="Photo — ' + echap(titre) + '" loading="lazy"></figure>';
+    }
+    h += '<ul class="itemsArdoise' + (items.length > 9 ? ' tailleModeree' : '') + '">';
+    items.forEach(function (it) {
+      if (it.kind === 'l') {
+        h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
+          echap(it.l.nom) + '</span><span class="pts"></span>' +
+          '<span class="prix craie--jaune">' + (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></div>' +
+          (it.l.sous ? '<span class="desc">' + echap(it.l.sous) + '</span>' : '') +
+          (it.l.desc ? '<span class="desc">' + echap(it.l.desc) + '</span>' : '') +
+          '</li>';
+      } else {
+        var q = it.p;
+        var sousP = q.sous || q.desc || '';
+        var formats = (q.formats && q.formats.length)
+          ? q.formats.map(function (f) {
+              return echap(f.nom) + ' <b class="craie--jaune">' + eur(f.pv) + '</b>';
+            }).join(' · ')
+          : null;
+        h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
+          echap(q.nom) + '</span><span class="pts"></span>' +
+          '<span class="prix craie--jaune">' + eur(prixAffiche(q)) + '</span></div>' +
+          (sousP ? '<span class="desc">' + echap(sousP) + '</span>' : '') +
+          (formats ? '<span class="desc">' + formats + '</span>' : '') +
+          '</li>';
+      }
+    });
+    h += '</ul></section>';
+    return h;
   }
 
 
@@ -1193,6 +1430,21 @@
   }
 
   // -------- composition depuis le catalogue (cueillette) --------
+  // mode « carte dédiée » : CUEILLETTE.cle = 'extras:<cle>'
+  function ouvrirCueilletteExtra(cle) {
+    var conf = CF.extras[cle];
+    if (!conf) return;
+    CUEILLETTE = {
+      cle: 'extras:' + cle,
+      choisis: conf.ordre.filter(function (id) { return !!parId(id); })
+    };
+    $('#cueillette-titre').textContent = conf.titre + ' — produits du catalogue';
+    $('#cueillette-recherche').value = '';
+    dessinerCueillette();
+    $('#cueillette').hidden = false;
+    $('#cueillette-recherche').focus();
+  }
+
   function ouvrirCueillette(cle) {
     CUEILLETTE = { cle: cle, choisis: ARDOISES[cle].selection.slice() };
     $('#cueillette-titre').textContent = ARDOISES[cle].titre;
@@ -1209,8 +1461,10 @@
 
   function dessinerCueillette() {
     if (!CUEILLETTE) return;
+    var modeExtra = CUEILLETTE.cle.indexOf('extras:') === 0;
     var q = norm($('#cueillette-recherche').value);
-    var candidats = candidatsArdoise(CUEILLETTE.cle).filter(function (p) {
+    var candidats = (modeExtra ? CARTE.filter(function (p) { return p.actif; })
+                               : candidatsArdoise(CUEILLETTE.cle)).filter(function (p) {
       return !q || norm(p.nom + ' ' + p.fam + ' ' + p.cat).indexOf(q) >= 0;
     });
     $('#cueillette-liste').innerHTML = candidats.map(function (p) {
@@ -1225,6 +1479,23 @@
 
   function validerCueillette() {
     if (!CUEILLETTE) return;
+    if (CUEILLETTE.cle.indexOf('extras:') === 0) {
+      var cleX = CUEILLETTE.cle.slice(7);
+      var confX = CF.extras[cleX];
+      var libresX = confX.libres.map(function (l) { return l.id; });
+      var gardes = confX.ordre.filter(function (id) {
+        return libresX.indexOf(id) >= 0 || CUEILLETTE.choisis.indexOf(id) >= 0;
+      });
+      CUEILLETTE.choisis.forEach(function (id) {
+        if (gardes.indexOf(id) < 0) gardes.push(id);
+      });
+      confX.ordre = gardes;
+      fermerCueillette();
+      sauver();
+      dessinerCF();
+      toast(confX.titre + ' : ' + gardes.length + ' ligne(s)');
+      return;
+    }
     var a = ARDOISES[CUEILLETTE.cle];
     // l'ordre existant est conservé, les nouveaux rejoignent la fin
     a.selection = a.selection.filter(function (id) {
@@ -2068,7 +2339,11 @@
     ardoises: function () { return ARDOISES; },
     config: function () { return CF; },
     htmlArdoise: htmlArdoise,
+    htmlArdoiseExtras: htmlArdoiseExtras,
     itemsFamille: itemsFamille,
+    itemsExtra: itemsExtra,
+    extrasSeed: extrasSeed,
+    ouvrirCueilletteExtra: ouvrirCueilletteExtra,
     marge: margeAuto,
     coef: coef,
     taux: tauxMarge,

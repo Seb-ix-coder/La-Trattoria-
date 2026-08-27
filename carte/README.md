@@ -140,6 +140,13 @@ L'onglet **« Ardoise & QR »** édite la carte principale affichée en ardoise
 - **en-tête** : logo officiel + « tout est fait maison / tout est frais /
   bio dès que possible » (modifiables) + bandeau **pâte à pizza fraîche
   maturée 48 h** ;
+- **cartes additionnelles** : **Nos formules** (créez vos formules — Menu
+  enfant… — produits formules du catalogue + lignes libres), **La carte des
+  vins** (pichets + cave, semées automatiquement), **La carte des glaces**
+  (libre, exemples fournis) et **La carte des bières** (semée
+  automatiquement) ; chaque carte : titre, sous-titre, réordonnancement,
+  lignes libres, « ＋ Produit du catalogue » ; un produit placé dans une
+  carte dédiée sort de sa catégorie d'origine ;
 - **QR code du site** affiché sur l'ardoise (adresse modifiable, QR
   régénéré et vérifié — niveau H) ;
 - **aperçu plein écran + impression/PDF** (l'impression n'imprime que

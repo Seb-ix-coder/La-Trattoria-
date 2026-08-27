@@ -39,5 +39,41 @@ window.TRATTORIA_CONFIG_DEFAUT = {
     'Desserts': { titre: 'Nos desserts maison', sous: 'Tiramisus et douceurs du jour' },
     'Apéritif': { titre: 'Apéritifs & cocktails', sous: 'À siroter entre amis' },
     'Boissons': { titre: 'Boissons & cafés',  sous: 'Avec ou sans alcool' }
+  },
+
+  /* Cartes additionnelles de l'ardoise (rendues après les
+     catégories du catalogue) :
+       formules — formules et menus (Menu enfant…), créables ;
+       vins / bieres — produits du catalogue placés
+         automatiquement (Vins au pichet, Notre cave, Bières) ;
+       glaces — carte libre (exemples à éditer/supprimer).
+     Chaque carte : titre, sous-titre, lignes réordonnables,
+     lignes libres, produits choisis dans le catalogue. */
+  extras: {
+    formules: {
+      titre: 'Nos formules',
+      sous: 'Menus et formules du moment',
+      libres: [
+        { nom: 'Menu enfant', sous: 'Plat ou pâtes + dessert + boisson', prix: 9.5 }
+      ]
+    },
+    vins: {
+      titre: 'La carte des vins',
+      sous: 'Au pichet et à la bouteille'
+    },
+    glaces: {
+      titre: 'La carte des glaces',
+      sous: 'Glaces et sorbets maison',
+      libres: [
+        { nom: 'Une boule', prix: 2 },
+        { nom: 'Deux boules', prix: 3.5 },
+        { nom: 'Coupe colonel', sous: 'Sorbet citron, vodka glacé', prix: 6 },
+        { nom: 'Café ou dessert glacé', sous: 'Selon la carte du jour', prix: 5.5 }
+      ]
+    },
+    bieres: {
+      titre: 'La carte des bières',
+      sous: 'Pression et bouteilles'
+    }
   }
 };
