@@ -46,7 +46,14 @@
 
   <!-- ================= écran : la carte ================= -->
   <section id="ecran-carte">
-    <div class="outils">
+    <nav class="carte-vues" id="carte-vues" aria-label="Cartes éditables">
+      <button type="button" class="cv on" data-cv="standard" aria-pressed="true">🍽️ Carte standard</button>
+      <button type="button" class="cv" data-cv="formules" aria-pressed="false">🧾 Formules</button>
+      <button type="button" class="cv" data-cv="vins" aria-pressed="false">🍷 Vins</button>
+      <button type="button" class="cv" data-cv="glaces" aria-pressed="false">🍨 Glaces</button>
+      <button type="button" class="cv" data-cv="bieres" aria-pressed="false">🍺 Bières</button>
+    </nav>
+    <div class="outils" id="outils-standard">
       <input type="search" id="recherche" placeholder="Rechercher un produit…"
              aria-label="Rechercher un produit">
       <div class="filtres" role="group" aria-label="Filtrer par type">

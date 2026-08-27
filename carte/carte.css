@@ -324,3 +324,66 @@ table .type-mini{display:inline}
   .page-ardoise{border:0;min-height:0;page-break-after:always;padding:10mm 6mm}
   .page-ardoise:last-child{page-break-after:auto}
 }
+
+/* ============================================================
+   Onglet « La carte » : vues (standard + cartes dédiées) et
+   édition en place des titres d'ardoise / lignes libres
+   ============================================================ */
+.carte-vues {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin: 0 0 12px; padding: 6px;
+  background: var(--beige); border: 1px solid var(--trait);
+  border-radius: 12px;
+}
+.carte-vues .cv {
+  border: 1.5px solid transparent; background: transparent;
+  border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 14px;
+  cursor: pointer; color: var(--gris); min-height: 40px;
+  -webkit-tap-highlight-color: transparent;
+}
+.carte-vues .cv.on {
+  background: var(--creme); border-color: var(--rouge);
+  color: var(--rougef); font-weight: 700; box-shadow: var(--ombre);
+}
+.carte-vues .cv:active { transform: scale(.97); }
+
+.famille .fam-tete {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.famille .fam-tete h2 { margin: 0; }
+.fam-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.fam-ardoise {
+  font-size: 13px; color: var(--gris); margin: 6px 0 0;
+  background: var(--beige); border-radius: 8px; padding: 6px 10px;
+}
+.fam-ardoise b { color: var(--rougef); }
+.famille .fam-edit {
+  margin-top: 8px; padding: 10px; border: 1px dashed var(--trait);
+  border-radius: 10px; display: grid; gap: 8px; background: var(--creme);
+}
+.famille .fam-edit .cf-rangee { display: flex; gap: 8px; }
+.fam-libres {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 10px 0 2px;
+}
+.fam-libres .t { font-size: 12.5px; color: var(--gris); }
+.lf-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--creme); border: 1px solid var(--trait);
+  border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13.5px;
+  box-shadow: var(--ombre);
+}
+.lf-chip .btn-mini { padding: 2px 8px; }
+.lf-form {
+  display: grid; gap: 6px; flex: 1 1 100%;
+  background: var(--creme); border: 1px dashed var(--trait);
+  border-radius: 10px; padding: 10px;
+}
+.lf-form input {
+  width: 100%; box-sizing: border-box; border: 1px solid var(--trait);
+  border-radius: 8px; padding: 8px 10px; font: inherit; background: #fff;
+}
+.note-vue {
+  font-size: 13px; color: var(--gris); margin: 0 0 10px;
+}

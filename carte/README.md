@@ -127,7 +127,14 @@ python3 serveur_carte.py        # port 8080 par défaut
 
 ## Ardoise & QR (carte principale éditable)
 
-L'onglet **« Ardoise & QR »** édite la carte principale affichée en ardoise
+Tout s'édite **depuis l'onglet « La carte »** de l'application : un sélecteur
+de vues y donne accès à la **carte standard** (chacune de ses familles avec
+son titre/sous-titre d'ardoise éditables en place, ses lignes libres, et la
+fiche produit complète) et aux **cartes dédiées** (Formules, Vins, Glaces,
+Bières — éditeur complet embarqué dans l'onglet). L'onglet **« Ardoise & QR »**
+complète : aperçu plein écran, impression, QR, en-tête.
+
+L'onglet **« Ardoise & QR »** édite aussi la carte principale affichée en ardoise
 (fond ardoise, écriture manuscrite à la craie — police Caveat embarquée, OFL) :
 
 - **titre + sous-titre par catégorie** (Pizzas, Salades, Entrées…) ;
