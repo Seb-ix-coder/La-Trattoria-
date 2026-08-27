@@ -17,7 +17,7 @@ social, cartes imprimables. **Tout le projet vit dans cette branche.**
 | `trato-11.1-temoin.apk`, `trato-temoin-chirurgical.apk` | Variantes témoins du build 11.1 |
 | `build/` | Outillage reproductible du build APK (patch AXML/assets, **zéro patch DEX**, signature v1/v2, vérifications) |
 | `build/mode_app.js` / `mode_app.css` | **Module social** + modes client/partenaire (barre sociale : avis Google/Facebook/Tripadvisor, appeler ; espace partenaires) |
-| `carte/` | **Gestion de la carte** (PWA autonome et hors ligne) : produits, photos, marges, cartes du jour, synchro tablettes, page publique clients |
+| `carte/` | **Gestion de la carte** (PWA autonome et hors ligne) : produits, photos, marges, cartes du jour, **ardoise de la carte principale éditable** (titres/sous-titres par catégorie, lignes libres, photos, QR du site, design craie sur ardoise), synchro tablettes, page publique clients |
 | `communaute/` | **Communauté** (build 3) : réseau social local pro — feed, fidélité, **gaming avancé** (niveaux, missions, badges, récompenses, classement), messages, offres partenaires, **envoi de client avec réservation auto**, **validation au comptoir** + **consentement** — voir `COMMUNAUTE.md` |
 | `carte-de-visite.html` | Carte de visite 85 × 55 mm (recto/verso), charte du site, QR de téléchargement |
 | `generer-carte.py`, `recuperer-logo.py` | Régénération de la carte de visite (QR + logo) |

@@ -6,19 +6,25 @@
    ============================================================ */
 'use strict';
 
-var CACHE = 'trattoria-carte-v3';
+var CACHE = 'trattoria-carte-v4';
 var FICHIERS = [
   './',
   './index.html',
   './carte.css',
+  './ardoise.css',
   './carte.js',
   './donnees.js',
+  './donnees-carte.js',
+  './ardoise-assets.js',
+  './qr-encodeur.js',
+  './apercu-carte.html',
   './public.html',
   './manifest.webmanifest',
   './icones/icone-180.png',
   './icones/icone-192.png',
   './icones/icone-512.png',
-  './icones/icone-512-masquable.png'
+  './icones/icone-512-masquable.png',
+  './img/logo-256.png'
 ];
 
 self.addEventListener('install', function (e) {

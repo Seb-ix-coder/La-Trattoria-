@@ -13,6 +13,7 @@
 <link rel="apple-touch-icon" href="icones/icone-180.png">
 <link rel="icon" type="image/png" href="icones/icone-192.png">
 <link rel="stylesheet" href="carte.css">
+<link rel="stylesheet" href="ardoise.css">
 </head>
 <body>
 
@@ -35,6 +36,7 @@
   <nav class="conteneur onglets" aria-label="Écrans">
     <button type="button" class="onglet actif" data-ecran="carte" aria-pressed="true">La carte</button>
     <button type="button" class="onglet" data-ecran="ardoises" aria-pressed="false">Cartes du jour</button>
+    <button type="button" class="onglet" data-ecran="ardoise" aria-pressed="false">Ardoise &amp; QR</button>
     <button type="button" class="onglet" data-ecran="marges" aria-pressed="false">Marges</button>
     <button type="button" class="onglet" data-ecran="donnees" aria-pressed="false">Données</button>
   </nav>
@@ -69,6 +71,42 @@
       <button type="button" class="btn btn-p" id="btn-imprimer-tout">🖨 Imprimer les trois cartes</button>
     </div>
     <div id="ardoises"></div>
+  </section>
+
+  <!-- ================= écran : ardoise (carte principale) & QR ================= -->
+  <section id="ecran-ardoise" hidden>
+    <div class="ardoise-intro carte-bloc">
+      <h2>L'ardoise — la carte principale</h2>
+      <p class="aide">Éditez le titre et le sous-titre de chaque catégorie,
+        ajoutez des lignes libres et des photos, choisissez l'ordre — puis
+        affichez ou imprimez l'ardoise. Elle est publiée sur la page clients
+        (serveur de carte) et embarquée dans l'application.</p>
+      <div class="rangee-boutons">
+        <button type="button" class="btn btn-p" id="btn-ouvrir-ardoise">🧾 Ouvrir l'ardoise</button>
+        <button type="button" class="btn btn-s" id="btn-imprimer-ardoise">🖨 Imprimer / PDF</button>
+        <button type="button" class="btn btn-s" id="btn-reinit-cf">🧹 Titres par défaut</button>
+      </div>
+    </div>
+    <div id="liste-cf" class="liste-cf"></div>
+
+    <div class="ardoise-intro carte-bloc qr-carte-bloc">
+      <h2>QR code du site</h2>
+      <p class="aide">Ce QR est affiché sur l'ardoise : il ouvre directement
+        l'adresse du site. Modifiez-la si besoin puis mettez le QR à jour.</p>
+      <div class="ligne-qr">
+        <div class="apercu-qr-bloc"><canvas id="apercu-qr" width="230" height="230"
+          aria-label="QR code du site"></canvas></div>
+        <div class="col-qr">
+          <label class="champ">
+            <span>Adresse du site (URL)</span>
+            <input type="url" id="champ-site" inputmode="url" maxlength="300"
+                   placeholder="https://latrattoria-saintes.fr/">
+          </label>
+          <button type="button" class="btn btn-p" id="btn-qr-maj">Mettre à jour le QR</button>
+          <p class="aide" id="qr-url-affichee"></p>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ================= écran : marges ================= -->
@@ -162,13 +200,23 @@
           <input type="file" id="champ-photo" accept="image/*" hidden>
           <button type="button" class="btn btn-s btn-bloc" id="btn-photo">📷 Choisir une photo</button>
           <button type="button" class="btn btn-s btn-bloc" id="btn-photo-retirer" hidden>Retirer la photo</button>
-          <p class="aide">L'image est réduite automatiquement, comme dans l'application.</p>
+          <input type="file" id="champ-photo-ardoise" accept="image/*" hidden>
+          <button type="button" class="btn btn-s btn-bloc" id="btn-photo-ardoise">🖼️ Photo pour l'ardoise</button>
+          <button type="button" class="btn btn-s btn-bloc" id="btn-photo-ardoise-retirer" hidden>Retirer la photo d'ardoise</button>
+          <p class="aide">L'image est réduite automatiquement, comme dans l'application.
+            La photo d'ardoise n'apparaît que sur l'ardoise (sinon la photo principale est utilisée).</p>
         </div>
       </div>
 
       <label class="champ">
         <span>Nom du produit</span>
         <input type="text" id="f-nom" required maxlength="60" placeholder="Ex. : La Diavola">
+      </label>
+
+      <label class="champ">
+        <span>Sous-titre (facultatif — affiché sur l'ardoise sous le nom)</span>
+        <input type="text" id="f-sous" maxlength="90"
+               placeholder="Ex. : la préférée de la maison">
       </label>
 
       <label class="champ">
@@ -336,6 +384,9 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="donnees.js"></script>
+<script src="donnees-carte.js"></script>
+<script src="ardoise-assets.js"></script>
+<script src="qr-encodeur.js"></script>
 <script src="carte.js"></script>
 </body>
 </html>

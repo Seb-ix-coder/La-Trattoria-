@@ -52,6 +52,13 @@
   var CUEILLETTE = null;      // {cle, choisis:[ids]} pendant la composition d'une carte
   var SYNC = { actif: false, version: 0, minuteur: null };
 
+  // Ardoise (carte principale) : titres/sous-titres de catégories,
+  // lignes libres, ordre, en-tête (badges, pâte 48 h), QR du site.
+  var CLE_CONFIG = 'trattoria.config.v1';
+  var CF = null;              // objet configuration (voir configNormalisee)
+  var PHOTO_ARDOISE_BROUILLON = null; // data-URL « photo d'ardoise » de la fiche
+  var LIGNE_A_EDITER = null;  // id de ligne libre à éditer après le prochain rendu
+
   // ==========================================================
   //  Utilitaires
   // ==========================================================
@@ -138,6 +145,7 @@
     try {
       localStorage.setItem(CLE_STOCK, JSON.stringify(CARTE));
       localStorage.setItem(CLE_ARDOISES, JSON.stringify(ARDOISES));
+      if (CF) localStorage.setItem(CLE_CONFIG, JSON.stringify(CF));
     } catch (e) {
       toast('Espace de stockage insuffisant — photo trop lourde ?');
     }
@@ -176,6 +184,9 @@
           })
         : [],
       photo: typeof p.photo === 'string' && p.photo.indexOf('data:image/') === 0 ? p.photo : null,
+      sous: typeof p.sous === 'string' ? p.sous.slice(0, 90) : '',
+      photoArdoise: typeof p.photoArdoise === 'string' && p.photoArdoise.indexOf('data:image/') === 0
+        ? p.photoArdoise : null,
       margeManuelle: (p.margeManuelle && p.margeManuelle.valeur > 0)
         ? { unite: p.margeManuelle.unite === 'taux' ? 'taux' : 'eur', valeur: Number(p.margeManuelle.valeur) }
         : null
@@ -297,6 +308,496 @@
     return out;
   }
 
+  // ==========================================================
+  //  Ardoise — carte principale (titres, sous-titres, lignes,
+  //  photos, en-tête « fait maison », QR du site)
+  // ==========================================================
+
+  // Liste ordonnée des catégories (= familles) présentes au catalogue.
+  function famsCatalogue() {
+    var vu = {}, out = [];
+    CARTE.forEach(function (p) {
+      var f = String(p.fam || 'Divers');
+      if (!vu[f]) { vu[f] = true; out.push(f); }
+    });
+    return out;
+  }
+
+  function configDefaut() {
+    var d = window.TRATTORIA_CONFIG_DEFAUT || {};
+    var fams = {};
+    famsCatalogue().forEach(function (f) {
+      var def = (d.fams && d.fams[f]) || {};
+      fams[f] = {
+        titre: def.titre || f,
+        sous: def.sous || '',
+        ordre: CARTE.filter(function (p) { return String(p.fam) === f; })
+          .map(function (p) { return p.id; }),
+        libres: []
+      };
+    });
+    return {
+      site: d.site || 'https://latrattoria-saintes.fr/',
+      badges: (d.badges || []).slice(0, 4),
+      pates: {
+        titre: (d.pates && d.pates.titre) || 'Pâte à pizza maison',
+        sous: (d.pates && d.pates.sous) || 'Fraîche, maturée 48 heures'
+      },
+      fams: fams
+    };
+  }
+
+  function configNormalisee(c) {
+    var def = configDefaut();
+    if (!c || typeof c !== 'object') return def;
+    var out = {
+      site: String(c.site || '').trim() || def.site,
+      badges: (Object.prototype.toString.call(c.badges) === '[object Array]')
+        ? c.badges.filter(function (b) { return typeof b === 'string' && b.trim(); })
+          .map(function (b) { return b.trim().slice(0, 40); }).slice(0, 4)
+        : def.badges,
+      pates: {
+        titre: String((c.pates && c.pates.titre) || '').trim().slice(0, 60) || def.pates.titre,
+        sous: String((c.pates && c.pates.sous) || '').trim().slice(0, 120) || def.pates.sous
+      },
+      fams: {}
+    };
+    famsCatalogue().forEach(function (f) {
+      var src = (c.fams && c.fams[f]) || def.fams[f] || {};
+      var presents = CARTE.filter(function (p) { return String(p.fam) === f; })
+        .map(function (p) { return p.id; });
+      var ordre = (Object.prototype.toString.call(src.ordre) === '[object Array]')
+        ? src.ordre.filter(function (id) { return presents.indexOf(id) >= 0; })
+        : [];
+      presents.forEach(function (id) { if (ordre.indexOf(id) < 0) ordre.push(id); });
+      var libres = (Object.prototype.toString.call(src.libres) === '[object Array]')
+        ? src.libres.slice(0, 30).map(function (l, i) {
+            if (!l || typeof l !== 'object') return null;
+            var nom = String(l.nom || '').trim().slice(0, 60);
+            if (!nom) return null;
+            return {
+              id: String(l.id || ('l' + Date.now().toString(36) + i)).slice(0, 24),
+              nom: nom,
+              sous: String(l.sous || '').trim().slice(0, 90),
+              desc: String(l.desc || '').trim().slice(0, 200),
+              prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0)
+            };
+          }).filter(Boolean)
+        : [];
+      out.fams[f] = {
+        titre: String(src.titre || '').trim().slice(0, 60) || (def.fams[f] ? def.fams[f].titre : f),
+        sous: String(src.sous || '').trim().slice(0, 120),
+        ordre: ordre,
+        libres: libres
+      };
+    });
+    return out;
+  }
+
+  function configCharger() {
+    var brut = null;
+    try { brut = JSON.parse(localStorage.getItem(CLE_CONFIG) || 'null'); } catch (e) { }
+    CF = configNormalisee(brut);
+  }
+
+  // Items d'une catégorie, dans l'ordre édité : produits et lignes libres.
+  function itemsFamille(fam) {
+    var conf = CF.fams[fam] || { ordre: [], libres: [] };
+    var libres = {};
+    conf.libres.forEach(function (l) { libres[l.id] = l; });
+    return (conf.ordre || []).map(function (id) {
+      if (libres[id]) return { kind: 'l', l: libres[id] };
+      var p = parId(id);
+      return (p && String(p.fam) === fam) ? { kind: 'p', p: p } : null;
+    }).filter(Boolean);
+  }
+
+  function photoArdoiseDe(p) {
+    return p ? (p.photoArdoise || p.photo || null) : null;
+  }
+
+  // ---------- rendu HTML de l'ardoise (aperçu, impression, public) ----------
+  var CRAIE_CLASSES = ['craie--jaune', 'craie--blanc', 'craie--rose', 'craie--verte', 'craie--bleue'];
+
+  function htmlArdoise(cfg) {
+    var logo = (window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.logo) || '';
+    var h = '<div class="cadreBois">';
+    h += '<header class="enteteArdoise">' +
+      '<img class="logoCercle" alt="Logo La Trattoria" src="' + logo + '">' +
+      '<h1 class="craie--blanc">La Trattoria</h1>' +
+      '<div class="lieu craie--jaune">Saintes</div>' +
+      '<div class="filetCraie"></div>';
+    if (cfg.badges.length) {
+      h += '<div class="badgesCraie">' + cfg.badges.map(function (b) {
+        return '<span class="craie--verte">' + echap(b) + '</span>';
+      }).join('') + '</div>';
+    }
+    h += '<div class="pateCraie"><span class="t craie--jaune">🍕 ' +
+      echap(cfg.pates.titre) + '</span><span class="s craie--blanc">' +
+      echap(cfg.pates.sous) + '</span></div>';
+    h += '</header>';
+
+    var ci = 0;
+    famsCatalogue().forEach(function (fam) {
+      var conf = CF.fams[fam];
+      if (!conf) return;
+      var items = itemsFamille(fam).filter(function (it) {
+        return it.kind === 'l' || it.p.actif;
+      });
+      if (!items.length) return;
+      var craie = CRAIE_CLASSES[ci % CRAIE_CLASSES.length];
+      ci++;
+      // première photo de la catégorie (photo d'ardoise, sinon photo)
+      var photo = null;
+      items.some(function (it) {
+        if (it.kind === 'p') { photo = photoArdoiseDe(it.p); return !!photo; }
+        return false;
+      });
+      h += '<section class="catArdoise' + (photo ? ' catAvecPhoto' : '') + '">' +
+        '<h2 class="' + craie + '">' + echap(conf.titre) + '</h2>' +
+        (conf.sous ? '<div class="sousCat">' + echap(conf.sous) + '</div>' : '');
+      if (photo) {
+        h += '<figure class="photoCraie"><img src="' + photo +
+          '" alt="Photo — ' + echap(conf.titre) + '" loading="lazy"></figure>';
+      }
+      h += '<ul class="itemsArdoise' + (items.length > 9 ? ' tailleModeree' : '') + '">';
+      items.forEach(function (it) {
+        if (it.kind === 'l') {
+          h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
+            echap(it.l.nom) + '</span><span class="pts"></span>' +
+            '<span class="prix craie--jaune">' + (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></div>' +
+            (it.l.sous ? '<span class="desc">' + echap(it.l.sous) + '</span>' : '') +
+            (it.l.desc ? '<span class="desc">' + echap(it.l.desc) + '</span>' : '') +
+            '</li>';
+        } else {
+          var q = it.p;
+          var sous = q.sous || q.desc || '';
+          var formats = (q.formats && q.formats.length)
+            ? q.formats.map(function (f) {
+                return echap(f.nom) + ' <b class="craie--jaune">' + eur(f.pv) + '</b>';
+              }).join(' · ')
+            : null;
+          h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
+            echap(q.nom) + '</span><span class="pts"></span>' +
+            '<span class="prix craie--jaune">' + eur(prixAffiche(q)) + '</span></div>' +
+            (sous ? '<span class="desc">' + echap(sous) + '</span>' : '') +
+            (formats ? '<span class="desc">' + formats + '</span>' : '') +
+            '</li>';
+        }
+      });
+      h += '</ul></section>';
+    });
+
+    // bloc QR : accès direct au site
+    h += '<div class="qrBlocArdoise">' +
+      '<div class="t craie--blanc">Retrouvez-nous en ligne</div>' +
+      '<span class="s">Scannez pour ouvrir le site, la carte et commander</span>' +
+      '<div class="qrCraie"><canvas id="qr-ardoise" aria-label="QR code du site"></canvas></div>' +
+      '<span class="url craie--jaune">' + echap(cfg.site) + '</span></div>';
+    h += '<div class="piedArdoise">La Trattoria — Saintes' +
+      '<span class="coords">Tout est fait maison, dans la plus belle tradition italienne.</span></div>';
+    h += '</div>';
+    return h;
+  }
+
+  function dessinerQRDans(canvas, texte, px) {
+    if (!canvas || !window.TrattoriaQR) return;
+    var url = String(texte || '').trim();
+    if (url && url.indexOf('://') < 0) url = 'https://' + url;
+    var m = window.TrattoriaQR.makeMatrix(url, 'H');
+    if (!m) { canvas.width = 1; canvas.height = 1; return; }
+    window.TrattoriaQR.render(canvas, m, px || 512);
+  }
+
+  // ---------- overlay plein écran (aperçu + impression) ----------
+  function fermerArdoise() {
+    var ov = document.getElementById('ardoise-overlay');
+    if (ov) ov.remove();
+    document.body.classList.remove('impression-ardoise');
+    document.body.style.overflow = '';
+  }
+
+  function ouvrirArdoise() {
+    fermerArdoise();
+    var ov = document.createElement('div');
+    ov.id = 'ardoise-overlay';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('aria-label', 'Aperçu de l\'ardoise');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:2147483000;overflow:auto;' +
+      'background:rgba(10,14,12,.82);padding:14px;';
+    ov.innerHTML =
+      '<div class="sansImpression" style="max-width:1080px;margin:0 auto 12px;' +
+        'display:flex;gap:10px;justify-content:flex-end;align-items:center;">' +
+        '<span style="color:#F3F1E7;font-family:Georgia,serif;font-size:14px;' +
+          'margin-right:auto;">Aperçu de l\'ardoise — telle que les clients la verront</span>' +
+        '<button type="button" id="btn-ardoise-imprimer" class="btn btn-s">🖨 Imprimer / PDF</button>' +
+        '<button type="button" id="btn-ardoise-fermer" class="btn btn-s">Fermer</button>' +
+      '</div>' +
+      '<div id="ardoise-page" class="fondArdoise" style="border-radius:6px;">' +
+        htmlArdoise(CF) + '</div>';
+    document.body.appendChild(ov);
+    document.body.style.overflow = 'hidden';
+    dessinerQRDans(ov.querySelector('#qr-ardoise'), CF.site, 512);
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) fermerArdoise();
+      if (e.target.closest('#btn-ardoise-fermer')) fermerArdoise();
+      if (e.target.closest('#btn-ardoise-imprimer')) {
+        document.body.classList.add('impression-ardoise');
+        window.print();
+        setTimeout(function () { document.body.classList.remove('impression-ardoise'); }, 400);
+      }
+    });
+    document.addEventListener('keydown', ardoiseEchap);
+  }
+
+  function ardoiseEchap(e) {
+    if (e.key === 'Escape') {
+      fermerArdoise();
+      document.removeEventListener('keydown', ardoiseEchap);
+    }
+  }
+
+  // ---------- éditeur de l'ardoise (écran « Ardoise & QR ») ----------
+  function dessinerCF() {
+    var hote = $('#liste-cf');
+    if (!hote || !CF) return;
+    var h = '';
+    famsCatalogue().forEach(function (fam) {
+      var conf = CF.fams[fam];
+      if (!conf) return;
+      var items = itemsFamille(fam);
+      var nPhotos = items.filter(function (it) {
+        return it.kind === 'p' && photoArdoiseDe(it.p);
+      }).length;
+      h += '<div class="cf-fam carte-bloc" data-fam="' + echap(fam) + '">' +
+        '<div class="cf-tete">' +
+          '<div><b>' + echap(conf.titre) + '</b>' +
+          '<span class="cf-meta">' + echap(fam) + ' · ' + items.length + ' ligne' +
+          (items.length > 1 ? 's' : '') + (nPhotos ? ' · ' + nPhotos + ' photo' + (nPhotos > 1 ? 's' : '') : '') +
+          '</span></div>' +
+          '<span class="cf-actions">' +
+            '<button type="button" class="btn btn-s btn-mini" data-cf="titre">✏️ Titre &amp; sous-titre</button>' +
+            '<button type="button" class="btn btn-s btn-mini" data-cf="ligne">+ Ligne libre</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="cf-edition-titre" hidden>' +
+          '<label class="champ"><span>Titre affiché</span>' +
+          '<input type="text" data-cf-champ="titre" maxlength="60" value="' + echap(conf.titre) + '"></label>' +
+          '<label class="champ"><span>Sous-titre de la catégorie</span>' +
+          '<input type="text" data-cf-champ="sous" maxlength="120" value="' + echap(conf.sous) + '" ' +
+          'placeholder="Ex. : pâte maturée 48 h, cuisson au feu de bois"></label>' +
+          '<div class="cf-rangee"><button type="button" class="btn btn-p btn-mini" data-cf="titre-ok">Enregistrer</button>' +
+          '<button type="button" class="btn btn-s btn-mini" data-cf="titre-annule">Annuler</button></div>' +
+        '</div>' +
+        '<ol class="cf-lignes">';
+      items.forEach(function (it, i) {
+        var premier = i === 0, dernier = i === items.length - 1;
+        if (it.kind === 'p') {
+          var p = it.p;
+          var aPhoto = !!photoArdoiseDe(p);
+          h += '<li class="cf-ligne' + (p.actif ? '' : ' cf-inactif') + '" data-cf-id="' + echap(p.id) + '">' +
+            '<span class="cf-ordre">' +
+              '<button type="button" class="btn btn-mini" data-cf="monter" aria-label="Monter"' + (premier ? ' disabled' : '') + '>▲</button>' +
+              '<button type="button" class="btn btn-mini" data-cf="descendre" aria-label="Descendre"' + (dernier ? ' disabled' : '') + '>▼</button>' +
+            '</span>' +
+            '<span class="cf-nom">' + echap(p.nom) +
+              (p.sous ? '<small>' + echap(p.sous) + '</small>' : '') +
+              (!p.actif ? '<small class="cf-off">masqué de la carte</small>' : '') +
+            '</span>' +
+            '<span class="cf-prix">' + eur(prixAffiche(p)) + '</span>' +
+            '<span class="cf-actions">' +
+              '<button type="button" class="btn btn-mini" data-cf="photo" title="Photo pour l\'ardoise">' +
+                (aPhoto ? '🖼️' : '📷') + '</button>' +
+              '<button type="button" class="btn btn-mini" data-cf="editer" title="Modifier le produit">✏️</button>' +
+            '</span></li>';
+        } else {
+          var l = it.l;
+          h += '<li class="cf-ligne cf-libre" data-cf-id="' + echap(l.id) + '">' +
+            '<span class="cf-ordre">' +
+              '<button type="button" class="btn btn-mini" data-cf="monter" aria-label="Monter"' + (premier ? ' disabled' : '') + '>▲</button>' +
+              '<button type="button" class="btn btn-mini" data-cf="descendre" aria-label="Descendre"' + (dernier ? ' disabled' : '') + '>▼</button>' +
+            '</span>' +
+            '<span class="cf-nom">' + echap(l.nom) +
+              '<small class="cf-badge">ligne libre</small>' +
+              (l.sous ? '<small>' + echap(l.sous) + '</small>' : '') +
+            '</span>' +
+            '<span class="cf-prix">' + (l.prix > 0 ? eur(l.prix) : '—') + '</span>' +
+            '<span class="cf-actions">' +
+              '<button type="button" class="btn btn-mini" data-cf="libre-editer" title="Modifier">✏️</button>' +
+              '<button type="button" class="btn btn-mini" data-cf="libre-supprimer" title="Supprimer">✕</button>' +
+            '</span></li>';
+        }
+      });
+      h += '</ol></div>';
+    });
+    hote.innerHTML = h;
+    if (LIGNE_A_EDITER) {
+      var liE = hote.querySelector('li[data-cf-id="' + LIGNE_A_EDITER + '"]');
+      var cardE = liE && liE.closest('.cf-fam');
+      if (liE && cardE) editerLigneLibre(cardE, LIGNE_A_EDITER);
+      LIGNE_A_EDITER = null;
+    }
+  }
+
+  function montrerEditionTitre(card, on) {
+    var zone = $('.cf-edition-titre', card);
+    if (zone) zone.hidden = !on;
+    if (on) $('input[data-cf-champ="titre"]', zone).focus();
+  }
+
+  function enregistrerTitreFamille(card) {
+    var fam = card.dataset.fam;
+    var conf = CF.fams[fam];
+    if (!conf) return;
+    conf.titre = String($('[data-cf-champ="titre"]', card).value || '').trim().slice(0, 60) || fam;
+    conf.sous = String($('[data-cf-champ="sous"]', card).value || '').trim().slice(0, 120);
+    sauver();
+    dessinerCF();
+    toast('Catégorie mise à jour : ' + conf.titre);
+  }
+
+  function deplacerLigneCF(card, id, delta) {
+    var conf = CF.fams[card.dataset.fam];
+    if (!conf) return;
+    var ordre = conf.ordre;
+    var i = ordre.indexOf(id);
+    var j = i + delta;
+    if (i < 0 || j < 0 || j >= ordre.length) return;
+    var tmp = ordre[i]; ordre[i] = ordre[j]; ordre[j] = tmp;
+    sauver();
+    dessinerCF();
+  }
+
+  function ajouterLigneLibre(card) {
+    var conf = CF.fams[card.dataset.fam];
+    if (!conf) return;
+    if (conf.libres.length >= 30) { toast('Maximum 30 lignes libres par catégorie'); return; }
+    var l = {
+      id: 'l' + Date.now().toString(36),
+      nom: 'Nouvelle ligne', sous: '', desc: '', prix: 0
+    };
+    conf.libres.push(l);
+    conf.ordre.push(l.id);
+    LIGNE_A_EDITER = l.id;
+    sauver();
+    dessinerCF();
+  }
+
+  function editerLigneLibre(card, id) {
+    var conf = CF.fams[card.dataset.fam];
+    var l = conf && conf.libres.filter(function (x) { return x.id === id; })[0];
+    var li = card.querySelector('li[data-cf-id="' + id + '"]');
+    if (!l || !li) return;
+    li.innerHTML =
+      '<div class="cf-libre-form">' +
+        '<input type="text" data-cf-l="nom" maxlength="60" value="' + echap(l.nom) + '" placeholder="Nom (ex. : Menu enfant)">' +
+        '<input type="text" data-cf-l="sous" maxlength="90" value="' + echap(l.sous) + '" placeholder="Sous-titre (facultatif)">' +
+        '<input type="text" data-cf-l="desc" maxlength="200" value="' + echap(l.desc) + '" placeholder="Descriptif (facultatif)">' +
+        '<input type="text" data-cf-l="prix" inputmode="decimal" value="' +
+          (l.prix > 0 ? String(l.prix).replace('.', ',') : '') + '" placeholder="Prix €">' +
+        '<button type="button" class="btn btn-p btn-mini" data-cf="libre-ok">OK</button>' +
+        '<button type="button" class="btn btn-s btn-mini" data-cf="libre-annule">Annuler</button>' +
+      '</div>';
+    $('input[data-cf-l="nom"]', li).focus();
+  }
+
+  function enregistrerLigneLibre(card, id) {
+    var conf = CF.fams[card.dataset.fam];
+    var l = conf && conf.libres.filter(function (x) { return x.id === id; })[0];
+    var li = card.querySelector('li[data-cf-id="' + id + '"]');
+    if (!l || !li) return;
+    var nom = String($('[data-cf-l="nom"]', li).value || '').trim();
+    if (!nom) { toast('Le nom de la ligne est obligatoire'); return; }
+    l.nom = nom.slice(0, 60);
+    l.sous = String($('[data-cf-l="sous"]', li).value || '').trim().slice(0, 90);
+    l.desc = String($('[data-cf-l="desc"]', li).value || '').trim().slice(0, 200);
+    l.prix = Math.max(0, Math.round((parseFloat(String($('[data-cf-l="prix"]', li).value).replace(',', '.')) || 0) * 100) / 100);
+    sauver();
+    dessinerCF();
+    toast('Ligne enregistrée');
+  }
+
+  function supprimerLigneLibre(card, id) {
+    var conf = CF.fams[card.dataset.fam];
+    if (!conf) return;
+    var l = conf.libres.filter(function (x) { return x.id === id; })[0];
+    if (!l) return;
+    if (!confirm('Supprimer la ligne libre « ' + l.nom + ' » ?')) return;
+    conf.libres = conf.libres.filter(function (x) { return x.id !== id; });
+    conf.ordre = conf.ordre.filter(function (x) { return x !== id; });
+    sauver();
+    dessinerCF();
+    toast('Ligne supprimée');
+  }
+
+  // Clics dans l'écran ardoise (délégation) — renvoie true si traité.
+  function clicArdoise(t) {
+    var card = t.closest('.cf-fam');
+    if (!card) return false;
+    var li = t.closest('li[data-cf-id]');
+    var id = li ? li.dataset.cfId : null;
+    var act = t.closest('[data-cf]');
+    if (!act) return false;
+    var a = act.dataset.cf;
+    if (a === 'titre') { montrerEditionTitre(card, true); return true; }
+    if (a === 'titre-annule') { montrerEditionTitre(card, false); return true; }
+    if (a === 'titre-ok') { enregistrerTitreFamille(card); return true; }
+    if (a === 'ligne') { ajouterLigneLibre(card); return true; }
+    if (a === 'monter' && id) { deplacerLigneCF(card, id, -1); return true; }
+    if (a === 'descendre' && id) { deplacerLigneCF(card, id, +1); return true; }
+    if (a === 'photo' && id) { CIBLE_PHOTO_ARDOISE = id; $('#champ-photo-ardoise').click(); return true; }
+    if (a === 'editer' && id) { ouvrirFiche(id); return true; }
+    if (a === 'libre-editer' && id) { editerLigneLibre(card, id); return true; }
+    if (a === 'libre-ok' && id) { enregistrerLigneLibre(card, id); return true; }
+    if (a === 'libre-annule' && id) { dessinerCF(); return true; }
+    if (a === 'libre-supprimer' && id) { supprimerLigneLibre(card, id); return true; }
+    return false;
+  }
+
+  function dessinerQR() {
+    var canvas = $('#apercu-qr');
+    var champ = $('#champ-site');
+    if (champ && CF && champ.value !== CF.site) champ.value = CF.site;
+    dessinerQRDans(canvas, CF ? CF.site : '', 512);
+    var aff = $('#qr-url-affichee');
+    if (aff && CF) aff.textContent = 'QR actuel : ' + CF.site;
+  }
+
+  // ---------- photo d'ardoise (depuis l'écran ardoise) ----------
+  var CIBLE_PHOTO_ARDOISE = null;
+
+  function photoArdoiseChoisie(fichier) {
+    var lecteur = new FileReader();
+    lecteur.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var max = 640;
+        var ratio = Math.min(1, max / Math.max(img.width, img.height));
+        var toile = document.createElement('canvas');
+        toile.width = Math.max(1, Math.round(img.width * ratio));
+        toile.height = Math.max(1, Math.round(img.height * ratio));
+        toile.getContext('2d').drawImage(img, 0, 0, toile.width, toile.height);
+        var data = toile.toDataURL('image/jpeg', 0.72);
+        var p = parId(CIBLE_PHOTO_ARDOISE || EN_EDITION);
+        if (p) {
+          p.photoArdoise = data;
+          PHOTO_ARDOISE_BROUILLON = data;
+          majBoutonsPhotoArdoise();
+          sauver();
+          dessinerCF();
+          toast('Photo d\'ardoise ajoutée à « ' + p.nom + ' »');
+        }
+        CIBLE_PHOTO_ARDOISE = null;
+      };
+      img.onerror = function () { toast('Image illisible'); CIBLE_PHOTO_ARDOISE = null; };
+      img.src = lecteur.result;
+    };
+    lecteur.onerror = function () { toast('Lecture impossible'); CIBLE_PHOTO_ARDOISE = null; };
+    lecteur.readAsDataURL(fichier);
+  }
+
+
   function charger() {
     var brut = null;
     try { brut = JSON.parse(localStorage.getItem(CLE_STOCK) || 'null'); } catch (e) { }
@@ -309,6 +810,7 @@
     var brutA = null;
     try { brutA = JSON.parse(localStorage.getItem(CLE_ARDOISES) || 'null'); } catch (e) { }
     ARDOISES = ardoisesToutesNormalisees(brutA);
+    configCharger();
     sauver();
   }
 
@@ -372,9 +874,11 @@
         CARTE = r.carte.map(produitNormalise);
       }
       ARDOISES = ardoisesToutesNormalisees(r.ardoises);
+      CF = configNormalisee(r.config || CF);
       try {
         localStorage.setItem(CLE_STOCK, JSON.stringify(CARTE));
         localStorage.setItem(CLE_ARDOISES, JSON.stringify(ARDOISES));
+        localStorage.setItem(CLE_CONFIG, JSON.stringify(CF));
       } catch (e) { }
       toutDessiner();
       majInfoDonnees();
@@ -392,7 +896,7 @@
       fetch('api/carte', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ carte: CARTE, ardoises: ARDOISES })
+        body: JSON.stringify({ carte: CARTE, ardoises: ARDOISES, config: CF })
       }).then(function (r) {
         if (!r.ok) throw new Error('ko');
         return r.json();
@@ -409,6 +913,7 @@
     dessinerCarte();
     dessinerMarges();
     dessinerArdoises();
+    dessinerCF();
   }
 
   // ==========================================================
@@ -912,9 +1417,12 @@
     var p = id ? parId(id) : null;
     EN_EDITION = p ? p.id : null;
     PHOTO_BROUILLON = p ? p.photo : null;
+    PHOTO_ARDOISE_BROUILLON = p ? (p.photoArdoise || null) : null;
+    majBoutonsPhotoArdoise();
 
     $('#fiche-titre').textContent = p ? p.nom : 'Nouveau produit';
     $('#f-nom').value = p ? p.nom : '';
+    $('#f-sous').value = p ? (p.sous || '') : '';
     $('#f-desc').value = p ? p.desc : '';
     $('#f-type').value = p ? p.type : 'plat';
     remplirFamilles($('#f-type').value, p ? p.fam : undefined);
@@ -971,6 +1479,11 @@
       $('#sans-photo').hidden = false;
       $('#btn-photo-retirer').hidden = true;
     }
+  }
+
+  function majBoutonsPhotoArdoise() {
+    var retire = $('#btn-photo-ardoise-retirer');
+    if (retire) retire.hidden = !PHOTO_ARDOISE_BROUILLON;
   }
 
   function lireNombre(sel) {
@@ -1121,6 +1634,8 @@
       formats: formats,
       actif: $('#f-actif').checked,
       photo: PHOTO_BROUILLON,
+      sous: String($('#f-sous').value || '').trim().slice(0, 90),
+      photoArdoise: PHOTO_ARDOISE_BROUILLON,
       margeManuelle: margeVal > 0 ? { unite: $('#f-marge-unite').value, valeur: margeVal } : null
     };
 
@@ -1164,10 +1679,11 @@
   function exporterJSON() {
     var paquet = {
       application: 'la-trattoria-carte',
-      version: 3,
+      version: 4,
       exporte: new Date().toISOString(),
       produits: CARTE,
-      ardoises: ARDOISES
+      ardoises: ARDOISES,
+      config: CF
     };
     telecharger(new Blob([JSON.stringify(paquet, null, 1)], { type: 'application/json' }),
       'carte-la-trattoria.json');
@@ -1226,6 +1742,7 @@
           ' produits) par les ' + tab.length + ' produits importés ?')) return;
         CARTE = tab.map(produitNormalise);
         ARDOISES = ardoisesToutesNormalisees(paquet.ardoises || null);
+        CF = configNormalisee(paquet.config || null);
         sauver();
         toutDessiner();
         toast('Carte importée');
@@ -1241,6 +1758,8 @@
       'Les modifications, les photos et les cartes du jour seront perdues.')) return;
     CARTE = (window.TRATTORIA_CATALOGUE || []).map(produitNormalise);
     ARDOISES = ardoisesDefaut();
+    localStorage.removeItem(CLE_CONFIG);
+    configCharger();
     sauver();
     toutDessiner();
     toast('Carte d’origine restaurée');
@@ -1259,7 +1778,7 @@
   // ==========================================================
   function montrer(ecran) {
     ECRAN = ecran;
-    ['carte', 'ardoises', 'marges', 'donnees'].forEach(function (nom) {
+    ['carte', 'ardoises', 'ardoise', 'marges', 'donnees'].forEach(function (nom) {
       $('#ecran-' + nom).hidden = nom !== ecran;
     });
     $$('.onglet').forEach(function (b) {
@@ -1267,6 +1786,7 @@
       b.classList.toggle('actif', actif);
       b.setAttribute('aria-pressed', actif ? 'true' : 'false');
     });
+    if (ecran === 'ardoise') { dessinerCF(); dessinerQR(); }
     window.scrollTo(0, 0);
   }
 
@@ -1291,6 +1811,31 @@
 
       var onglet = t.closest('.onglet');
       if (onglet) { montrer(onglet.dataset.ecran); return; }
+
+      if (clicArdoise(t)) return;
+
+      if (t.closest('#btn-ouvrir-ardoise')) { ouvrirArdoise(); return; }
+      if (t.closest('#btn-imprimer-ardoise')) { ouvrirArdoise(); return; }
+      if (t.closest('#btn-reinit-cf')) {
+        if (confirm('Réinitialiser titres, sous-titres, lignes libres et ordre ?')) {
+          localStorage.removeItem(CLE_CONFIG);
+          CF = configNormalisee(null);
+          sauver();
+          dessinerCF();
+          dessinerQR();
+          toast('Ardoise réinitialisée');
+        }
+        return;
+      }
+      if (t.closest('#btn-qr-maj')) {
+        var v = String($('#champ-site').value || '').trim();
+        if (!v) { toast('Indiquez une adresse (URL) pour le QR'); return; }
+        CF.site = v;
+        sauver();
+        dessinerQR();
+        toast('QR mis à jour : ' + CF.site);
+        return;
+      }
 
       var filtre = t.closest('.filtre');
       if (filtre) {
@@ -1327,6 +1872,12 @@
       if (t.closest('#btn-supprimer')) { supprimerProduit(); return; }
       if (t.closest('#btn-photo')) { $('#champ-photo').click(); return; }
       if (t.closest('#btn-photo-retirer')) { PHOTO_BROUILLON = null; majApercuPhoto(); return; }
+      if (t.closest('#btn-photo-ardoise')) { $('#champ-photo-ardoise').click(); return; }
+      if (t.closest('#btn-photo-ardoise-retirer')) {
+        PHOTO_ARDOISE_BROUILLON = null;
+        majBoutonsPhotoArdoise();
+        return;
+      }
       if (t.closest('#btn-appliquer-prix')) {
         $('#f-pv').value = t.closest('#btn-appliquer-prix').dataset.prix;
         majChiffresMarge();
@@ -1437,6 +1988,10 @@
         chargerPhoto(e.target.files[0]);
         e.target.value = '';
       }
+      if (e.target.id === 'champ-photo-ardoise') {
+        if (e.target.files[0]) photoArdoiseChoisie(e.target.files[0]);
+        e.target.value = '';
+      }
       if (e.target.id === 'fichier-import') {
         if (e.target.files[0]) importerJSON(e.target.files[0]);
         e.target.value = '';
@@ -1493,6 +2048,7 @@
 
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
+      if (document.getElementById('ardoise-overlay')) { fermerArdoise(); return; }
       if (!$('#fiche').hidden) fermerFiche();
       else if (!$('#cueillette').hidden) fermerCueillette();
       else if (!$('#apercu').hidden) fermerApercu();
@@ -1510,6 +2066,9 @@
   window.GestionCarte = {
     carte: function () { return CARTE; },
     ardoises: function () { return ARDOISES; },
+    config: function () { return CF; },
+    htmlArdoise: htmlArdoise,
+    itemsFamille: itemsFamille,
     marge: margeAuto,
     coef: coef,
     taux: tauxMarge,

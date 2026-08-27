@@ -23,7 +23,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 DOSSIER = os.path.dirname(os.path.abspath(__file__))
 FICHIER_ETAT = os.path.join(DOSSIER, 'donnees-serveur.json')
 
-etat = {'version': 0, 'maj': None, 'carte': [], 'ardoises': {}}
+etat = {'version': 0, 'maj': None, 'carte': [], 'ardoises': {}, 'config': {}}
 
 
 def charger_etat():
@@ -37,6 +37,8 @@ def charger_etat():
             etat['carte'] = lu['carte']
             if isinstance(lu.get('ardoises'), dict):
                 etat['ardoises'] = lu['ardoises']
+            if isinstance(lu.get('config'), dict):
+                etat['config'] = lu['config']
     except Exception:
         pass  # premier démarrage : état vide, la première tablette nourrira le serveur
 
@@ -96,6 +98,9 @@ class ServeurCarte(SimpleHTTPRequestHandler):
             etat['carte'] = carte
             if isinstance(ardoises, dict):
                 etat['ardoises'] = ardoises
+            config = recu.get('config')
+            if isinstance(config, dict):
+                etat['config'] = config
             etat['version'] += 1
             etat['maj'] = datetime.now(timezone.utc).isoformat()
             sauver_etat()

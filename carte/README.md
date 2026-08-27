@@ -124,3 +124,30 @@ python3 serveur_carte.py        # port 8080 par défaut
 | `serveur_carte.py` | serveur local : synchronisation entre tablettes + page clients |
 | `public.html` | page publique lecture seule (carte + cartes du jour, avec photos) |
 | `manifest.webmanifest`, `sw.js`, `icones/` | installation PWA + fonctionnement hors ligne |
+
+## Ardoise & QR (carte principale éditable)
+
+L'onglet **« Ardoise & QR »** édite la carte principale affichée en ardoise
+(fond ardoise, écriture manuscrite à la craie — police Caveat embarquée, OFL) :
+
+- **titre + sous-titre par catégorie** (Pizzas, Salades, Entrées…) ;
+- **items ligne par ligne** : chaque produit de la catégorie est éditable
+  (fiche produit, avec **sous-titre** dédié) et réordonnable (▲▼) ;
+- **lignes libres** : ajoutez des lignes hors catalogue (menu enfant,
+  suggestion, tarif spécifique…) — nom, sous-titre, descriptif, prix ;
+- **photos** : photo principale (fiche) et **photo d'ardoise** (format
+  polaroid craie sur l'ardoise ; à défaut la photo principale est utilisée) ;
+- **en-tête** : logo officiel + « tout est fait maison / tout est frais /
+  bio dès que possible » (modifiables) + bandeau **pâte à pizza fraîche
+  maturée 48 h** ;
+- **QR code du site** affiché sur l'ardoise (adresse modifiable, QR
+  régénéré et vérifié — niveau H) ;
+- **aperçu plein écran + impression/PDF** (l'impression n'imprime que
+  l'ardoise).
+
+Publication : la configuration (`config`) est synchronisée avec le serveur
+de carte (`api/carte`, champ `config`) et affichée par la page publique
+**`apercu-carte.html`** (fond ardoise, lecture seule, imprimable) —
+accessible depuis `public.html` (« Voir l'ardoise du moment »).
+
+Export/import JSON : la config voyage avec la carte (version 4 du format).

@@ -68,7 +68,11 @@ def assembler_module(carte_dir: str) -> bytes:
     html = read(os.path.join(carte_dir, 'index.html'))
     css = read(os.path.join(carte_dir, 'carte.css'))
     js_donnees = read(os.path.join(carte_dir, 'donnees.js'))
+    js_donnees_carte = read(os.path.join(carte_dir, 'donnees-carte.js'))
+    js_assets = read(os.path.join(carte_dir, 'ardoise-assets.js'))
+    js_qr = read(os.path.join(carte_dir, 'qr-encodeur.js'))
     js_carte = read(os.path.join(carte_dir, 'carte.js'))
+    css_ardoise = read(os.path.join(carte_dir, 'ardoise.css'))
     ic180 = base64.b64encode(
         readb(os.path.join(carte_dir, 'icones', 'icone-180.png'))).decode()
     ic192 = base64.b64encode(
@@ -90,11 +94,22 @@ def assembler_module(carte_dir: str) -> bytes:
     # CSS/JS → inclus en ligne
     doit('<link rel="stylesheet" href="carte.css">',
          '<style>\n' + css + '\n</style>')
+    doit('<link rel="stylesheet" href="ardoise.css">',
+         '<style>\n' + css_ardoise + '\n</style>')
     # sécurité (aucun </script> attendu, mais on protège)
     js_donnees = js_donnees.replace('</script>', '<\\/script>')
+    js_donnees_carte = js_donnees_carte.replace('</script>', '<\\/script>')
+    js_assets = js_assets.replace('</script>', '<\\/script>')
+    js_qr = js_qr.replace('</script>', '<\\/script>')
     js_carte = js_carte.replace('</script>', '<\\/script>')
     doit('<script src="donnees.js"></script>',
          '<script>\n' + js_donnees + '\n</script>')
+    doit('<script src="donnees-carte.js"></script>',
+         '<script>\n' + js_donnees_carte + '\n</script>')
+    doit('<script src="ardoise-assets.js"></script>',
+         '<script>\n' + js_assets + '\n</script>')
+    doit('<script src="qr-encodeur.js"></script>',
+         '<script>\n' + js_qr + '\n</script>')
     doit('<script src="carte.js"></script>',
          '<script>\n' + js_carte + '\n</script>')
     # page publique : inutilisable en embedded (pas de route dédiée)
