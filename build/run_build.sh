@@ -39,14 +39,22 @@ if [ $# -ge 1 ]; then
   KEYSTORE="$1"
   PASSWORD="${2:-}"
 else
-  KS_DIR="${KEYSTORE_DIR:-$HOME/trattoria-keystore}"
-  KEYSTORE="$KS_DIR/trattoria-release.p12"
-  if [ ! -f "$KEYSTORE" ]; then
-    echo "==> Génération du keystore (local uniquement)"
-    python3 "$BUILD/generate_keystore.py" "$KS_DIR"
+  # PRIORITÉ 1 : keystore officiel FIGÉ dans le dépôt (mises à jour directes)
+  KEYSTORE="$BUILD/keystore/trattoria-release.p12"
+  if [ -f "$KEYSTORE" ]; then
+    PASSWORD="$(sed -n 's/^Mot de passe : //p' "$BUILD/keystore/MOT_DE_PASSE.txt" | head -1 | tr -d '[:space:]')"
+  else
+    # PRIORITÉ 2 : keystore local, sinon génération (nouvelle clé !)
+    KS_DIR="${KEYSTORE_DIR:-$HOME/trattoria-keystore}"
+    KEYSTORE="$KS_DIR/trattoria-release.p12"
+    if [ ! -f "$KEYSTORE" ]; then
+      echo "==> ATTENTION : keystore officiel absent — GÉNÉRATION D'UNE NOUVELLE CLÉ"
+      echo "    (les mises à jour depuis les versions existantes échoueront ;"
+      echo "     restaurer build/keystore/trattoria-release.p12 de préférence)"
+      python3 "$BUILD/generate_keystore.py" "$KS_DIR"
+    fi
+    PASSWORD="$(grep -A1 'MOT DE PASSE' "$KS_DIR/README-KEYSTORE.txt" | tail -1 | tr -d '[:space:]')"
   fi
-  # mot de passe stocké à côté du keystore (lisible par le propriétaire)
-  PASSWORD="$(grep -A1 'MOT DE PASSE' "$KS_DIR/README-KEYSTORE.txt" | tail -1 | tr -d '[:space:]')"
 fi
 
 if [ -z "$PASSWORD" ]; then

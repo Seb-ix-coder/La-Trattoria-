@@ -1,0 +1,36 @@
+CLÉ DE SIGNATURE OFFICIELLE « LA TRATTORIA » — FIGÉE DANS LE DÉPÔT
+====================================================================
+
+Ce keystore est LA clé officielle de l'application. Il est volontairement
+commité ici (contrairement à la recommandation initiale) pour UNE raison :
+la stabilité des installations.
+
+Fichier   : trattoria-release.p12 (PKCS#12, alias « trattoria »)
+Mot de passe : Z66KRqWwGTtxrO5HXr074AaiJViRcZME
+Empreinte SHA-256 du certificat :
+  188bacf282d3aa6001c18bd343fb3d3965fe5dbb6d6c7711daaf75c2e10a7086
+Versions signées avec cette clé : **12.5 et toutes les suivantes**
+
+────────────────────────────────────────────────────────────────────
+POURQUOI EST-IL COMMITÉ ?
+Les builds des sessions précédentes généraient une clé à chaque fois.
+Résultat : Android refusait les mises à jour (« Application non
+installée » — conflit de signature), obligeant à désinstaller/réinstaller.
+Avec ce keystore figé, TOUTES les versions futures se mettent à jour
+directement, sans désinstallation.
+
+⚠ SÉCURITÉ — compromis assumé
+Le dépôt étant accessible, la clé privée l'est aussi : une personne
+malveillante pourrait signer un APK « La Trattoria » concurrent. Pour
+une application de gestion interne d'un restaurant, ce risque est jugé
+inférieur au blocage d'installation. Pour reprendre le contrôle :
+  1. supprimer ce dossier, générer une nouvelle clé locale
+     (build/generate_keystore.py) ;
+  2. NE PLUS la commiter ; la conserver en lieu sûr ;
+  3. signant alors avec une nouvelle clé, désinstaller/réinstaller
+     une dernière fois sur la tablette.
+
+SIGNER UNE VERSION
+  ./build/run_build_stable.sh --version-name=13.0 --version-code=31
+  (le pipeline utilise automatiquement build/keystore/trattoria-release.p12)
+====================================================================

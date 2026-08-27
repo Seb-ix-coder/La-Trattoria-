@@ -41,14 +41,19 @@ echo "==============================================================="
 echo " Build stable La Trattoria — versionName $VERSION_NAME, versionCode $VERSION_CODE"
 echo "==============================================================="
 
-# --- keystore local ---------------------------------------------------------
-KS_DIR="${KEYSTORE_DIR:-$HOME/trattoria-keystore}"
-KEYSTORE="$KS_DIR/trattoria-release.p12"
-if [ ! -f "$KEYSTORE" ]; then
-  echo "==> Génération du keystore (local uniquement)"
-  python3 "$HERE/generate_keystore.py" "$KS_DIR"
+# --- keystore : officiel FIGÉ dans le dépôt (priorité), sinon local --------
+KEYSTORE="$HERE/keystore/trattoria-release.p12"
+if [ -f "$KEYSTORE" ]; then
+  PASSWORD="$(sed -n 's/^Mot de passe : //p' "$HERE/keystore/MOT_DE_PASSE.txt" | head -1 | tr -d '[:space:]')"
+else
+  KS_DIR="${KEYSTORE_DIR:-$HOME/trattoria-keystore}"
+  KEYSTORE="$KS_DIR/trattoria-release.p12"
+  if [ ! -f "$KEYSTORE" ]; then
+    echo "==> ATTENTION : keystore officiel absent — GÉNÉRATION D'UNE NOUVELLE CLÉ"
+    python3 "$HERE/generate_keystore.py" "$KS_DIR"
+  fi
+  PASSWORD="$(grep -A1 'MOT DE PASSE' "$KS_DIR/README-KEYSTORE.txt" | tail -1 | tr -d '[:space:]')"
 fi
-PASSWORD="$(grep -A1 'MOT DE PASSE' "$KS_DIR/README-KEYSTORE.txt" | tail -1 | tr -d '[:space:]')"
 if [ -z "$PASSWORD" ]; then
   echo "ERREUR : mot de passe du keystore introuvable." >&2
   exit 1
