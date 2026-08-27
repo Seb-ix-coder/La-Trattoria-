@@ -263,3 +263,61 @@ body.impression-ardoise #ardoise-overlay .sansImpression { display: none !import
 .col-qr { flex: 1; min-width: 240px; display: grid; gap: 8px; }
 .rangee-boutons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .btn-mini { padding: 5px 10px; font-size: 13px; line-height: 1.2; }
+
+/* ============================================================
+   Cartes du moment : illustration, items, mentions, impression
+   ============================================================ */
+.moment-carte { max-width: 640px; margin: 0 auto; }
+.moment-entete { text-align: center; padding-top: 4px; }
+.moment-illus {
+  width: clamp(150px, 42vw, 200px);
+  border: 3px solid var(--craie-50);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.55);
+  transform: rotate(-1.2deg);
+}
+.moment-entete h1 {
+  font-family: 'Caveat', cursive; font-weight: 700;
+  font-size: clamp(34px, 6.4vw, 54px); line-height: 1; margin: 12px 0 0;
+}
+.moment-sous {
+  font-size: clamp(17px, 2.8vw, 22px); font-style: italic; margin-top: 4px;
+}
+.moment-liste { list-style: none; margin: 18px 0 0; padding: 0; }
+.moment-liste li { padding: 7px 2px 5px; }
+.moment-liste .nom { font-size: clamp(20px, 3.2vw, 25px); }
+.moment-liste .prix { font-size: clamp(20px, 3.2vw, 25px); }
+.moment-liste .desc { font-size: clamp(14px, 2.3vw, 17px); color: var(--craie-70); display: block; }
+.moment-vide {
+  text-align: center; font-size: 20px; font-style: italic;
+  padding: 18px 10px; opacity: .85;
+}
+.moment-mentions {
+  margin-top: 24px; padding: 12px 16px;
+  border: 2px dashed var(--craie-50); border-radius: 12px;
+  text-align: center;
+}
+.moment-mentions span {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(11px, 2vw, 13.5px);
+  line-height: 1.55; color: var(--craie-70); display: block;
+}
+body.impression-moment > *:not(#moment-overlay) { display: none !important; }
+body.impression-moment #moment-overlay {
+  position: static !important; overflow: visible !important;
+  background: transparent !important; padding: 0 !important;
+}
+body.impression-moment #moment-overlay .sansImpression { display: none !important; }
+
+/* éditeur : champ mentions + case HT */
+.case-moment { display: flex; align-items: center; gap: 10px; }
+.case-moment input[type="checkbox"] { width: 20px; height: 20px; }
+.cf-edition-titre textarea {
+  width: 100%; box-sizing: border-box; border: 1px solid var(--trait, #D8CFC0);
+  border-radius: 8px; padding: 8px 10px; font: inherit; background: #fff;
+  resize: vertical;
+}
+.cf-libre-form select {
+  width: 100%; box-sizing: border-box; border: 1px solid var(--trait, #D8CFC0);
+  border-radius: 8px; padding: 8px 10px; font: inherit; background: #fff;
+}

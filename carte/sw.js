@@ -6,7 +6,7 @@
    ============================================================ */
 'use strict';
 
-var CACHE = 'trattoria-carte-v5';
+var CACHE = 'trattoria-carte-v6';
 var FICHIERS = [
   './',
   './index.html',

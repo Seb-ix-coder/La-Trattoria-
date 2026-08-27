@@ -347,7 +347,12 @@
         sous: (d.pates && d.pates.sous) || 'Fraîche, maturée 48 heures'
       },
       fams: fams,
-      extras: extrasDefaut()
+      extras: extrasDefaut(),
+      moment: (function () {
+        var m = {};
+        MOMENT_ORDRE.forEach(function (cle) { m[cle] = momentConfDefaut(cle); });
+        return m;
+      })()
     };
   }
 
@@ -365,7 +370,8 @@
         sous: String((c.pates && c.pates.sous) || '').trim().slice(0, 120) || def.pates.sous
       },
       fams: {},
-      extras: {}
+      extras: {},
+      moment: {}
     };
     famsCatalogue().forEach(function (f) {
       var src = (c.fams && c.fams[f]) || def.fams[f] || {};
@@ -399,6 +405,10 @@
     EXTRA_ORDRE.forEach(function (cle) {
       var confStockee = (c.extras && typeof c.extras === 'object') ? c.extras[cle] : null;
       out.extras[cle] = confExtraNormalisee(confStockee, cle, def.extras[cle]);
+    });
+    MOMENT_ORDRE.forEach(function (cle) {
+      var confMo = (c.moment && typeof c.moment === 'object') ? c.moment[cle] : null;
+      out.moment[cle] = momentConfNormalisee(confMo, cle);
     });
     return out;
   }
@@ -1082,6 +1092,7 @@
   function confDeCarte(card) {
     if (!card) return null;
     if (card.dataset.ex && CF.extras[card.dataset.ex]) return CF.extras[card.dataset.ex];
+    if (card.dataset.mo && CF.moment[card.dataset.mo]) return CF.moment[card.dataset.mo];
     if (card.dataset.fam && CF.fams[card.dataset.fam]) return CF.fams[card.dataset.fam];
     return null;
   }
@@ -1232,6 +1243,483 @@
     });
     h += '</ul></section>';
     return h;
+  }
+
+
+  // ==========================================================
+  //  Cartes du moment : plats, boissons, vins & alcools,
+  //  glaces (L'Angelys), desserts, bières — ardoise craie,
+  //  illustrations, prix HT, mentions obligatoires
+  // ==========================================================
+
+  var MOMENT_DEFS = {
+    plats: {
+      titre: 'Les plats du moment',
+      sous: 'La carte change avec les saisons et le marché',
+      mentions: 'Prix hors taxes en euros. Nos plats sont préparés maison à partir de produits frais. Allergènes : la liste complète est disponible sur demande au comptoir.',
+      tvaDefaut: 0.1,
+      seed: 'plats'
+    },
+    boissons: {
+      titre: 'Les boissons du moment',
+      sous: 'Avec ou sans alcool',
+      mentions: 'Prix hors taxes en euros. La vente d’alcool est interdite aux mineurs de moins de 18 ans (art. L. 3342-1 du Code de la santé publique). L’abus d’alcool est dangereux pour la santé.',
+      tvaDefaut: 0.1,
+      seed: 'boissons'
+    },
+    vins: {
+      titre: 'Vins & alcools du moment',
+      sous: 'La sélection de la maison',
+      mentions: 'Prix hors taxes en euros. L’abus d’alcool est dangereux pour la santé, à consommer avec modération. La vente d’alcool est interdite aux mineurs de moins de 18 ans (art. L. 3342-1 du Code de la santé publique).',
+      tvaDefaut: 0.2,
+      seed: 'vins'
+    },
+    glaces: {
+      titre: 'Glaces artisanales du moment',
+      sous: 'Glaces et sorbets L’Angelys, fabriqués artisanalement',
+      mentions: 'Prix hors taxes en euros. Allergènes : lait, œuf, fruits à coque possibles selon les parfums. Glaces artisanales L’Angelys — parfums susceptibles de varier selon les arrivages.',
+      tvaDefaut: 0.1,
+      seed: 'glaces'
+    },
+    desserts: {
+      titre: 'Les desserts du moment',
+      sous: 'Faits maison, chaque jour',
+      mentions: 'Prix hors taxes en euros. Nos desserts sont préparés maison. Allergènes : gluten, lait, œuf, fruits à coque possibles selon les desserts.',
+      tvaDefaut: 0.1,
+      seed: 'desserts'
+    },
+    bieres: {
+      titre: 'Les bières du moment',
+      sous: 'Pression et bouteilles du moment',
+      mentions: 'Prix hors taxes en euros. L’abus d’alcool est dangereux pour la santé, à consommer avec modération. La vente d’alcool est interdite aux mineurs de moins de 18 ans (art. L. 3342-1 du Code de la santé publique).',
+      tvaDefaut: 0.2,
+      seed: 'bieres'
+    }
+  };
+  var MOMENT_ORDRE = ['plats', 'boissons', 'vins', 'glaces', 'desserts', 'bieres'];
+
+  // Lignes libres « du moment » par défaut (glaces L'Angelys…).
+  function momentSemenceLibres(cle) {
+    if (cle === 'glaces') {
+      return [
+        { nom: 'Vanille Bourbon', sous: 'Gousse de Madagascar', prix: 2.5 },
+        { nom: 'Chocolat noir 70 %', sous: 'Cacao intense', prix: 2.5 },
+        { nom: 'Pistache', sous: 'Pistaches de Sicile', prix: 2.8 },
+        { nom: 'Rhum-raisin', sous: 'Rhum ambré, raisins marinés', prix: 3 },
+        { nom: 'Sorbet citron de Sicile', sous: 'Vif et rafraîchissant', prix: 2.5 },
+        { nom: 'Sorbet framboise', sous: 'Fruité, sans lactose', prix: 2.5 }
+      ];
+    }
+    return [];
+  }
+
+  // Produits du catalogue proposés automatiquement pour une carte du moment.
+  function momentSeed(cle) {
+    return CARTE.filter(function (p) {
+      if (!p.actif) return false;
+      if (cle === 'plats') return p.type === 'plat';
+      if (cle === 'boissons') return p.type === 'boisson';
+      if (cle === 'vins') return norm(p.cat).indexOf('cave') >= 0 || /limoncello|amaretto/i.test(p.nom);
+      if (cle === 'desserts') return norm(p.fam).indexOf('dessert') >= 0;
+      if (cle === 'bieres') return norm(p.cat).indexOf('bier') >= 0;
+      return false;
+    }).map(function (p) { return p.id; });
+  }
+
+  function momentConfDefaut(cle) {
+    var def = MOMENT_DEFS[cle];
+    var libres = momentSemenceLibres(cle).map(function (l, i) {
+      return {
+        id: 'lm' + cle[0] + i,
+        nom: l.nom, sous: l.sous || '', desc: '', prix: l.prix || 0,
+        tva: def.tvaDefaut
+      };
+    });
+    var ordre = momentSeed(cle);
+    // les lignes libres par défaut (glaces L'Angelys…) occupent leur place
+    libres.forEach(function (l) { ordre.push(l.id); });
+    return {
+      titre: def.titre, sous: def.sous, mentions: def.mentions,
+      ht: true,
+      ordre: ordre,
+      libres: libres
+    };
+  }
+
+  function momentConfNormalisee(src, cle) {
+    var def = momentConfDefaut(cle);
+    var conf = {
+      titre: String((src && src.titre) || '').trim().slice(0, 60) || def.titre,
+      sous: String((src && src.sous) || '').trim().slice(0, 120),
+      mentions: String((src && src.mentions) || '').trim().slice(0, 600) || def.mentions,
+      ht: (src && typeof src.ht === 'boolean') ? src.ht : def.ht,
+      ordre: [],
+      libres: ((src && Object.prototype.toString.call(src.libres) === '[object Array]')
+        ? src.libres : def.libres).slice(0, 40).map(function (l, i) {
+            if (!l || typeof l !== 'object') return null;
+            var nom = String(l.nom || '').trim().slice(0, 60);
+            if (!nom) return null;
+            return {
+              id: String(l.id || ('lm' + Date.now().toString(36) + i)).slice(0, 24),
+              nom: nom,
+              sous: String(l.sous || '').trim().slice(0, 90),
+              desc: String(l.desc || '').trim().slice(0, 200),
+              prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0),
+              tva: [0.2, 0.1, 0.055].indexOf(Number(l.tva)) >= 0 ? Number(l.tva) : (l.tva === 0 ? 0 : 0.1)
+            };
+          }).filter(Boolean)
+    };
+    var ids = {};
+    CARTE.forEach(function (p) { ids[p.id] = true; });
+    conf.libres.forEach(function (l) { ids[l.id] = true; });
+    var ordre = ((src && Object.prototype.toString.call(src.ordre) === '[object Array]')
+      ? src.ordre : def.ordre);
+    ordre.forEach(function (id) {
+      if (ids[id] && conf.ordre.indexOf(String(id)) < 0) conf.ordre.push(String(id));
+    });
+    if (!src) momentSeed(cle).forEach(function (id) {
+      if (conf.ordre.indexOf(id) < 0) conf.ordre.push(id);
+    });
+    conf.libres.forEach(function (l) {
+      if (conf.ordre.indexOf(l.id) < 0) conf.ordre.push(l.id);
+    });
+    return conf;
+  }
+
+  function itemsMoment(cle) {
+    var conf = CF.moment && CF.moment[cle];
+    if (!conf) return [];
+    var libres = {};
+    conf.libres.forEach(function (l) { libres[l.id] = l; });
+    return (conf.ordre || []).map(function (id) {
+      if (libres[id]) return { kind: 'l', l: libres[id] };
+      var p = parId(id);
+      return p ? { kind: 'p', p: p } : null;
+    }).filter(Boolean);
+  }
+
+  // Prix affiché : HT (défaut des cartes du moment) ou TTC.
+  function prixMomentHT(p) {
+    return p.pv > 0 ? p.pv / (1 + p.tva) : 0;
+  }
+  function libelleMomentPrix(p, ht) {
+    return ht
+      ? eur(Math.round(prixMomentHT(p) * 100) / 100) + ' HT'
+      : eur(p.pv);
+  }
+  function libelleMomentLibre(l, ht) {
+    var tva = l.tva || 0.1;
+    return ht
+      ? eur(Math.round((l.prix / (1 + tva)) * 100) / 100) + ' HT'
+      : eur(l.prix);
+  }
+
+  // ---------- éditeur (vue « ✨ Du moment » de l'onglet La carte) ----------
+  function dessinerVueMoment() {
+    $('#outils-standard').hidden = true;
+    var total = MOMENT_ORDRE.reduce(function (n, cle) {
+      return n + itemsMoment(cle).length;
+    }, 0);
+    $('#nb-visibles').textContent = total + ' ligne' + (total > 1 ? 's' : '') +
+      ' sur les cartes du moment';
+    var h = '<p class="note-vue">Les <b>cartes du moment</b> : ardoise craie, illustration, ' +
+      'prix <b>HT</b> et mentions obligatoires. Chaque carte s’imprime séparément et est ' +
+      'publiée sur le site.</p><div id="liste-moment">';
+    MOMENT_ORDRE.forEach(function (cle) {
+      h += '<div class="cf-fam cf-moment carte-bloc" data-mo="' + echap(cle) + '">' +
+        cfMomentCardHTML(cle) + '</div>';
+    });
+    h += '</div>';
+    $('#liste-produits').innerHTML = h;
+    if (LIGNE_A_EDITER) ouvrirEditeurDiffere($('#liste-produits'));
+  }
+
+  function cfMomentCardHTML(cle) {
+    var conf = CF.moment[cle];
+    var def = MOMENT_DEFS[cle];
+    var items = itemsMoment(cle);
+    var h = '<div class="cf-tete">' +
+      '<div><b>✨ ' + echap(conf.titre) + '</b>' +
+      '<span class="cf-meta">' + echap(def.sous) + ' · ' + items.length +
+      ' ligne' + (items.length > 1 ? 's' : '') + ' · ' +
+      (conf.ht ? 'prix HT' : 'prix TTC') + '</span></div>' +
+      '<span class="cf-actions">' +
+        '<button type="button" class="btn btn-s btn-mini" data-mo="titre">✏️ Titre, descriptif &amp; mentions</button>' +
+        '<button type="button" class="btn btn-s btn-mini" data-mo="produit">＋ Produit</button>' +
+        '<button type="button" class="btn btn-s btn-mini" data-mo="ligne">+ Ligne</button>' +
+        '<button type="button" class="btn btn-p btn-mini" data-mo="imprimer">🖨️ Imprimer</button>' +
+      '</span></div>' +
+      '<div class="cf-edition-titre" hidden>' +
+        '<label class="champ"><span>Titre affiché</span>' +
+        '<input type="text" data-mo-champ="titre" maxlength="60" value="' + echap(conf.titre) + '"></label>' +
+        '<label class="champ"><span>Descriptif (sous le titre)</span>' +
+        '<input type="text" data-mo-champ="sous" maxlength="120" value="' + echap(conf.sous) + '"></label>' +
+        '<label class="champ case-moment"><input type="checkbox" data-mo-champ="ht"' +
+          (conf.ht ? ' checked' : '') + '><span>Afficher les prix <b>hors taxes (HT)</b> ' +
+          '(décocher pour TTC)</span></label>' +
+        '<label class="champ"><span>Mentions obligatoires (bas de carte — modifiables)</span>' +
+        '<textarea data-mo-champ="mentions" rows="3" maxlength="600">' + echap(conf.mentions) + '</textarea></label>' +
+        '<div class="cf-rangee"><button type="button" class="btn btn-p btn-mini" data-mo="titre-ok">Enregistrer</button>' +
+        '<button type="button" class="btn btn-s btn-mini" data-mo="titre-annule">Annuler</button></div>' +
+      '</div>' +
+      '<ol class="cf-lignes">';
+    var html;
+    items.forEach(function (it, i) {
+      var premier = i === 0, dernier = i === items.length - 1;
+      if (it.kind === 'p') {
+        var p = it.p;
+        html = '<li class="cf-ligne' + (p.actif ? '' : ' cf-inactif') + '" data-cf-id="' + echap(p.id) + '">' +
+          '<span class="cf-ordre">' +
+            '<button type="button" class="btn btn-mini" data-mo="monter"' + (premier ? ' disabled' : '') + '>▲</button>' +
+            '<button type="button" class="btn btn-mini" data-mo="descendre"' + (dernier ? ' disabled' : '') + '>▼</button>' +
+          '</span>' +
+          '<span class="cf-nom">' + echap(p.nom) +
+            '<small>' + (p.sous ? echap(p.sous) : echap(p.desc || '')) + '</small>' +
+            (!p.actif ? '<small class="cf-off">masqué de la carte</small>' : '') +
+          '</span>' +
+          '<span class="cf-prix">' + (conf.ht ? eur(Math.round(prixMomentHT(p) * 100) / 100) + ' HT' : eur(p.pv)) + '</span>' +
+          '<span class="cf-actions">' +
+            '<button type="button" class="btn btn-mini" data-mo="editer" title="Modifier le produit">✏️</button>' +
+          '</span></li>';
+      } else {
+        var l = it.l;
+        html = '<li class="cf-ligne cf-libre" data-cf-id="' + echap(l.id) + '">' +
+          '<span class="cf-ordre">' +
+            '<button type="button" class="btn btn-mini" data-mo="monter"' + (premier ? ' disabled' : '') + '>▲</button>' +
+            '<button type="button" class="btn btn-mini" data-mo="descendre"' + (dernier ? ' disabled' : '') + '>▼</button>' +
+          '</span>' +
+          '<span class="cf-nom">' + echap(l.nom) +
+            '<small class="cf-badge">ligne</small>' +
+            (l.sous ? '<small>' + echap(l.sous) + '</small>' : '') +
+          '</span>' +
+          '<span class="cf-prix">' + libelleMomentLibre(l, conf.ht) + '</span>' +
+          '<span class="cf-actions">' +
+            '<button type="button" class="btn btn-mini" data-mo="libre-editer">✏️</button>' +
+            '<button type="button" class="btn btn-mini" data-mo="libre-supprimer">✕</button>' +
+          '</span></li>';
+      }
+      h += html;
+    });
+    h += '</ol>';
+    return h;
+  }
+
+  // ---------- clics (délégation depuis clicCarteStandard) ----------
+  function clicMoment(t) {
+    var card = t.closest('.cf-moment[data-mo]');
+    if (!card) return false;
+    var cle = card.dataset.mo;
+    var conf = CF.moment[cle];
+    if (!conf) return false;
+    var li = t.closest('li[data-cf-id]');
+    var id = li ? li.dataset.cfId : null;
+    var act = t.closest('[data-mo]');
+    if (!act) return false;
+    var a = act.getAttribute('data-mo');
+    if (a === 'titre') {
+      var z = $('.cf-edition-titre', card);
+      if (z) { z.hidden = false; $('input[data-mo-champ="titre"]', z).focus(); }
+      return true;
+    }
+    if (a === 'titre-annule') {
+      var z2 = $('.cf-edition-titre', card);
+      if (z2) z2.hidden = true;
+      return true;
+    }
+    if (a === 'titre-ok') {
+      conf.titre = String($('[data-mo-champ="titre"]', card).value || '').trim().slice(0, 60) || MOMENT_DEFS[cle].titre;
+      conf.sous = String($('[data-mo-champ="sous"]', card).value || '').trim().slice(0, 120);
+      conf.mentions = String($('[data-mo-champ="mentions"]', card).value || '').trim().slice(0, 600) || MOMENT_DEFS[cle].mentions;
+      conf.ht = $('[data-mo-champ="ht"]', card).checked;
+      sauver(); dessinerCF(); if (ECRAN === 'carte') dessinerCarte();
+      toast('Carte du moment mise à jour');
+      return true;
+    }
+    if (a === 'ligne') {
+      if (conf.libres.length >= 30) { toast('Maximum 30 lignes'); return true; }
+      var ln = { id: 'lm' + Date.now().toString(36), nom: 'Nouvelle ligne', sous: '', desc: '',
+                 prix: 0, tva: MOMENT_DEFS[cle].tvaDefaut };
+      conf.libres.push(ln);
+      conf.ordre.push(ln.id);
+      LIGNE_A_EDITER = ln.id;
+      sauver(); dessinerCF(); if (ECRAN === 'carte') dessinerCarte();
+      return true;
+    }
+    if (a === 'produit') { ouvrirCueilletteMoment(cle); return true; }
+    if (a === 'imprimer') { ouvrirMoment(cle); return true; }
+    if (a === 'monter' && id) {
+      var i1 = conf.ordre.indexOf(id);
+      if (i1 > 0) {
+        var tmp = conf.ordre[i1]; conf.ordre[i1] = conf.ordre[i1 - 1]; conf.ordre[i1 - 1] = tmp;
+        sauver(); if (ECRAN === 'carte') dessinerCarte();
+      }
+      return true;
+    }
+    if (a === 'descendre' && id) {
+      var i2 = conf.ordre.indexOf(id);
+      if (i2 >= 0 && i2 < conf.ordre.length - 1) {
+        var tmp2 = conf.ordre[i2]; conf.ordre[i2] = conf.ordre[i2 + 1]; conf.ordre[i2 + 1] = tmp2;
+        sauver(); if (ECRAN === 'carte') dessinerCarte();
+      }
+      return true;
+    }
+    if (a === 'editer' && id) { ouvrirFiche(id); return true; }
+    if (a === 'libre-editer' && id) {
+      var l = conf.libres.filter(function (x) { return x.id === id; })[0];
+      if (!l || !li) return true;
+      li.innerHTML =
+        '<div class="cf-libre-form">' +
+          '<input type="text" data-mo-l="nom" maxlength="60" value="' + echap(l.nom) + '" placeholder="Nom (ex. : Pistache)">' +
+          '<input type="text" data-mo-l="sous" maxlength="90" value="' + echap(l.sous) + '" placeholder="Descriptif (facultatif)">' +
+          '<input type="text" data-mo-l="prix" inputmode="decimal" value="' +
+            (l.prix > 0 ? String(l.prix).replace('.', ',') : '') + '" placeholder="Prix TTC €">' +
+          '<select data-mo-l="tva">' +
+            '<option value="0.1"' + (l.tva === 0.1 ? ' selected' : '') + '>TVA 10 % (alimentaire)</option>' +
+            '<option value="0.2"' + (l.tva === 0.2 ? ' selected' : '') + '>TVA 20 % (alcool)</option>' +
+          '</select>' +
+          '<button type="button" class="btn btn-p btn-mini" data-mo="libre-ok">OK</button>' +
+          '<button type="button" class="btn btn-s btn-mini" data-mo="libre-annule">Annuler</button>' +
+        '</div>';
+      $('input[data-mo-l="nom"]', li).focus();
+      return true;
+    }
+    if (a === 'libre-ok' && id) {
+      var l2 = conf.libres.filter(function (x) { return x.id === id; })[0];
+      if (!l2 || !li) return true;
+      var nom = String($('[data-mo-l="nom"]', li).value || '').trim();
+      if (!nom) { toast('Le nom est obligatoire'); return true; }
+      l2.nom = nom.slice(0, 60);
+      l2.sous = String($('[data-mo-l="sous"]', li).value || '').trim().slice(0, 90);
+      l2.prix = Math.max(0, Math.round((parseFloat(String($('[data-mo-l="prix"]', li).value).replace(',', '.')) || 0) * 100) / 100);
+      var tv = parseFloat($('[data-mo-l="tva"]', li).value);
+      if ([0.2, 0.1, 0.055].indexOf(tv) >= 0) l2.tva = tv;
+      sauver(); dessinerCF(); if (ECRAN === 'carte') dessinerCarte();
+      toast('Ligne enregistrée');
+      return true;
+    }
+    if (a === 'libre-annule' && id) { if (ECRAN === 'carte') dessinerCarte(); return true; }
+    if (a === 'libre-supprimer' && id) {
+      var l3 = conf.libres.filter(function (x) { return x.id === id; })[0];
+      if (l3 && confirm('Supprimer « ' + l3.nom + ' » ?')) {
+        conf.libres = conf.libres.filter(function (x) { return x.id !== id; });
+        conf.ordre = conf.ordre.filter(function (x) { return x !== id; });
+        sauver(); dessinerCF(); if (ECRAN === 'carte') dessinerCarte();
+        toast('Ligne supprimée');
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function ouvrirCueilletteMoment(cle) {
+    var conf = CF.moment[cle];
+    if (!conf) return;
+    CUEILLETTE = {
+      cle: 'moment:' + cle,
+      choisis: conf.ordre.filter(function (id) { return !!parId(id); })
+    };
+    $('#cueillette-titre').textContent = conf.titre + ' — produits du catalogue';
+    $('#cueillette-recherche').value = '';
+    dessinerCueillette();
+    $('#cueillette').hidden = false;
+    $('#cueillette-recherche').focus();
+  }
+
+  // ---------- rendu craie + impression par carte ----------
+  function htmlMoment(cle) {
+    var conf = CF.moment[cle];
+    var def = MOMENT_DEFS[cle];
+    var items = itemsMoment(cle).filter(function (it) {
+      return it.kind === 'l' || it.p.actif;
+    });
+    var assets = (window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.moment) || {};
+    var illus = assets[def && cle === 'plats' ? 'plats' : cle] || assets.plats || '';
+    var h = '<div class="cadreBois moment-carte" data-mo-carte="' + echap(cle) + '">';
+    h += '<header class="moment-entete">' +
+      '<img class="moment-illus" alt="" src="' + illus + '">' +
+      '<h1 class="craie--jaune">' + echap(conf.titre) + '</h1>' +
+      (conf.sous ? '<div class="moment-sous craie--blanc">' + echap(conf.sous) + '</div>' : '') +
+      '<div class="filetCraie"></div></header>';
+    if (!items.length) {
+      h += '<p class="moment-vide craie--blanc">Cette carte est vide — ajoutez des lignes ' +
+        'depuis l’éditeur « La carte ».</p>';
+    } else {
+      h += '<ul class="moment-liste">';
+      items.forEach(function (it) {
+        if (it.kind === 'l') {
+          var l = it.l;
+          h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' + echap(l.nom) +
+            '</span><span class="pts"></span><span class="prix craie--jaune">' +
+            libelleMomentLibre(l, conf.ht) + '</span></div>' +
+            (l.sous ? '<span class="desc">' + echap(l.sous) + '</span>' : '') +
+            (l.desc ? '<span class="desc">' + echap(l.desc) + '</span>' : '') + '</li>';
+        } else {
+          var q = it.p;
+          var sous = q.sous || q.desc || '';
+          h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' + echap(q.nom) +
+            '</span><span class="pts"></span><span class="prix craie--jaune">' +
+            libelleMomentPrix(q, conf.ht) + '</span></div>' +
+            (sous ? '<span class="desc">' + echap(sous) + '</span>' : '') + '</li>';
+        }
+      });
+      h += '</ul>';
+    }
+    h += '<div class="moment-mentions">' +
+      '<span>' + (conf.ht ? 'Prix nets hors taxes — TVA en sus. ' : 'Prix TTC en euros. ') +
+      echap(conf.mentions) + '</span></div>';
+    h += '<div class="piedArdoise">La Trattoria — 15 rue de la Poste, 17100 Saintes — 06 27 21 31 90' +
+      '<span class="coords">SIRET 106 050 263 00016 · ' +
+      (conf.ht ? 'Prix HT — TVA en sus' : 'Prix TTC, service compris') + '</span></div>';
+    h += '</div>';
+    return h;
+  }
+
+  function fermerMoment() {
+    var ov = document.getElementById('moment-overlay');
+    if (ov) ov.remove();
+    document.body.classList.remove('impression-moment');
+    document.body.style.overflow = '';
+  }
+
+  function ouvrirMoment(cle) {
+    fermerMoment();
+    var conf = CF.moment[cle];
+    if (!conf) return;
+    var ov = document.createElement('div');
+    ov.id = 'moment-overlay';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:2147483000;overflow:auto;' +
+      'background:rgba(10,14,12,.85);padding:14px;';
+    ov.innerHTML =
+      '<div class="sansImpression" style="max-width:720px;margin:0 auto 12px;' +
+        'display:flex;gap:10px;justify-content:flex-end;align-items:center;">' +
+        '<span style="color:#F3F1E7;font-family:Georgia,serif;font-size:14px;margin-right:auto;">' +
+          echap(conf.titre) + ' — prête à imprimer</span>' +
+        '<button type="button" id="btn-moment-imprimer" class="btn btn-s">🖨 Imprimer / PDF</button>' +
+        '<button type="button" id="btn-moment-fermer" class="btn btn-s">Fermer</button>' +
+      '</div>' +
+      '<div class="fondArdoise" style="border-radius:6px;max-width:720px;margin:0 auto;">' +
+        htmlMoment(cle) + '</div>';
+    document.body.appendChild(ov);
+    document.body.style.overflow = 'hidden';
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) fermerMoment();
+      if (e.target.closest('#btn-moment-fermer')) fermerMoment();
+      if (e.target.closest('#btn-moment-imprimer')) {
+        document.body.classList.add('impression-moment');
+        window.print();
+        setTimeout(function () { document.body.classList.remove('impression-moment'); }, 400);
+      }
+    });
+    document.addEventListener('keydown', momentEchap);
+  }
+
+  function momentEchap(e) {
+    if (e.key === 'Escape') {
+      fermerMoment();
+      document.removeEventListener('keydown', momentEchap);
+    }
   }
 
 
@@ -1412,6 +1900,7 @@
   }
 
   function dessinerCarte() {
+    if (CARTE_VIEW === 'moment') { dessinerVueMoment(); return; }
     if (CARTE_VIEW !== 'standard') { dessinerVueExtra(CARTE_VIEW); return; }
     $('#outils-standard').hidden = false;
     var liste = produitsFiltres();
@@ -1722,9 +2211,11 @@
   function dessinerCueillette() {
     if (!CUEILLETTE) return;
     var modeExtra = CUEILLETTE.cle.indexOf('extras:') === 0;
+    var modeMoment = CUEILLETTE.cle.indexOf('moment:') === 0;
     var q = norm($('#cueillette-recherche').value);
-    var candidats = (modeExtra ? CARTE.filter(function (p) { return p.actif; })
-                               : candidatsArdoise(CUEILLETTE.cle)).filter(function (p) {
+    var candidats = ((modeExtra || modeMoment)
+      ? CARTE.filter(function (p) { return p.actif; })
+      : candidatsArdoise(CUEILLETTE.cle)).filter(function (p) {
       return !q || norm(p.nom + ' ' + p.fam + ' ' + p.cat).indexOf(q) >= 0;
     });
     $('#cueillette-liste').innerHTML = candidats.map(function (p) {
@@ -1739,6 +2230,24 @@
 
   function validerCueillette() {
     if (!CUEILLETTE) return;
+    if (CUEILLETTE.cle.indexOf('moment:') === 0) {
+      var cleM = CUEILLETTE.cle.slice(7);
+      var confM = CF.moment[cleM];
+      var libresM = confM.libres.map(function (l) { return l.id; });
+      var gardesM = confM.ordre.filter(function (id) {
+        return libresM.indexOf(id) >= 0 || CUEILLETTE.choisis.indexOf(id) >= 0;
+      });
+      CUEILLETTE.choisis.forEach(function (id) {
+        if (gardesM.indexOf(id) < 0) gardesM.push(id);
+      });
+      confM.ordre = gardesM;
+      fermerCueillette();
+      sauver();
+      dessinerCF();
+      if (ECRAN === 'carte') dessinerCarte();
+      toast(confM.titre + ' : ' + gardesM.length + ' ligne(s)');
+      return;
+    }
     if (CUEILLETTE.cle.indexOf('extras:') === 0) {
       var cleX = CUEILLETTE.cle.slice(7);
       var confX = CF.extras[cleX];
@@ -2346,6 +2855,7 @@
       if (onglet) { montrer(onglet.dataset.ecran); return; }
 
       if (clicArdoise(t)) return;
+      if (clicMoment(t)) return;
       if (clicCarteStandard(t)) return;
 
       if (t.closest('#btn-ouvrir-ardoise')) { ouvrirArdoise(); return; }
@@ -2631,6 +3141,8 @@
     htmlArdoiseExtras: htmlArdoiseExtras,
     itemsFamille: itemsFamille,
     itemsExtra: itemsExtra,
+    htmlMoment: htmlMoment,
+    itemsMoment: itemsMoment,
     extrasSeed: extrasSeed,
     ouvrirCueilletteExtra: ouvrirCueilletteExtra,
     marge: margeAuto,
