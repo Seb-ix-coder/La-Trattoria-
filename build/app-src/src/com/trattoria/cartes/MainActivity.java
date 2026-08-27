@@ -246,6 +246,11 @@ public class MainActivity extends Activity {
             case "commande": ecranCommande(); break;
             case "ventes": ecranVentes(); break;
             case "site": ecranSite(); break;
+            case "stock": ecranStock(); break;
+            case "compta": ecranCompta(); break;
+            case "objectifs": ecranObjectifs(); break;
+            case "invendus": ecranInvendus(); break;
+            case "personnel": ecranPersonnel(); break;
             case "admin": ecranAdmin(); break;
             case "cartes": ecranCartes(); break;
             case "standard": ecranStandard(); break;
@@ -265,6 +270,11 @@ public class MainActivity extends Activity {
         if ("ventes".equals(ecran)) return "Ventes du jour";
         if ("site".equals(ecran)) return "Site en ligne — commandes clients";
         if ("admin".equals(ecran)) return "Administration";
+        if ("stock".equals(ecran)) return "Stock & commandes fournisseurs";
+        if ("compta".equals(ecran)) return "Comptabilité";
+        if ("objectifs".equals(ecran)) return "Objectifs";
+        if ("invendus".equals(ecran)) return "Invendus — anti-gaspi";
+        if ("personnel".equals(ecran)) return "Personnel";
         if ("ticket".equals(ecran)) return "Ticket";
         if ("cartes".equals(ecran)) return "Cartes — Éditer & produire";
         if ("standard".equals(ecran)) return "1 · La carte standard — catégories";
@@ -281,7 +291,9 @@ public class MainActivity extends Activity {
         if ("menu".equals(ecran)) { super.onBackPressed(); return; }
         if ("cartes".equals(ecran) || "donnees".equals(ecran) || "apropos".equals(ecran)
                 || "salle".equals(ecran) || "ventes".equals(ecran) || "site".equals(ecran)
-                || "admin".equals(ecran)) {
+                || "admin".equals(ecran) || "stock".equals(ecran) || "compta".equals(ecran)
+                || "objectifs".equals(ecran) || "invendus".equals(ecran)
+                || "personnel".equals(ecran)) {
             afficher("menu"); return;
         }
         if ("commande".equals(ecran)) { afficher("salle"); return; }
@@ -332,6 +344,11 @@ public class MainActivity extends Activity {
         tuiles.put("ventes", new String[]{"📈", "Ventes du jour — CA, tickets, meilleures ventes"});
         tuiles.put("cartes", new String[]{"🧾", "La carte standard, les cartes du moment, l'ardoise, l'impression"});
         tuiles.put("site", new String[]{"🌐", "Site en ligne — commandes clients (serveur intégré)"});
+        tuiles.put("objectifs", new String[]{"🎯", "Objectifs — CA et couverts du jour"});
+        tuiles.put("stock", new String[]{"📦", "Stock & commandes fournisseurs"});
+        tuiles.put("compta", new String[]{"💼", "Comptabilité — TVA, résultat, dépenses"});
+        tuiles.put("invendus", new String[]{"♻️", "Invendus — paniers anti-gaspi"});
+        tuiles.put("personnel", new String[]{"👥", "Personnel — équipe et contrats"});
         tuiles.put("admin", new String[]{"⚙️", "Administration — plan de salle, paramètres"});
         tuiles.put("donnees", new String[]{"💾", "Données — export / import JSON"});
         tuiles.put("apropos", new String[]{"ℹ️", "À propos et mentions"});
@@ -352,6 +369,11 @@ public class MainActivity extends Activity {
             else if ("ventes".equals(nomT)) nomT = "Ventes du jour";
             else if ("cartes".equals(nomT)) nomT = "Cartes";
             else if ("site".equals(nomT)) nomT = "Site en ligne";
+            else if ("stock".equals(nomT)) nomT = "Stock";
+            else if ("compta".equals(nomT)) nomT = "Comptabilité";
+            else if ("objectifs".equals(nomT)) nomT = "Objectifs";
+            else if ("invendus".equals(nomT)) nomT = "Invendus";
+            else if ("personnel".equals(nomT)) nomT = "Personnel";
             else if ("admin".equals(nomT)) nomT = "Administration";
             else if ("donnees".equals(nomT)) nomT = "Données";
             tx.addView(texte(nomT, 17, ROUGE_F, true));
@@ -1613,6 +1635,506 @@ public class MainActivity extends Activity {
                 })
                 .setNegativeButton("Annuler", null).show();
     }
+
+    // ==========================================================
+    //  ÉCRAN : STOCK
+    // ==========================================================
+    private void ecranStock() {
+        contenu.addView(bouton("← Menu", BEIGE, "#2B2B28", new View.OnClickListener() {
+            public void onClick(View v) { afficher("menu"); }
+        }));
+        contenu.addView(espace(10));
+        JSONArray stock = Modules.stock(donnees);
+        JSONArray aCom = Modules.aCommander(donnees);
+
+        if (aCom.length() > 0) {
+            LinearLayout alerte = colonne();
+            alerte.setBackground(fondBord("#FDF3D7", "#E5C55B", 12, 1));
+            alerte.setPadding(dp(14), dp(12), dp(14), dp(12));
+            alerte.addView(texte("⚠ " + aCom.length() + " article(s) sous le seuil — à commander",
+                    14, "#7A6000", true));
+            for (int i = 0; i < aCom.length(); i++) {
+                JSONObject c = aCom.optJSONObject(i);
+                if (c != null)
+                    alerte.addView(texte("· " + c.optString("nom", "") + " — "
+                            + c.optDouble("qte", 0) + " " + c.optString("unite", ""), 13, "#2B2B28", false));
+            }
+            contenu.addView(alerte);
+            contenu.addView(espace(12));
+        }
+
+        contenu.addView(texte("Inventaire (" + stock.length() + " articles)", 14, ROUGE_F, true));
+        contenu.addView(espace(6));
+        for (int i = 0; i < stock.length(); i++) {
+            final JSONObject a = stock.optJSONObject(i);
+            if (a == null) continue;
+            LinearLayout l = colonne();
+            l.setBackground(fondBord("#FFFFFF", TRAIT, 8, 1));
+            l.setPadding(dp(10), dp(6), dp(10), dp(6));
+            LinearLayout ligne = new LinearLayout(this);
+            ligne.setOrientation(LinearLayout.HORIZONTAL);
+            ligne.setGravity(Gravity.CENTER_VERTICAL);
+            TextView t = texte(s(a, "nom", "—") + "   " + a.optDouble("qte", 0)
+                    + " " + s(a, "unite", "u"), 14, "#2B2B28", true);
+            t.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            ligne.addView(t);
+            Button moins = bouton("−", BEIGE, "#2B2B28", new View.OnClickListener() {
+                public void onClick(View v) {
+                    try { a.put("qte", Math.max(0, a.optDouble("qte", 0) - 1)); sauver(); afficher("stock"); }
+                    catch (Exception e) { }
+                }
+            });
+            moins.setPadding(dp(12), 0, dp(12), 0);
+            Button plus = bouton("+", BEIGE, "#2B2B28", new View.OnClickListener() {
+                public void onClick(View v) {
+                    try { a.put("qte", a.optDouble("qte", 0) + 1); sauver(); afficher("stock"); }
+                    catch (Exception e) { }
+                }
+            });
+            plus.setPadding(dp(12), 0, dp(12), 0);
+            Button suppr = bouton("✕", BEIGE, "#7A1018", new View.OnClickListener() {
+                public void onClick(View v) {
+                    JSONArray garde = new JSONArray();
+                    JSONArray ss = Modules.stock(donnees);
+                    for (int k = 0; k < ss.length(); k++)
+                        if (ss.opt(k) != a) garde.put(ss.opt(k));
+                    try { donnees.put("stock", garde); } catch (Exception ignored) { }
+                    sauver(); afficher("stock");
+                }
+            });
+            suppr.setPadding(dp(12), 0, dp(12), 0);
+            ligne.addView(moins); ligne.addView(plus); ligne.addView(suppr);
+            l.addView(ligne);
+            contenu.addView(l);
+            contenu.addView(espace(4));
+        }
+        if (stock.length() == 0)
+            contenu.addView(texte("Inventaire vide — ajoutez vos produits de stock.", 13, GRIS, false));
+        contenu.addView(espace(10));
+        contenu.addView(bouton("＋ Ajouter un article de stock", ARDOISE, JAUNE,
+                new View.OnClickListener() {
+                    public void onClick(View v) { ajouterArticleStock(); }
+                }));
+    }
+
+    private void ajouterArticleStock() {
+        ScrollView form = new ScrollView(this);
+        LinearLayout l = colonne();
+        final EditText nom = champ("", "Nom (ex. : Farine T55)");
+        final EditText qte = champ("0", "Quantité en stock");
+        qte.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        final EditText unite = champ("kg", "Unité (kg, L, u…)");
+        final EditText seuil = champ("1", "Seuil d'alerte");
+        seuil.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        final EditText four = champ("", "Fournisseur (facultatif)");
+        l.addView(texte("Nom", 12, GRIS, false)); l.addView(nom);
+        l.addView(texte("Quantité", 12, GRIS, false)); l.addView(qte);
+        l.addView(texte("Unité", 12, GRIS, false)); l.addView(unite);
+        l.addView(texte("Seuil d'alerte", 12, GRIS, false)); l.addView(seuil);
+        l.addView(texte("Fournisseur", 12, GRIS, false)); l.addView(four);
+        form.addView(l);
+        new AlertDialog.Builder(this)
+                .setTitle("Nouvel article de stock")
+                .setView(form)
+                .setPositiveButton("Ajouter", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) {
+                        try {
+                            String n = nom.getText().toString().trim();
+                            if (n.isEmpty()) { toast("Nom requis"); return; }
+                            JSONObject a = Modules.article(n,
+                                    Double.parseDouble(qte.getText().toString().replace(',', '.')),
+                                    unite.getText().toString().trim(),
+                                    Double.parseDouble(seuil.getText().toString().replace(',', '.')),
+                                    four.getText().toString().trim());
+                            Modules.stock(donnees).put(a);
+                            sauver(); afficher("stock"); toast("Article ajouté");
+                        } catch (Exception e) { toast("Erreur : " + e.getMessage()); }
+                    }
+                })
+                .setNegativeButton("Annuler", null).show();
+    }
+
+    // ==========================================================
+    //  ÉCRAN : COMPTABILITÉ
+    // ==========================================================
+    private void ecranCompta() {
+        contenu.addView(bouton("← Menu", BEIGE, "#2B2B28", new View.OnClickListener() {
+            public void onClick(View v) { afficher("menu"); }
+        }));
+        contenu.addView(espace(10));
+        final String mois = aujourdhui().substring(0, 7);
+        JSONObject r = Modules.resultat(donnees, mois);
+
+        LinearLayout resume = colonne();
+        resume.setBackground(fondBord(ARDOISE, TRAIT, 14, 1));
+        resume.setPadding(dp(16), dp(14), dp(16), dp(14));
+        resume.addView(texte("Résultat — " + mois, 13, "#BFD8A8", false));
+        resume.addView(texte(eur(r.optDouble("ca", 0)), 30, "#FFFFFF", true));
+        resume.addView(texte("chiffre d'affaires TTC", 12.5f, JAUNE, false));
+        contenu.addView(resume);
+        contenu.addView(espace(12));
+
+        LinearLayout tva = colonne();
+        tva.setBackground(fondBord(CREME, TRAIT, 14, 1));
+        tva.setPadding(dp(16), dp(14), dp(16), dp(14));
+        tva.addView(texte("TVA collectée du mois", 15, ROUGE_F, true));
+        tva.addView(espace(6));
+        tva.addView(texte("TVA 10 % (alimentaire) : " + eur(r.optDouble("tva10", 0)), 13.5f, "#2B2B28", false));
+        tva.addView(texte("TVA 5,5 % : " + eur(r.optDouble("tva55", 0)), 13.5f, "#2B2B28", false));
+        tva.addView(texte("TVA 20 % (alcool) : " + eur(r.optDouble("tva20", 0)), 13.5f, "#2B2B28", false));
+        tva.addView(espace(4));
+        tva.addView(texte("Total TVA à reverser : " + eur(r.optDouble("tvaTotale", 0)),
+                14.5f, ROUGE_F, true));
+        contenu.addView(tva);
+        contenu.addView(espace(12));
+
+        LinearLayout res = colonne();
+        res.setBackground(fondBord(CREME, TRAIT, 14, 1));
+        res.setPadding(dp(16), dp(14), dp(16), dp(14));
+        res.addView(texte("Dépenses du mois : " + eur(r.optDouble("depenses", 0)), 13.5f, "#2B2B28", false));
+        res.addView(espace(4));
+        res.addView(texte("Résultat estimé (CA − TVA − dépenses) : "
+                + eur(r.optDouble("resultat", 0)), 15, ROUGE_F, true));
+        contenu.addView(res);
+        contenu.addView(espace(12));
+
+        contenu.addView(texte("Dépenses enregistrées", 14, ROUGE_F, true));
+        contenu.addView(espace(6));
+        JSONArray dep = donnees.optJSONArray("depenses");
+        if (dep != null) {
+            for (int i = dep.length() - 1; i >= 0; i--) {
+                final JSONObject dd = dep.optJSONObject(i);
+                if (dd == null) continue;
+                LinearLayout l = colonne();
+                l.setBackground(fondBord("#FFFFFF", TRAIT, 8, 1));
+                l.setPadding(dp(10), dp(6), dp(10), dp(6));
+                LinearLayout ligne = new LinearLayout(this);
+                ligne.setOrientation(LinearLayout.HORIZONTAL);
+                ligne.setGravity(Gravity.CENTER_VERTICAL);
+                TextView t = texte(s(dd, "date", "") + "  ·  " + s(dd, "libelle", "")
+                        + "  ·  " + eur(dd.optDouble("montant", 0)), 13, "#2B2B28", false);
+                t.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                ligne.addView(t);
+                Button suppr = bouton("✕", BEIGE, "#7A1018", new View.OnClickListener() {
+                    public void onClick(View v) {
+                        JSONArray garde = new JSONArray();
+                        JSONArray all = donnees.optJSONArray("depenses");
+                        if (all != null) {
+                            for (int k = 0; k < all.length(); k++)
+                                if (all.opt(k) != dd) garde.put(all.opt(k));
+                            try { donnees.put("depenses", garde); } catch (Exception ignored) { }
+                        }
+                        sauver(); afficher("compta");
+                    }
+                });
+                suppr.setPadding(dp(12), 0, dp(12), 0);
+                ligne.addView(suppr);
+                l.addView(ligne);
+                contenu.addView(l);
+                contenu.addView(espace(3));
+            }
+        }
+        contenu.addView(espace(8));
+        contenu.addView(bouton("＋ Ajouter une dépense", ARDOISE, JAUNE,
+                new View.OnClickListener() {
+                    public void onClick(View v) {
+                        ScrollView form = new ScrollView(MainActivity.this);
+                        LinearLayout l2 = colonne();
+                        final EditText lib = champ("", "Libellé (ex. : Farine, gaz…)");
+                        final EditText mont = champ("", "Montant €");
+                        mont.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                        l2.addView(texte("Libellé", 12, GRIS, false)); l2.addView(lib);
+                        l2.addView(texte("Montant €", 12, GRIS, false)); l2.addView(mont);
+                        form.addView(l2);
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle("Dépense — " + mois)
+                                .setView(form)
+                                .setPositiveButton("Ajouter", new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface d2, int w2) {
+                                        try {
+                                            String lb = lib.getText().toString().trim();
+                                            if (lb.isEmpty()) { toast("Libellé requis"); return; }
+                                            double m = Double.parseDouble(
+                                                    mont.getText().toString().replace(',', '.'));
+                                            JSONArray all = donnees.optJSONArray("depenses");
+                                            if (all == null) {
+                                                all = new JSONArray();
+                                                try { donnees.put("depenses", all); } catch (Exception ignored) { }
+                                            }
+                                            all.put(Modules.depense(aujourdhui(), lb, m));
+                                            sauver(); afficher("compta"); toast("Dépense ajoutée");
+                                        } catch (Exception e2) { toast("Erreur : " + e2.getMessage()); }
+                                    }
+                                })
+                                .setNegativeButton("Annuler", null).show();
+                    }
+                }));
+    }
+
+    // ==========================================================
+    //  ÉCRAN : OBJECTIFS
+    // ==========================================================
+    private void ecranObjectifs() {
+        contenu.addView(bouton("← Menu", BEIGE, "#2B2B28", new View.OnClickListener() {
+            public void onClick(View v) { afficher("menu"); }
+        }));
+        contenu.addView(espace(10));
+        JSONObject av = Modules.avancement(donnees, aujourdhui());
+        JSONObject obj = Modules.objectifs(donnees);
+
+        contenu.addView(texte("Où en est-on aujourd'hui ?", 13.5f, GRIS, false));
+        contenu.addView(espace(12));
+
+        LinearLayout j1 = colonne();
+        j1.setBackground(fondBord(ARDOISE, TRAIT, 14, 1));
+        j1.setPadding(dp(16), dp(14), dp(16), dp(14));
+        j1.addView(texte("Chiffre d'affaires", 13, "#BFD8A8", false));
+        j1.addView(texte(eur(av.optDouble("ca", 0)) + " / " + eur(av.optDouble("caCible", 600)),
+                24, "#FFFFFF", true));
+        j1.addView(espace(6));
+        LinearLayout fond1 = colonne();
+        fond1.setBackground(fondBord("#3A4A42", "#3A4A42", 4, 0));
+        View barre1 = new View(this);
+        barre1.setBackgroundColor(c(JAUNE));
+        LinearLayout.LayoutParams bp1 = new LinearLayout.LayoutParams(
+                Math.max(dp(2), (int) (dp(280) * Math.min(100, av.optInt("pctCA", 0)) / 100)), dp(8));
+        barre1.setLayoutParams(bp1);
+        fond1.addView(barre1);
+        j1.addView(fond1);
+        j1.addView(espace(4));
+        j1.addView(texte(av.optInt("pctCA", 0) + " % de l'objectif", 12.5f, JAUNE, false));
+        contenu.addView(j1);
+        contenu.addView(espace(10));
+
+        LinearLayout j2 = colonne();
+        j2.setBackground(fondBord(ARDOISE, TRAIT, 14, 1));
+        j2.setPadding(dp(16), dp(14), dp(16), dp(14));
+        j2.addView(texte("Couverts", 13, "#BFD8A8", false));
+        j2.addView(texte(av.optInt("couverts", 0) + " / " + av.optInt("couvertsCible", 40),
+                24, "#FFFFFF", true));
+        j2.addView(espace(4));
+        j2.addView(texte(av.optInt("pctCouverts", 0) + " % de l'objectif", 12.5f, JAUNE, false));
+        contenu.addView(j2);
+        contenu.addView(espace(12));
+
+        contenu.addView(bouton("🎯 Modifier les objectifs", BEIGE, "#2B2B28",
+                new View.OnClickListener() {
+                    public void onClick(View v) {
+                        ScrollView form = new ScrollView(MainActivity.this);
+                        LinearLayout l = colonne();
+                        final EditText ca = champ(String.valueOf(obj.optDouble("caJour", 600)),
+                                "CA du jour cible (€)");
+                        ca.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                        final EditText co = champ(String.valueOf(obj.optInt("couverts", 40)),
+                                "Couverts par jour");
+                        co.setInputType(InputType.TYPE_CLASS_NUMBER);
+                        l.addView(texte("CA du jour cible (€)", 12, GRIS, false)); l.addView(ca);
+                        l.addView(texte("Couverts par jour", 12, GRIS, false)); l.addView(co);
+                        form.addView(l);
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle("Objectifs")
+                                .setView(form)
+                                .setPositiveButton("Enregistrer", new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface d, int w) {
+                                        try {
+                                            obj.put("caJour", Double.parseDouble(ca.getText().toString().replace(',', '.')));
+                                            obj.put("couverts", Integer.parseInt(co.getText().toString().trim()));
+                                            sauver(); afficher("objectifs"); toast("Objectifs mis à jour");
+                                        } catch (Exception e2) { toast("Erreur : " + e2.getMessage()); }
+                                    }
+                                })
+                                .setNegativeButton("Annuler", null).show();
+                    }
+                }));
+    }
+
+    // ==========================================================
+    //  ÉCRAN : INVENDUS
+    // ==========================================================
+    private void ecranInvendus() {
+        contenu.addView(bouton("← Menu", BEIGE, "#2B2B28", new View.OnClickListener() {
+            public void onClick(View v) { afficher("menu"); }
+        }));
+        contenu.addView(espace(10));
+        contenu.addView(texte("Paniers anti-gaspi : les invendus du jour à prix réduit en fin de service.",
+                13.5f, GRIS, false));
+        contenu.addView(espace(10));
+        JSONArray inv = Modules.invendus(donnees, aujourdhui());
+        for (int i = inv.length() - 1; i >= 0; i--) {
+            final JSONObject x = inv.optJSONObject(i);
+            if (x == null) continue;
+            LinearLayout l = colonne();
+            l.setBackground(fondBord("#FFFFFF", TRAIT, 8, 1));
+            l.setPadding(dp(10), dp(8), dp(10), dp(8));
+            LinearLayout ligne = new LinearLayout(this);
+            ligne.setOrientation(LinearLayout.HORIZONTAL);
+            ligne.setGravity(Gravity.CENTER_VERTICAL);
+            TextView t = texte(x.optInt("qte", 1) + " × " + s(x, "nom", "") + "   à "
+                    + eur(x.optDouble("prix", 0)), 14, "#2B2B28", true);
+            t.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            ligne.addView(t);
+            Button vendu = bouton("Vendu", "#2E7D32", "#FFFFFF", new View.OnClickListener() {
+                public void onClick(View v) {
+                    try { x.put("statut", "vendu"); sauver(); afficher("invendus"); }
+                    catch (Exception e) { }
+                }
+            });
+            vendu.setPadding(dp(10), 0, dp(10), 0);
+            Button suppr = bouton("✕", BEIGE, "#7A1018", new View.OnClickListener() {
+                public void onClick(View v) {
+                    JSONArray garde = new JSONArray();
+                    JSONArray all = donnees.optJSONArray("invendus");
+                    if (all != null) {
+                        for (int k = 0; k < all.length(); k++)
+                            if (all.opt(k) != x) garde.put(all.opt(k));
+                        try { donnees.put("invendus", garde); } catch (Exception ignored) { }
+                    }
+                    sauver(); afficher("invendus");
+                }
+            });
+            suppr.setPadding(dp(10), 0, dp(10), 0);
+            ligne.addView(vendu); ligne.addView(suppr);
+            l.addView(ligne);
+            if ("vendu".equals(s(x, "statut", ""))) l.setAlpha(0.5f);
+            contenu.addView(l);
+            contenu.addView(espace(4));
+        }
+        if (inv.length() == 0)
+            contenu.addView(texte("Aucun invendu aujourd'hui — c'est une bonne nouvelle !",
+                    13, GRIS, false));
+        contenu.addView(espace(10));
+        contenu.addView(bouton("＋ Déclarer un invendu", ARDOISE, JAUNE,
+                new View.OnClickListener() {
+                    public void onClick(View v) {
+                        ScrollView form = new ScrollView(MainActivity.this);
+                        LinearLayout l2 = colonne();
+                        final EditText nom = champ("", "Produit (ex. : La Regina)");
+                        final EditText qte = champ("1", "Quantité");
+                        qte.setInputType(InputType.TYPE_CLASS_NUMBER);
+                        final EditText prix = champ("5", "Prix du panier €");
+                        prix.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                        l2.addView(texte("Produit", 12, GRIS, false)); l2.addView(nom);
+                        l2.addView(texte("Quantité", 12, GRIS, false)); l2.addView(qte);
+                        l2.addView(texte("Prix du panier €", 12, GRIS, false)); l2.addView(prix);
+                        form.addView(l2);
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle("Invendu — " + aujourdhui())
+                                .setView(form)
+                                .setPositiveButton("Déclarer", new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface d, int w) {
+                                        try {
+                                            String n = nom.getText().toString().trim();
+                                            if (n.isEmpty()) { toast("Produit requis"); return; }
+                                            JSONArray all = donnees.optJSONArray("invendus");
+                                            if (all == null) {
+                                                all = new JSONArray();
+                                                try { donnees.put("invendus", all); } catch (Exception ignored) { }
+                                            }
+                                            all.put(Modules.invendu(aujourdhui(), n,
+                                                    Integer.parseInt(qte.getText().toString().trim()),
+                                                    Double.parseDouble(prix.getText().toString().replace(',', '.'))));
+                                            sauver(); afficher("invendus"); toast("Invendu déclaré");
+                                        } catch (Exception e2) { toast("Erreur : " + e2.getMessage()); }
+                                    }
+                                })
+                                .setNegativeButton("Annuler", null).show();
+                    }
+                }));
+    }
+
+    // ==========================================================
+    //  ÉCRAN : PERSONNEL
+    // ==========================================================
+    private void ecranPersonnel() {
+        contenu.addView(bouton("← Menu", BEIGE, "#2B2B28", new View.OnClickListener() {
+            public void onClick(View v) { afficher("menu"); }
+        }));
+        contenu.addView(espace(10));
+        contenu.addView(texte("Équipe et contrats (registre du personnel).", 13.5f, GRIS, false));
+        contenu.addView(espace(10));
+        JSONArray pers = donnees.optJSONArray("personnel");
+        if (pers != null) {
+            for (int i = 0; i < pers.length(); i++) {
+                final JSONObject m = pers.optJSONObject(i);
+                if (m == null) continue;
+                LinearLayout l = colonne();
+                l.setBackground(fondBord("#FFFFFF", TRAIT, 8, 1));
+                l.setPadding(dp(10), dp(8), dp(10), dp(8));
+                LinearLayout ligne = new LinearLayout(this);
+                ligne.setOrientation(LinearLayout.HORIZONTAL);
+                ligne.setGravity(Gravity.CENTER_VERTICAL);
+                LinearLayout infos = colonne();
+                infos.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                infos.addView(texte(s(m, "nom", "—"), 14.5f, "#2B2B28", true));
+                infos.addView(texte(s(m, "contrat", "contrat") + " · " + s(m, "heures", "") + " h/sem · "
+                        + eur(m.optDouble("taux", 0)) + " €/h", 12.5f, GRIS, false));
+                ligne.addView(infos);
+                Button suppr = bouton("✕", BEIGE, "#7A1018", new View.OnClickListener() {
+                    public void onClick(View v) {
+                        JSONArray garde = new JSONArray();
+                        JSONArray all = donnees.optJSONArray("personnel");
+                        if (all != null) {
+                            for (int k = 0; k < all.length(); k++)
+                                if (all.opt(k) != m) garde.put(all.opt(k));
+                            try { donnees.put("personnel", garde); } catch (Exception ignored) { }
+                        }
+                        sauver(); afficher("personnel");
+                    }
+                });
+                suppr.setPadding(dp(12), 0, dp(12), 0);
+                ligne.addView(suppr);
+                l.addView(ligne);
+                contenu.addView(l);
+                contenu.addView(espace(4));
+            }
+        }
+        if (pers == null || pers.length() == 0)
+            contenu.addView(texte("Aucun membre enregistré.", 13, GRIS, false));
+        contenu.addView(espace(10));
+        contenu.addView(bouton("＋ Ajouter un membre", ARDOISE, JAUNE,
+                new View.OnClickListener() {
+                    public void onClick(View v) {
+                        ScrollView form = new ScrollView(MainActivity.this);
+                        LinearLayout l2 = colonne();
+                        final EditText nom = champ("", "Nom et prénom");
+                        final EditText contrat = champ("CDI", "Type de contrat (CDI, CDD, extras…)");
+                        final EditText heures = champ("35", "Heures hebdomadaires");
+                        heures.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                        final EditText taux = champ("12", "Taux horaire €");
+                        taux.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                        l2.addView(texte("Nom", 12, GRIS, false)); l2.addView(nom);
+                        l2.addView(texte("Contrat", 12, GRIS, false)); l2.addView(contrat);
+                        l2.addView(texte("Heures/sem", 12, GRIS, false)); l2.addView(heures);
+                        l2.addView(texte("Taux horaire €", 12, GRIS, false)); l2.addView(taux);
+                        form.addView(l2);
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle("Nouveau membre de l'équipe")
+                                .setView(form)
+                                .setPositiveButton("Ajouter", new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface d, int w) {
+                                        try {
+                                            String n = nom.getText().toString().trim();
+                                            if (n.isEmpty()) { toast("Nom requis"); return; }
+                                            JSONArray all = donnees.optJSONArray("personnel");
+                                            if (all == null) {
+                                                all = new JSONArray();
+                                                try { donnees.put("personnel", all); } catch (Exception ignored) { }
+                                            }
+                                            JSONObject m = new JSONObject();
+                                            m.put("nom", n);
+                                            m.put("contrat", contrat.getText().toString().trim());
+                                            m.put("heures", heures.getText().toString().trim());
+                                            m.put("taux", Double.parseDouble(taux.getText().toString().replace(',', '.')));
+                                            all.put(m);
+                                            sauver(); afficher("personnel"); toast("Membre ajouté");
+                                        } catch (Exception e2) { toast("Erreur : " + e2.getMessage()); }
+                                    }
+                                })
+                                .setNegativeButton("Annuler", null).show();
+                    }
+                }));
+    }
+
 
     // ==========================================================
     //  Écran : ardoise & QR
