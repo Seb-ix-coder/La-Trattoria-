@@ -14,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 DOSSIER = os.path.join(HERE, 'app-src')
-SORTIE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..', 'trato-cartes-1.0.apk')
+SORTIE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..', 'trato-gestion-1.1.apk')
 KEYSTORE = os.path.join(HERE, 'keystore', 'trattoria-release.p12')
 
 
