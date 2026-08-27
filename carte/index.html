@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#A51822">
+<title>La Trattoria — Gestion de la carte</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="La Carte">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icones/icone-180.png">
+<link rel="icon" type="image/png" href="icones/icone-192.png">
+<link rel="stylesheet" href="carte.css">
+<link rel="stylesheet" href="ardoise.css">
+</head>
+<body>
+
+<a class="evite" href="#contenu">Aller au contenu</a>
+
+<!-- ================= en-tête ================= -->
+<header>
+  <div class="conteneur barre">
+    <div class="marque">
+      <span class="logo" aria-hidden="true">LT</span>
+      <span>
+        <span class="n">La Trattoria</span>
+        <span class="s">Gestion de la carte</span>
+      </span>
+    </div>
+    <button type="button" class="badge-sync" id="badge-sync" title="Synchronisation entre tablettes">
+      <span class="point"></span>Mode autonome</button>
+    <button type="button" class="btn btn-p" id="btn-nouveau">+ Ajouter</button>
+  </div>
+  <nav class="conteneur onglets" aria-label="Écrans">
+    <button type="button" class="onglet actif" data-ecran="carte" aria-pressed="true">La carte</button>
+    <button type="button" class="onglet" data-ecran="ardoises" aria-pressed="false">Cartes du jour</button>
+    <button type="button" class="onglet" data-ecran="ardoise" aria-pressed="false">Ardoise &amp; QR</button>
+    <button type="button" class="onglet" data-ecran="marges" aria-pressed="false">Marges</button>
+    <button type="button" class="onglet" data-ecran="donnees" aria-pressed="false">Données</button>
+  </nav>
+</header>
+
+<main id="contenu" class="conteneur">
+
+  <!-- ================= écran : la carte ================= -->
+  <section id="ecran-carte">
+    <p class="carte-entete">✏️ <b>Éditer &amp; produire les cartes</b> — la carte
+      standard (titres, sous-titres, lignes), les formules, les vins, les glaces,
+      les bières, les ardoises du jour · impression A4</p>
+    <nav class="carte-vues" id="carte-vues" aria-label="Cartes éditables">
+      <button type="button" class="cv on" data-cv="standard" aria-pressed="true">🍽️ Carte standard</button>
+      <button type="button" class="cv" data-cv="formules" aria-pressed="false">🧾 Formules</button>
+      <button type="button" class="cv" data-cv="vins" aria-pressed="false">🍷 Vins</button>
+      <button type="button" class="cv" data-cv="glaces" aria-pressed="false">🍨 Glaces</button>
+      <button type="button" class="cv" data-cv="bieres" aria-pressed="false">🍺 Bières</button>
+      <button type="button" class="cv" data-cv="moment" aria-pressed="false">✨ Du moment</button>
+      <button type="button" class="cva" data-cv-saut="ardoises" title="Éditer les ardoises du jour">🗓️ Ardoises du jour</button>
+      <button type="button" class="cva cva-action" data-cv-imprimer="1" title="Aperçu et impression A4 de la carte standard">🖨️ Carte A4</button>
+    </nav>
+    <div class="outils" id="outils-standard">
+      <input type="search" id="recherche" placeholder="Rechercher un produit…"
+             aria-label="Rechercher un produit">
+      <div class="filtres" role="group" aria-label="Filtrer par type">
+        <button type="button" class="filtre actif" data-type="tout" aria-pressed="true">Tout</button>
+        <button type="button" class="filtre" data-type="formule" aria-pressed="false">Formules</button>
+        <button type="button" class="filtre" data-type="plat" aria-pressed="false">Plats</button>
+        <button type="button" class="filtre" data-type="boisson" aria-pressed="false">Boissons</button>
+        <button type="button" class="filtre" data-type="cocktail" aria-pressed="false">Cocktails</button>
+      </div>
+      <p class="aide" id="nb-visibles" aria-live="polite"></p>
+    </div>
+    <div id="liste-produits"></div>
+  </section>
+
+  <!-- ================= écran : cartes du jour ================= -->
+  <section id="ecran-ardoises" hidden>
+    <div class="ardoise-intro carte-bloc">
+      <h2>Les cartes du jour</h2>
+      <p class="aide">Composez les ardoises du service — bières du jour, plats du jour,
+        carte des desserts — à partir de vos produits ou de lignes libres, puis
+        imprimez-les ou affichez-les. Vides, elles ne sont ni affichées ni imprimées.</p>
+      <button type="button" class="btn btn-p" id="btn-imprimer-tout">🖨 Imprimer les trois cartes</button>
+    </div>
+    <div id="ardoises"></div>
+  </section>
+
+  <!-- ================= écran : ardoise (carte principale) & QR ================= -->
+  <section id="ecran-ardoise" hidden>
+    <div class="ardoise-intro carte-bloc">
+      <h2>L'ardoise — la carte principale</h2>
+      <p class="aide">Éditez le titre et le sous-titre de chaque catégorie,
+        créez des <b>formules</b> (Menu enfant…), composez les <b>cartes dédiées</b>
+        — vins, glaces, bières — avec les produits du catalogue et des lignes
+        libres, ajoutez des photos, choisissez l'ordre — puis affichez ou
+        imprimez l'ardoise. Elle est publiée sur la page clients
+        (apercu-carte.html, serveur de carte) et embarquée dans l'application.</p>
+      <div class="rangee-boutons">
+        <button type="button" class="btn btn-p" id="btn-ouvrir-ardoise">🧾 Ouvrir l'ardoise</button>
+        <button type="button" class="btn btn-s" id="btn-imprimer-ardoise">🖨 Imprimer / PDF</button>
+        <button type="button" class="btn btn-s" id="btn-reinit-cf">🧹 Titres par défaut</button>
+      </div>
+    </div>
+    <div id="liste-cf" class="liste-cf"></div>
+
+    <div class="ardoise-intro carte-bloc qr-carte-bloc">
+      <h2>QR code du site</h2>
+      <p class="aide">Ce QR est affiché sur l'ardoise : il ouvre directement
+        l'adresse du site. Modifiez-la si besoin puis mettez le QR à jour.</p>
+      <div class="ligne-qr">
+        <div class="apercu-qr-bloc"><canvas id="apercu-qr" width="230" height="230"
+          aria-label="QR code du site"></canvas></div>
+        <div class="col-qr">
+          <label class="champ">
+            <span>Adresse du site (URL)</span>
+            <input type="url" id="champ-site" inputmode="url" maxlength="300"
+                   placeholder="https://latrattoria-saintes.fr/">
+          </label>
+          <button type="button" class="btn btn-p" id="btn-qr-maj">Mettre à jour le QR</button>
+          <p class="aide" id="qr-url-affichee"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= écran : marges ================= -->
+  <section id="ecran-marges" hidden>
+    <div id="kpis" class="kpis"></div>
+    <div class="carte-bloc">
+      <h2>Marge par produit</h2>
+      <p class="aide">Marge automatique = prix de vente HT &minus; coût matière.
+        Un produit passe en rouge sous l'objectif de coefficient
+        (mêmes seuils que l'application : coeff. 4,0 cuisine · 3,8 alcool).</p>
+      <div class="table-wrap">
+        <table id="table-marges">
+          <thead>
+            <tr>
+              <th data-tri="nom">Produit</th>
+              <th data-tri="pv" class="num">Prix TTC</th>
+              <th data-tri="cout" class="num">Coût</th>
+              <th data-tri="marge" class="num">Marge&nbsp;€</th>
+              <th data-tri="taux" class="num">Taux</th>
+              <th data-tri="coef" class="num">Coeff.</th>
+              <th data-tri="cible" class="num">Cible</th>
+              <th class="num">Marg. emporté</th>
+              <th>Formats</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="carte-bloc" id="bloc-familles">
+      <h2>Par famille</h2>
+      <div id="stats-familles"></div>
+    </div>
+  </section>
+
+  <!-- ================= écran : données ================= -->
+  <section id="ecran-donnees" hidden>
+    <div class="carte-bloc">
+      <h2>Sauvegarde et échange</h2>
+      <p class="aide">La carte est conservée sur cet appareil. Exportez-la pour la
+        garder, la partager entre tablettes, ou la réinjecter dans l'application.</p>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-p" id="btn-export-json">Exporter la carte (JSON)</button>
+        <button type="button" class="btn btn-s" id="btn-export-csv">Exporter les marges (CSV)</button>
+        <button type="button" class="btn btn-s" id="btn-import">Importer une carte…</button>
+        <input type="file" id="fichier-import" accept="application/json,.json" hidden>
+      </div>
+      <p class="aide" id="info-donnees"></p>
+    </div>
+    <div class="carte-bloc">
+      <h2>Entre tablettes et avec les clients</h2>
+      <p class="aide">Lancez <code>serveur_carte.py</code> sur une tablette ou un ordinateur
+        du restaurant : toutes les tablettes se synchronisent alors automatiquement
+        (la dernière modification fait foi), et la page publique
+        <a href="public.html"><strong>public.html</strong></a> affiche la carte et les
+        cartes du jour en lecture seule, pour les clients connectés au Wi-Fi.</p>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-s" id="btn-sync">Synchroniser maintenant</button>
+        <a class="btn btn-s" href="public.html" target="_blank" rel="noopener">Voir la page publique</a>
+      </div>
+    </div>
+    <div class="carte-bloc danger">
+      <h2>Zone sensible</h2>
+      <p class="aide">Restaure le catalogue d'origine (celui de l'application, version 11).
+        Les photos, modifications et cartes du jour seront perdues.</p>
+      <button type="button" class="btn btn-danger" id="btn-reinit">Restaurer la carte d'origine</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= fiche produit (boîte de dialogue) ================= -->
+<div id="voile" class="voile" hidden></div>
+<div id="fiche" class="fiche" role="dialog" aria-modal="true" aria-labelledby="fiche-titre" hidden>
+  <form id="form-produit" novalidate>
+    <header class="fiche-tete">
+      <h2 id="fiche-titre">Produit</h2>
+      <button type="button" class="fermer" data-fermer aria-label="Fermer la fiche">×</button>
+    </header>
+
+    <div class="fiche-corps">
+
+      <!-- identité -->
+      <div class="ligne-photo">
+        <div class="apercu-photo" id="apercu-photo">
+          <span class="sans-photo" id="sans-photo">Photo</span>
+          <img id="img-apercu" alt="" hidden>
+        </div>
+        <div class="col-photo">
+          <input type="file" id="champ-photo" accept="image/*" hidden>
+          <button type="button" class="btn btn-s btn-bloc" id="btn-photo">📷 Choisir une photo</button>
+          <button type="button" class="btn btn-s btn-bloc" id="btn-photo-retirer" hidden>Retirer la photo</button>
+          <input type="file" id="champ-photo-ardoise" accept="image/*" hidden>
+          <button type="button" class="btn btn-s btn-bloc" id="btn-photo-ardoise">🖼️ Photo pour l'ardoise</button>
+          <button type="button" class="btn btn-s btn-bloc" id="btn-photo-ardoise-retirer" hidden>Retirer la photo d'ardoise</button>
+          <p class="aide">L'image est réduite automatiquement, comme dans l'application.
+            La photo d'ardoise n'apparaît que sur l'ardoise (sinon la photo principale est utilisée).</p>
+        </div>
+      </div>
+
+      <label class="champ">
+        <span>Nom du produit</span>
+        <input type="text" id="f-nom" required maxlength="60" placeholder="Ex. : La Diavola">
+      </label>
+
+      <label class="champ">
+        <span>Sous-titre (facultatif — affiché sur l'ardoise sous le nom)</span>
+        <input type="text" id="f-sous" maxlength="90"
+               placeholder="Ex. : la préférée de la maison">
+      </label>
+
+      <label class="champ">
+        <span>Descriptif (visible sur le site et les cartes)</span>
+        <textarea id="f-desc" rows="3" maxlength="400"
+          placeholder="Ingrédients, cuisson, origine…"></textarea>
+      </label>
+
+      <div class="deux-cols">
+        <label class="champ">
+          <span>Type</span>
+          <select id="f-type">
+            <option value="plat">Plat</option>
+            <option value="formule">Formule</option>
+            <option value="boisson">Boisson</option>
+            <option value="cocktail">Cocktail</option>
+          </select>
+        </label>
+        <label class="champ">
+          <span>Famille (rubrique de la carte)</span>
+          <select id="f-fam"></select>
+        </label>
+      </div>
+
+      <label class="champ" id="bloc-cat">
+        <span>Sous-catégorie</span>
+        <input type="text" id="f-cat" list="cats-existantes" maxlength="40"
+               placeholder="Ex. : Nos pizzas, Cocktails classiques…">
+        <datalist id="cats-existantes"></datalist>
+      </label>
+
+      <!-- prix & coûts -->
+      <fieldset class="pave">
+        <legend>Prix et coût</legend>
+        <div class="trois-cols">
+          <label class="champ">
+            <span>Prix de vente TTC (€)</span>
+            <input type="number" id="f-pv" min="0" step="0.10" inputmode="decimal" required>
+          </label>
+          <label class="champ">
+            <span>Coût matière (€)</span>
+            <input type="number" id="f-cout" min="0" step="0.05" inputmode="decimal" required>
+          </label>
+          <label class="champ">
+            <span>TVA</span>
+            <select id="f-tva">
+              <option value="0.10">10 % — cuisine</option>
+              <option value="0.20">20 % — alcool</option>
+              <option value="0.055">5,5 %</option>
+            </select>
+          </label>
+        </div>
+      </fieldset>
+
+      <!-- formats de prix : verre/bouteille, 25/50 cl… -->
+      <fieldset class="pave" id="pave-formats">
+        <legend>Formats et prix</legend>
+        <div id="formats-liste"></div>
+        <button type="button" class="btn btn-s btn-mini" id="btn-format-plus">+ Ajouter un format</button>
+      </fieldset>
+
+      <!-- vente à emporter -->
+      <fieldset class="pave">
+        <legend>Vente à emporter</legend>
+        <label class="champ">
+          <span>TVA appliquée à l'emporté</span>
+          <select id="f-tva-emporter">
+            <option value="">Comme en salle (défaut)</option>
+            <option value="0.055">5,5 % — emporté alimentaire</option>
+            <option value="0.10">10 %</option>
+            <option value="0.20">20 %</option>
+          </select>
+        </label>
+        <p class="verdict aide" id="m-emporter" hidden></p>
+      </fieldset>
+
+      <!-- allergènes -->
+      <fieldset class="pave">
+        <legend>Allergènes</legend>
+        <p class="aide">Les 14 allergènes à déclaration obligatoire, affichés sur la page
+          clients. Pré-remplis d'après les ingrédients — vérifiez chaque produit.</p>
+        <div id="allergenes-grille" class="allergenes-grille"></div>
+      </fieldset>
+
+      <!-- marge -->
+      <fieldset class="pave" id="pave-marge">
+        <legend>Marge</legend>
+        <dl class="chiffres-marge">
+          <div><dt>Prix HT</dt><dd id="m-ht">—</dd></div>
+          <div><dt>Marge (auto)</dt><dd id="m-marge">—</dd></div>
+          <div><dt>Taux de marge</dt><dd id="m-taux">—</dd></div>
+          <div><dt>Coefficient</dt><dd id="m-coef">—</dd></div>
+        </dl>
+        <p class="verdict" id="m-verdict"></p>
+
+        <div class="marge-manuelle">
+          <h3>Fixer la marge à la main</h3>
+          <div class="deux-cols">
+            <label class="champ">
+              <span>Unité</span>
+              <select id="f-marge-unite">
+                <option value="eur">€ HT par portion</option>
+                <option value="taux">% de marge (sur PV HT)</option>
+              </select>
+            </label>
+            <label class="champ">
+              <span>Marge cible</span>
+              <input type="number" id="f-marge-valeur" min="0" step="0.10" inputmode="decimal"
+                     placeholder="Ex. : 9,50 ou 75">
+            </label>
+          </div>
+          <p class="suggestion" id="m-suggestion" hidden></p>
+          <div class="actions-marge">
+            <button type="button" class="btn btn-s" id="btn-appliquer-prix" hidden>Appliquer ce prix</button>
+            <button type="button" class="btn btn-s" id="btn-marge-auto" hidden>Repasser en automatique</button>
+          </div>
+        </div>
+      </fieldset>
+
+      <label class="case">
+        <input type="checkbox" id="f-actif" checked>
+        <span>Produit à la carte (décocher pour le masquer temporairement)</span>
+      </label>
+
+      <p class="err" id="f-erreur" role="alert" hidden></p>
+    </div>
+
+    <footer class="fiche-pied">
+      <button type="button" class="btn btn-danger" id="btn-supprimer" hidden>Supprimer</button>
+      <span class="flex-vide"></span>
+      <button type="button" class="btn btn-s" data-fermer>Annuler</button>
+      <button type="submit" class="btn btn-p" id="btn-enregistrer">Enregistrer</button>
+    </footer>
+  </form>
+</div>
+
+<!-- ============ composition d'une carte du jour ============ -->
+<div id="voile-cueillette" class="voile" hidden></div>
+<div id="cueillette" class="fiche" role="dialog" aria-modal="true" aria-labelledby="cueillette-titre" hidden>
+  <header class="fiche-tete">
+    <h2 id="cueillette-titre">Composer la carte</h2>
+    <button type="button" class="fermer" aria-label="Fermer">×</button>
+  </header>
+  <div class="fiche-corps">
+    <input type="search" id="cueillette-recherche" placeholder="Rechercher un produit…"
+           aria-label="Rechercher un produit">
+    <div id="cueillette-liste" class="cueillette-liste"></div>
+  </div>
+  <footer class="fiche-pied">
+    <span class="flex-vide"></span>
+    <button type="button" class="btn btn-s" id="cueillette-annuler" data-fermer>Annuler</button>
+    <button type="button" class="btn btn-p" id="cueillette-valider">Valider la sélection</button>
+  </footer>
+</div>
+
+<!-- ================= aperçu d'une carte du jour ================= -->
+<div id="apercu" class="apercu-overlay" role="dialog" aria-modal="true" hidden>
+  <button type="button" class="fermer fermer-overlay" aria-label="Fermer l'aperçu">×</button>
+  <div id="apercu-contenu" class="apercu-page"></div>
+</div>
+
+<!-- ================= zone d'impression (invisible à l'écran) ================= -->
+<div id="zone-impression" aria-hidden="true"></div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="donnees.js"></script>
+<script src="donnees-carte.js"></script>
+<script src="ardoise-assets.js"></script>
+<script src="qr-encodeur.js"></script>
+<script src="carte.js"></script>
+</body>
+</html>

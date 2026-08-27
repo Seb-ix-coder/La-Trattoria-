@@ -1,0 +1,29 @@
+CLÉ DE SIGNATURE OFFICIELLE — APPLICATIONS « LA TRATTORIA »
+=============================================================
+
+⚠⚠ CE DOSSIER EST COMMITÉ VOLONTAIREMENT — NE LE SUPPRIMEZ PAS ⚠⚠
+
+Cette clé signe TOUTES les applications La Trattoria. La perte du
+fichier = impossibilité de mettre à jour l'app sur la tablette sans
+désinstallation (message « Application non installée »).
+
+Fichier      : trattoria-release.p12 (PKCS#12, alias « trattoria »)
+Mot de passe : HQHhrEPdmTiCTQtFYZFa8jLzIqPf2njF
+Empreinte SHA-256 certificat :
+  46d7c630da555edf45c3edcd1cda4a5c50be9c01ade5fc59f20516c234100090
+
+Applications signées avec cette clé (à partir de) :
+  • La Trattoria — Gestion (com.trattoria.cartes) v1.1+ — vc 2+
+  • La Trattoria — application principale (com.trattoria.commande)
+    → À PARTIR DE LA PROCHAINE VERSION (12.7+) : la 12.6 et avant
+      utilisaient d'anciennes clés perdues — une dernière
+      désinstallation/réinstallation sera nécessaire au passage.
+
+Sécurité : la clé est publique (dépôt accessible). Compromis assumé
+pour une app interne de restaurant : la disponibilité des mises à
+jour prime. Rotation : supprimer ce dossier, générer une nouvelle
+clé (build/generate_keystore.py), réinstaller une fois sur les
+appareils.
+
+Le pipeline (run_build*.sh, assemble_apk.py) utilise ce keystore
+automatiquement.

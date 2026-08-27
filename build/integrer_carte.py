@@ -1,0 +1,617 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+integrer_carte.py — Intégration du module « carte/ » dans l'APK durci
+=====================================================================
+
+Produit l'application unifiée : l'application tablette (serveur local
+port 8720, caisse + site public + module social) sert désormais aussi
+le module de gestion de la carte (dossier carte/ du dépôt, PWA
+autonome/hors ligne).
+
+Principe (aucune chirurgie DEX, aucune recompilation)
+-----------------------------------------------------
+Le site client de l'application est UNE SEULE page HTML produite par
+le DEX (Site.page) avec les assets site.css / site.js INCLUS en
+ligne. L'asset site.js est donc le seul point d'intégration possible
+sans toucher au bytecode :
+
+  * le module carte (index.html + carte.css + carte.js + donnees.js +
+    icônes) est assemblé en un document HTML autonome — CSS/JS inclus,
+    icônes en data URI, manifest et liens public.html neutralisés —
+    puis encodé en base64 ;
+  * un addon JS est ajouté à la fin de site.js :
+      - mode « ?carte » : le module s'ouvre en plein écran dans une
+        iframe blob: (même origine que la page → le localStorage du
+        module fonctionne ; sa synchro tablettes, inapplicable dans un
+        blob, bascule automatiquement en mode autonome) ;
+      - un bouton flottant « 📋 » (mode personnel uniquement — absent
+        en modes client/partenaire du module social) l'ouvre, au-dessus
+        du bouton ⚙ Outils ;
+  * le module social (appeler + avis Google/Facebook/Tripadvisor,
+    modes ?client / ?partenaire) est déjà présent dans le build 11.2 :
+    il est conservé tel quel (vérifié par verify) ;
+  * versionCode 17 → 18, versionName "11.2" → "11.3" (remplacement
+    en place, même longueur — aucun décalage d'offset) ;
+  * reconstruction ZIP + signatures v1/v2 avec l'outillage existant
+    (resign.py).
+
+Usage :
+  python3 build/integrer_carte.py SRC_APK CARTE_DIR KEYSTORE.p12 MOT_DE_PASSE OUT_APK \
+      [--version-code=18] [--version-name=11.3]
+"""
+
+import base64
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+from patch_axml import AXML  # noqa: E402
+
+
+def read(path: str) -> str:
+    with open(path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+
+def readb(path: str) -> bytes:
+    with open(path, 'rb') as f:
+        return f.read()
+
+
+# ---------------------------------------------------------------------------
+#  1. Assemblage du module carte en document HTML autonome
+# ---------------------------------------------------------------------------
+def assembler_module(carte_dir: str) -> bytes:
+    html = read(os.path.join(carte_dir, 'index.html'))
+    css = read(os.path.join(carte_dir, 'carte.css'))
+    js_donnees = read(os.path.join(carte_dir, 'donnees.js'))
+    js_donnees_carte = read(os.path.join(carte_dir, 'donnees-carte.js'))
+    js_assets = read(os.path.join(carte_dir, 'ardoise-assets.js'))
+    js_qr = read(os.path.join(carte_dir, 'qr-encodeur.js'))
+    js_carte = read(os.path.join(carte_dir, 'carte.js'))
+    css_ardoise = read(os.path.join(carte_dir, 'ardoise.css'))
+    ic180 = base64.b64encode(
+        readb(os.path.join(carte_dir, 'icones', 'icone-180.png'))).decode()
+    ic192 = base64.b64encode(
+        readb(os.path.join(carte_dir, 'icones', 'icone-192.png'))).decode()
+
+    def doit(old: str, new: str) -> None:
+        nonlocal html
+        if old not in html:
+            raise SystemExit('référence introuvable dans index.html : %r' % old)
+        html = html.replace(old, new)
+
+    # PWA : inutile en embedded (pas d'URL propre pour manifest/SW)
+    doit('<link rel="manifest" href="manifest.webmanifest">', '')
+    # icônes → data URI
+    doit('<link rel="apple-touch-icon" href="icones/icone-180.png">',
+         '<link rel="apple-touch-icon" href="data:image/png;base64,%s">' % ic180)
+    doit('<link rel="icon" type="image/png" href="icones/icone-192.png">',
+         '<link rel="icon" type="image/png" href="data:image/png;base64,%s">' % ic192)
+    # CSS/JS → inclus en ligne
+    doit('<link rel="stylesheet" href="carte.css">',
+         '<style>\n' + css + '\n</style>')
+    doit('<link rel="stylesheet" href="ardoise.css">',
+         '<style>\n' + css_ardoise + '\n</style>')
+    # sécurité (aucun </script> attendu, mais on protège)
+    js_donnees = js_donnees.replace('</script>', '<\\/script>')
+    js_donnees_carte = js_donnees_carte.replace('</script>', '<\\/script>')
+    js_assets = js_assets.replace('</script>', '<\\/script>')
+    js_qr = js_qr.replace('</script>', '<\\/script>')
+    js_carte = js_carte.replace('</script>', '<\\/script>')
+    doit('<script src="donnees.js"></script>',
+         '<script>\n' + js_donnees + '\n</script>')
+    doit('<script src="donnees-carte.js"></script>',
+         '<script>\n' + js_donnees_carte + '\n</script>')
+    doit('<script src="ardoise-assets.js"></script>',
+         '<script>\n' + js_assets + '\n</script>')
+    doit('<script src="qr-encodeur.js"></script>',
+         '<script>\n' + js_qr + '\n</script>')
+    doit('<script src="carte.js"></script>',
+         '<script>\n' + js_carte + '\n</script>')
+    # page publique : inutilisable en embedded (pas de route dédiée)
+    html = html.replace('href="public.html"', 'href="#"')
+
+    # contrôle : aucune référence de fichier relative ne doit rester
+    # (le HTML seul — les blocs <script>/<style> sont du code, pas du HTML)
+    import re
+    html_sans_code = re.sub(r'<script[\s\S]*?</script>', '', html)
+    html_sans_code = re.sub(r'<style[\s\S]*?</style>', '', html_sans_code)
+    for m in re.finditer(r'(?:href|src)="([^"]+)"', html_sans_code):
+        ref = m.group(1)
+        if not (ref.startswith(('http', 'data:', '#', 'tel:', 'mailto:'))
+                or ref == ''):
+            raise SystemExit('référence relative restante : %r' % ref)
+    return html.encode('utf-8')
+
+
+# ---------------------------------------------------------------------------
+#  2. Addon JS ajouté à la fin de site.js
+# ---------------------------------------------------------------------------
+ADDON_TEMPLATE = '''
+/* ============================================================================
+   Addon « Module carte du jour » (site.js) — build unifié 11.3
+   ============================================================================
+   Intègre le module PWA « carte/ » (dossier carte/ du dépôt GitHub)
+   dans l'application tablette :
+
+     http://<tablette>:8720/?carte  →  module en plein écran
+     + bouton flottant « 📋 » (mode personnel uniquement, au-dessus du
+       bouton ⚙ Outils) qui l'ouvre.
+
+   Le module est livré en un document HTML autonome (CSS, JS et icônes
+   inclus), encodé en base64 ci-dessous, chargé dans une iframe blob:
+   (même origine que la page → le stockage local du module fonctionne
+   normalement ; sa synchro tablette, inapplicable ici, se met
+   automatiquement en mode autonome).
+   ========================================================================== */
+(function () {
+  'use strict';
+  if (typeof document === 'undefined') return;
+
+  var BUNDLE_B64 = '__BUNDLE_B64__';
+
+  /* Icône du raccourci « Éditer les cartes » (logo, 96 px, data URI) :
+     utilisée comme favicon de la page quand le module est ouvert en
+     mode autonome (?carte) — c'est elle que Chrome place sur l'écran
+     d'accueil de la tablette lors de « Ajouter à l'écran d'accueil ». */
+  var ICONE_RACCOURCI = 'data:image/png;base64,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';
+
+  function decodB64(b64) {
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    if (typeof TextDecoder !== 'undefined') {
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+    return decodeURIComponent(escape(bin));
+  }
+
+  function ouvrirModule(hash) {
+    var ancien = document.getElementById('lt-carte-iframe');
+    if (ancien && !hash) return;
+    if (ancien) ancien.remove();
+    var html = decodB64(BUNDLE_B64);
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var fr = document.createElement('iframe');
+    fr.id = 'lt-carte-iframe';
+    fr.title = 'Gestion de la carte';
+    fr.src = URL.createObjectURL(blob) + (hash || '');
+    fr.style.cssText = 'position:fixed;left:0;top:0;width:100vw;' +
+      'height:100vh;border:0;z-index:2147483647;background:#F4F1EA;';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.appendChild(fr);
+  }
+
+  /* ------------------------------------------------------------------
+     Panneau « Éditer les cartes » injecté dans la section #carte de
+     l'application (mode personnel uniquement). Chaque tuile ouvre le
+     module intégré directement sur le bon écran (lien profond #ecran-…).
+     ------------------------------------------------------------------ */
+  function stylePanneau() {
+    if (document.getElementById('pc-style')) return;
+    var st = document.createElement('style');
+    st.id = 'pc-style';
+    st.textContent =
+      '.cartes-nav{display:inline-flex;align-items:center;gap:6px;padding:0 14px;' +
+      'min-height:44px;border-radius:22px;text-decoration:none;font-size:14.5px;' +
+      'font-weight:700;white-space:nowrap;background:#24312B;color:#F5D677}' +
+      '.cartes-nav:active{transform:scale(.97)}' +
+      '.panneau-cartes{margin:12px 0 18px;padding:12px 14px;border:1px solid #D8CFC0;' +
+      'border-radius:14px;background:#FDFAF3;box-shadow:0 2px 10px rgba(43,43,40,.10)}' +
+      '.panneau-cartes .pc-tete{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;flex-wrap:wrap}' +
+      '.panneau-cartes .pc-tete b{font-family:Georgia,serif;color:#7A1018;font-size:15.5px}' +
+      '.panneau-cartes .pc-tete span{font-size:12px;color:#6E6A63}' +
+      '.panneau-cartes .pc-tuiles{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;' +
+      '-webkit-overflow-scrolling:touch;scrollbar-width:none}' +
+      '.panneau-cartes .pc-tuiles::-webkit-scrollbar{display:none}' +
+      '.pc-tuile{display:flex;flex-direction:column;align-items:flex-start;gap:1px;' +
+      'flex:0 0 auto;min-width:128px;max-width:180px;padding:9px 11px;border:1px solid #D8CFC0;' +
+      'border-radius:10px;background:#fff;cursor:pointer;font:inherit;text-align:left;' +
+      'min-height:58px;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 4px rgba(43,43,40,.06)}' +
+      '.pc-tuile:active{transform:scale(.97);border-color:#A51822}' +
+      '.pc-tuile .pc-i{font-size:20px;line-height:1}' +
+      '.pc-tuile .pc-t{font-weight:700;font-size:14px;color:#2B2B28}' +
+      '.pc-tuile .pc-s{font-size:11.5px;color:#6E6A63}';
+    document.head.appendChild(st);
+  }
+
+  function tuileCarte(cible, icone, titre, sous) {
+    return '<button type="button" class="pc-tuile" data-pc="' + cible + '">' +
+      '<span class="pc-i">' + icone + '</span>' +
+      '<span class="pc-t">' + titre + '</span>' +
+      '<span class="pc-s">' + sous + '</span></button>';
+  }
+
+  function clicTuile(e) {
+    var t = e.target.closest('[data-pc]');
+    if (!t) return;
+    ouvrirModule('#ecran-' + t.getAttribute('data-pc'));
+  }
+
+  /* Panneau compact en HAUT DE L'ÉCRAN D'ACCUEIL : inséré juste après le
+     header (avant le bandeau d'état de service), visible dès l'ouverture
+     de l'application, sans avoir à chercher un menu. */
+  function injecterPanneauCartes() {
+    stylePanneau();
+    if (!document.getElementById('panneau-cartes')) {
+      var header = document.querySelector('header');
+      var ancre = header ? header.nextSibling : null;
+      var hote = header && header.parentNode ? header.parentNode : null;
+      if (hote) {
+        var p = document.createElement('div');
+        p.id = 'panneau-cartes';
+        p.className = 'panneau-cartes';
+        p.innerHTML =
+          '<div class="pc-tete"><b>✏️ Éditer les cartes</b>' +
+          '<span>carte standard · formules · vins · glaces · bières · ardoise &amp; QR</span></div>' +
+          '<div class="pc-tuiles">' +
+          tuileCarte('carte', '🍽️', 'La carte (standard)', 'Produits &amp; catégories') +
+          tuileCarte('carte&vue=formules', '🧾', 'Formules', 'Menu enfant…') +
+          tuileCarte('carte&vue=vins', '🍷', 'Vins', 'Pichets &amp; cave') +
+          tuileCarte('carte&vue=glaces', '🍨', 'Glaces', 'Glaces &amp; sorbets') +
+          tuileCarte('carte&vue=bieres', '🍺', 'Bières', 'Pression &amp; bouteilles') +
+          tuileCarte('ardoise', '📋', 'Ardoise &amp; QR', 'En-tête, badges, QR') +
+          '</div>';
+        p.addEventListener('click', clicTuile);
+        if (ancre && ancre.parentNode === hote) hote.insertBefore(p, ancre);
+        else hote.appendChild(p);
+      }
+    }
+    /* Onglet « ✏️ Cartes » en PREMIER dans la barre de navigation
+       (nav.onglets), à côté de « Aujourd'hui » / « La carte ». */
+    var nav = document.querySelector('nav.onglets');
+    if (nav && !document.getElementById('nav-cartes')) {
+      var a = document.createElement('a');
+      a.id = 'nav-cartes';
+      a.href = '#';
+      a.className = 'cartes-nav';
+      a.textContent = '✏️ Cartes';
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        ouvrirModule('#ecran-carte');
+      });
+      nav.insertBefore(a, nav.firstChild);
+    }
+  }
+
+  function enModeCarte() {
+    // ?carte dans la QUERY uniquement (le hash #carte est un ancre du menu)
+    return (location.search || '').indexOf('carte') >= 0;
+  }
+
+  function styleBouton() {
+    if (document.getElementById('lt-carte-style')) return;
+    var st = document.createElement('style');
+    st.id = 'lt-carte-style';
+    st.textContent =
+      '#btn-carte{position:fixed;left:16px;bottom:154px;z-index:110;' +
+      'width:58px;height:58px;border-radius:50%;border:1.5px solid var(--trait,#D8CFC0);' +
+      'cursor:pointer;background:var(--creme,#FDFAF3);color:var(--rouge,#A51822);' +
+      'display:flex;align-items:center;justify-content:center;' +
+      'font-size:22px;line-height:1;box-shadow:0 4px 14px rgba(0,0,0,.28);' +
+      'touch-action:manipulation;-webkit-tap-highlight-color:transparent}' +
+      '@supports(padding:max(0px)){#btn-carte{left:max(16px,env(safe-area-inset-left));' +
+      'bottom:calc(max(16px,env(safe-area-inset-bottom)) + 136px)}}' +
+      '#btn-carte:active{transform:scale(.94)}' +
+      '#btn-carte:focus-visible{outline:3px solid var(--olive,#8A8A55);outline-offset:2px}';
+    document.head.appendChild(st);
+  }
+
+  function ajouterBouton() {
+    if (document.getElementById('btn-carte')) return;
+    if (document.body.classList.contains('mode-app')) return; // client/partenaire
+    var o = document.getElementById('btn-outils');
+    if (!o || !o.parentNode) return;
+    var b = document.createElement('button');
+    b.id = 'btn-carte';
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Carte du jour : produits, marges, cartes du jour');
+    b.textContent = '\\uD83D\\uDCCB';
+    b.addEventListener('click', ouvrirModule);
+    o.parentNode.insertBefore(b, o);
+  }
+
+  function demarrer() {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', demarrer);
+      return;
+    }
+    if (enModeCarte()) {
+      // Mode autonome (raccourci « Éditer les cartes » de la tablette) :
+      // titre et icône propres, pour le raccourci d'écran d'accueil.
+      document.title = 'Éditer les cartes — La Trattoria';
+      var lk = document.createElement('link');
+      lk.rel = 'icon';
+      lk.type = 'image/png';
+      lk.href = ICONE_RACCOURCI;
+      document.head.appendChild(lk);
+      var at = document.createElement('link');
+      at.rel = 'apple-touch-icon';
+      at.href = ICONE_RACCOURCI;
+      document.head.appendChild(at);
+      var mt = document.querySelector('meta[name="theme-color"]');
+      if (!mt) {
+        mt = document.createElement('meta');
+        mt.name = 'theme-color';
+        document.head.appendChild(mt);
+      }
+      mt.content = '#24312B';
+      ouvrirModule();
+      return;
+    }
+    if (document.body.classList.contains('mode-app')) return;
+    styleBouton();
+    ajouterBouton();
+    injecterPanneauCartes();
+    if (!document.getElementById('btn-carte')) setTimeout(demarrer, 300);
+  }
+  demarrer();
+})();
+'''
+
+
+# ---------------------------------------------------------------------------
+#  Addon « Mentions légales & CGV » (informations officielles du restaurant)
+# ---------------------------------------------------------------------------
+LEGAL_ADDON = """/* ============================================================================
+   Addon « Mentions légales & CGV » (site.js) — informations officielles
+   ============================================================================
+   Remplace le contenu des pages légales du site (mentions, cgv, donnees)
+   par les textes officiels du restaurant — sans toucher au moteur (DEX) :
+   le contenu est injecté dans le DOM après génération, en conservant les
+   identifiants/ancre et le bouton de fermeture d'origine.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  var MAJ = "Dernière mise à jour : 27 août 2026";
+  var TEL_HTML = "<a href='tel:0627213190'>06 27 21 31 90</a>";
+  var MAIL_HTML = "<a href='mailto:alexis.coudret@outlook.fr'>alexis.coudret@outlook.fr</a>";
+
+  function pageMentions() {
+    return "" +
+      "<h2>Mentions légales</h2>" +
+      "<p class='maj'>" + MAJ + "</p>" +
+      "<h3>Éditeur du site</h3>" +
+      "<p><strong>La Trattoria</strong><br>" +
+      "Forme juridique : entreprise individuelle<br>" +
+      "Capital social : —<br>" +
+      "SIRET : 106 050 263 00016<br>" +
+      "Adresse : 15 rue de la poste, 17100 Saintes<br>" +
+      "Téléphone : " + TEL_HTML + "<br>" +
+      "Email : " + MAIL_HTML + "</p>" +
+      "<h3>Directeur de la publication</h3>" +
+      "<p>Le gérant de La Trattoria.</p>" +
+      "<h3>Hébergeur</h3>" +
+      "<p>Site hébergé par LWS (Ligne Web Services) — " +
+      "<a href='https://www.lws.fr' target='_blank' rel='noopener'>https://www.lws.fr</a>.<br>" +
+      "La carte et les commandes sont également servies en local par la tablette " +
+      "du restaurant (réseau Wi-Fi du restaurant).</p>" +
+      "<h3>Contact</h3>" +
+      "<div class='encadre'><p><strong>La Trattoria</strong> — 15 rue de la poste, 17100 Saintes<br>" +
+      "Téléphone : " + TEL_HTML + " — Email : " + MAIL_HTML + "</p></div>";
+  }
+
+  function pageCgv() {
+    return "" +
+      "<h2>Conditions générales de vente</h2>" +
+      "<p class='maj'>" + MAJ + "</p>" +
+      "<p>Les présentes conditions générales de vente (CGV) régissent toutes les commandes " +
+      "passées via le site Internet de La Trattoria. Toute commande implique l'acceptation " +
+      "pleine et entière des présentes CGV par le client.</p>" +
+      "<h3>1. Objet</h3>" +
+      "<p>Le site La Trattoria permet aux clients de commander des produits alimentaires " +
+      "(pizzas, boissons, desserts) pour une consommation sur place, à emporter ou en " +
+      "livraison (lorsque disponible).</p>" +
+      "<h3>2. Produits et prix</h3>" +
+      "<p>Les produits proposés sont décrits avec leur prix en euros TTC. Les photographies " +
+      "des produits sont non contractuelles. La Trattoria se réserve le droit de modifier " +
+      "les prix et la carte à tout moment, les produits étant facturés sur la base des " +
+      "tarifs en vigueur au moment de la commande.</p>" +
+      "<h3>3. Disponibilité</h3>" +
+      "<p>Nos produits sont préparés à la commande, dans la limite des stocks disponibles. " +
+      "En cas d'indisponibilité temporaire d'un produit, nous nous réservons le droit de " +
+      "refuser la commande ou de proposer un produit de substitution équivalent.</p>" +
+      "<h3>4. Modes de commande</h3>" +
+      "<ul>" +
+      "<li><strong>À emporter (Click &amp; Collect)</strong> : le client commande en ligne " +
+      "et vient récupérer sa commande au restaurant à l'horaire choisi.</li>" +
+      "<li><strong>Sur place</strong> : le client réserve et consomme sur place.</li>" +
+      "<li><strong>Livraison</strong> : service disponible dans une zone délimitée " +
+      "(lorsque activé).</li>" +
+      "</ul>" +
+      "<h3>5. Horaires de commande</h3>" +
+      "<ul>" +
+      "<li>Lundi – Jeudi : 11h30 – 14h30 / 18h30 – 22h30</li>" +
+      "<li>Vendredi – Samedi : 11h30 – 14h30 / 18h30 – 23h</li>" +
+      "<li>Dimanche : 11h30 – 14h30 / 18h30 – 22h30</li>" +
+      "</ul>" +
+      "<h3>6. Délai de préparation</h3>" +
+      "<p>Le délai moyen de préparation est de 15 à 20 minutes pour les commandes à " +
+      "emporter. Ce délai peut varier en fonction de l'affluence. Un créneau horaire de " +
+      "retrait est proposé lors de la commande.</p>" +
+      "<h3>7. Annulation</h3>" +
+      "<p>Toute commande peut être annulée tant qu'elle n'a pas été préparée. Pour annuler " +
+      "une commande, contactez-nous au " + TEL_HTML + ". Une commande déjà en préparation " +
+      "ou prête ne peut pas être annulée.</p>" +
+      "<h3>8. Paiement</h3>" +
+      "<ul>" +
+      "<li><strong>Sur place</strong> : espèces, carte bancaire, tickets restaurant</li>" +
+      "<li><strong>En ligne</strong> : carte bancaire via Stripe (lorsque disponible)</li>" +
+      "</ul>" +
+      "<p>Les prix indiqués sur le site sont en euros toutes taxes comprises (TTC). Le " +
+      "montant total de la commande, incluant les éventuels frais de livraison, est " +
+      "indiqué avant la validation de la commande.</p>" +
+      "<h3>9. Politique de remboursement</h3>" +
+      "<p>Conformément à l'article L. 221-18 du Code de la consommation, le client dispose " +
+      "d'un droit de rétractation. Toutefois, conformément à l'article L. 221-28 du même " +
+      "code, ce droit ne s'applique pas aux fournitures de denrées alimentaires ou de " +
+      "boissons destinées à être consommées sur place ou à emporter.</p>" +
+      "<p><strong>Produits non conformes ou défectueux</strong> : si un produit ne " +
+      "correspond pas à la commande ou présente un défaut, le client peut en informer La " +
+      "Trattoria dans un délai raisonnable (le jour même) au " + TEL_HTML + ". Un " +
+      "remboursement ou un produit de remplacement sera proposé après vérification.</p>" +
+      "<p><strong>Commande non récupérée</strong> : si le client ne vient pas récupérer sa " +
+      "commande à emporter dans un délai raisonnable (30 minutes après l'horaire prévu), " +
+      "La Trattoria se réserve le droit de ne pas rembourser la commande, les produits " +
+      "étant préparés à la demande et périssables.</p>" +
+      "<h3>10. Droit applicable et litiges</h3>" +
+      "<p>Les présentes CGV sont soumises au droit français. En cas de litige, une " +
+      "solution amiable sera recherchée en priorité. À défaut, le tribunal compétent sera " +
+      "celui du ressort de Saintes (17100).</p>" +
+      "<p>Conformément à l'article L. 612-1 du Code de la consommation, le client peut " +
+      "recourir gratuitement à un médiateur de la consommation en vue de la résolution " +
+      "amiable d'un litige.</p>";
+  }
+
+  function pageDonnees() {
+    return "" +
+      "<h2>Données personnelles &amp; cookies</h2>" +
+      "<p class='maj'>" + MAJ + "</p>" +
+      "<h3>Collecte des données</h3>" +
+      "<p>La Trattoria collecte les données personnelles des clients uniquement dans le " +
+      "cadre du traitement des commandes (nom, prénom, email, téléphone). Ces données ne " +
+      "sont jamais cédées ou vendues à des tiers.</p>" +
+      "<h3>Finalité de la collecte</h3>" +
+      "<ul>" +
+      "<li>Traitement et suivi des commandes</li>" +
+      "<li>Contact en cas de problème avec la commande</li>" +
+      "<li>Amélioration du service</li>" +
+      "</ul>" +
+      "<h3>Droit d'accès et de suppression</h3>" +
+      "<p>Conformément au RGPD (Règlement Général sur la Protection des Données), le " +
+      "client dispose d'un droit d'accès, de modification et de suppression de ses " +
+      "données personnelles. Pour exercer ce droit, contactez-nous au " + TEL_HTML +
+      " ou par email à " + MAIL_HTML + ".</p>" +
+      "<h3>Conservation des données</h3>" +
+      "<p>Les données personnelles sont conservées pendant une durée de 3 ans après la " +
+      "dernière commande, conformément aux obligations légales de conservation.</p>" +
+      "<h3>Cookies</h3>" +
+      "<p>Le site La Trattoria utilise des cookies techniques nécessaires au bon " +
+      "fonctionnement du site (panier, session utilisateur). Aucun cookie de tracking " +
+      "publicitaire n'est utilisé sans consentement.</p>" +
+      "<h3>Contact</h3>" +
+      "<div class='encadre'><p><strong>La Trattoria</strong> — 15 rue de la poste, " +
+      "17100 Saintes — " + TEL_HTML + " — " + MAIL_HTML + "</p></div>";
+  }
+
+  var PAGES = { mentions: pageMentions, cgv: pageCgv, donnees: pageDonnees };
+
+  function injecter() {
+    if (!document.body) return;
+    var main = document.querySelector('main') || document.body;
+    Object.keys(PAGES).forEach(function (id) {
+      var sec = document.getElementById(id);
+      if (!sec) {
+        sec = document.createElement('section');
+        sec.id = id;
+        sec.className = 'legal';
+        sec.style.display = 'none';
+        main.appendChild(sec);
+      }
+      // conserver le bouton de fermeture d'origine s'il existe
+      var fermer = sec.querySelector('[data-fermer-legal]');
+      var fermerHTML = fermer ? fermer.outerHTML
+        : "<p style='margin-top:26px'><a href='#' class='btn btn-s' " +
+          "data-fermer-legal>&#8592; Retour au site</a></p>";
+      sec.innerHTML = "<div class='conteneur'>" + PAGES[id]() + fermerHTML + "</div>";
+    });
+    // encadré légal dans la section contact
+    var contact = document.getElementById('contact');
+    var cont = contact && contact.querySelector('.conteneur');
+    if (cont && !document.getElementById('encadre-legal-contact')) {
+      var enc = document.createElement('div');
+      enc.id = 'encadre-legal-contact';
+      enc.className = 'encadre';
+      enc.style.cssText = 'margin-top:22px;padding:12px 14px;font-size:14px';
+      enc.innerHTML =
+        "<strong>La Trattoria</strong> — entreprise individuelle — " +
+        "SIRET 106 050 263 00016 — 15 rue de la poste, 17100 Saintes<br>" +
+        "Contact : " + TEL_HTML + " — " + MAIL_HTML +
+        "<br>Mentions légales, conditions de vente et données personnelles : " +
+        "liens en bas de page.";
+      cont.appendChild(enc);
+    }
+  }
+
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', injecter);
+  else injecter();
+})();
+"""
+
+
+def patcher_site_js(site_js: str, carte_dir: str) -> str:
+    module_b64 = base64.b64encode(assembler_module(carte_dir)).decode()
+    addon = ADDON_TEMPLATE.replace('__BUNDLE_B64__', module_b64)
+    if 'LT_CARTE' in site_js or 'btn-carte' in site_js:
+        raise SystemExit('site.js déjà patché (btn-carte présent)')
+    if 'barre-sociale' not in site_js:
+        print('[ATTENTION] module social (barre-sociale) introuvable — '
+              'vérifier le build source')
+    return site_js + '\n' + addon + '\n' + LEGAL_ADDON
+
+
+# ---------------------------------------------------------------------------
+#  3. Manifeste : versionCode/versionName paramétrables
+#     (par défaut : 17→18 et 11.2→11.3, comportement historique conservé)
+# ---------------------------------------------------------------------------
+def patcher_manifest(manifest: bytes, version_code: int = 18,
+                     version_name: str = '11.3',
+                     src_version: str = '11.2') -> bytes:
+    axml = AXML(manifest)
+    axml.patch_int_attr('manifest', 'versionCode', version_code)
+    axml.patch_string(src_version, version_name)
+    return axml.data
+
+
+def main() -> None:
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    opts = {a.split('=', 1)[0]: a.split('=', 1)[1]
+            for a in sys.argv[1:] if a.startswith('--') and '=' in a}
+    if len(args) != 5:
+        print(__doc__)
+        sys.exit(1)
+    src_apk, carte_dir, keystore, password, dst_apk = args
+    version_code = int(opts.get('--version-code', 18))
+    version_name = opts.get('--version-name', '11.3')
+
+    import zipfile
+    with zipfile.ZipFile(src_apk) as z:
+        manifest = z.read('AndroidManifest.xml')
+        site_js = z.read('assets/site.js').decode('utf-8')
+
+    manifest_out = patcher_manifest(manifest, version_code, version_name)
+    site_js_out = patcher_site_js(site_js, carte_dir)
+
+    work = os.path.join(HERE, 'work')
+    os.makedirs(work, exist_ok=True)
+    m_path = os.path.join(work, 'manifest_113.xml')
+    j_path = os.path.join(work, 'site_js_113.js')
+    with open(m_path, 'wb') as f:
+        f.write(manifest_out)
+    with open(j_path, 'w', encoding='utf-8') as f:
+        f.write(site_js_out)
+
+    print('[ok] manifeste patché      : %s (%d octets)' % (m_path, len(manifest_out)))
+    print('[ok] site.js patché        : %s (%d octets, +addon carte)' % (j_path, len(site_js_out)))
+
+    # Reconstruction + signatures v1/v2 (outillage existant)
+    import subprocess
+    r = subprocess.run([
+        sys.executable, os.path.join(HERE, 'resign.py'),
+        src_apk, keystore, password, dst_apk,
+        '--replace=AndroidManifest.xml=' + m_path,
+        '--replace=assets/site.js=' + j_path,
+    ])
+    if r.returncode != 0:
+        sys.exit('resign.py a échoué')
+    print('[ok] APK unifié signé      : %s' % dst_apk)
+
+
+if __name__ == '__main__':
+    main()

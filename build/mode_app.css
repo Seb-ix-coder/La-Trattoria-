@@ -1,0 +1,40 @@
+/* ============================================================================
+   Addon « Modes App : Client & Partenaire » — styles (site.css)
+   ========================================================================== */
+
+/* --- Barre sociale rapide sous le hero --- */
+.barre-sociale{
+  display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px;
+}
+.bs-btn{
+  display:inline-flex;align-items:center;gap:6px;min-height:46px;
+  padding:0 14px;border-radius:23px;border:0;cursor:pointer;
+  background:rgba(255,255,255,.16);color:#fff;text-decoration:none;
+  font-size:14px;font-weight:700;font-family:inherit;backdrop-filter:blur(4px);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.bs-btn:active{transform:scale(.95)}
+.bs-tel{background:var(--rouge,#A51822)}
+
+/* --- Raccourci « réserver par téléphone » sous le menu --- */
+.reserver-tel{
+  margin:18px auto 0;max-width:620px;text-align:center;
+  font-size:15px;color:var(--texte,#2B2B28);
+  background:var(--creme,#FDFAF3);border:1.5px dashed var(--trait,#D8CFC0);
+  border-radius:12px;padding:12px 14px;
+}
+.reserver-tel a{color:var(--rouge,#A51822);font-weight:700;text-decoration:none}
+
+/* --- Espace Partenaires --- */
+#partenaires{background:var(--creme,#FDFAF3)}
+#partenaires .carte-bloc{text-align:left}
+#partenaires input[type="text"],#partenaires textarea{
+  width:100%;min-height:44px;border:1.5px solid var(--trait,#D8CFC0);
+  border-radius:10px;padding:8px 10px;font-size:15px;font-family:inherit;
+  background:#fff;margin:4px 0 10px;
+}
+#partenaires textarea{min-height:90px}
+
+/* --- En mode app : le contenu reste lisible, sans outil de gestion --- */
+.mode-app #btn-outils,
+.mode-app #btn-qr{display:none !important}

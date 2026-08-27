@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#24312B">
+<title>La Trattoria — L'ardoise</title>
+<link rel="icon" type="image/png" href="icones/icone-192.png">
+<link rel="stylesheet" href="ardoise.css">
+<style>
+  /* barre d'outils (masquée à l'impression) */
+  .barreOutil{max-width:1080px;margin:0 auto 12px;display:flex;gap:10px;
+    justify-content:flex-end;align-items:center;flex-wrap:wrap}
+  .barreOutil .note{color:#E8E4D8;font-family:Georgia,serif;font-size:14px;
+    margin-right:auto;opacity:.85}
+  .btnCraie{font-family:Georgia,serif;font-size:14px;color:#24312B;background:#F3F1E7;
+    border:0;border-radius:8px;padding:9px 16px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .btnCraie:active{transform:translateY(1px)}
+  .hs{max-width:640px;margin:40px auto;text-align:center;color:var(--craie);
+    font-family:Georgia,serif;padding:0 18px;line-height:1.7}
+  .hs code{background:rgba(243,241,231,.14);padding:2px 8px;border-radius:6px}
+</style>
+</head>
+<body class="fondArdoise">
+
+<div class="barreOutil sansImpression">
+  <span class="note">L'ardoise — mise à jour en direct depuis la tablette</span>
+  <button type="button" class="btnCraie" id="btn-rafraichir">Rafraîchir</button>
+  <button type="button" class="btnCraie" id="btn-imprimer">🖨 Imprimer / PDF</button>
+</div>
+
+<main id="ardoise-page"><noscript>Activez JavaScript pour afficher l'ardoise.</noscript></main>
+
+<script src="donnees.js"></script>
+<script src="donnees-carte.js"></script>
+<script src="ardoise-assets.js"></script>
+<script src="qr-encodeur.js"></script>
+<script>
+/* ============================================================
+   Page publique « L'ardoise » — lecture seule.
+   Sources de données, dans l'ordre :
+     1. l'API du serveur de carte (api/carte) si disponible ;
+     2. sinon le localStorage local (mode autonome, ou module
+        embarqué dans l'APK — même origine que l'éditeur).
+   ============================================================ */
+(function () {
+  'use strict';
+
+  var CLE_STOCK = 'trattoria.carte.v1';
+  var CLE_CONFIG = 'trattoria.config.v1';
+  var CRAIE = ['craie--jaune', 'craie--blanc', 'craie--rose', 'craie--verte', 'craie--bleue'];
+  var EXTRA_ORDRE = ['formules', 'vins', 'glaces', 'bieres'];
+  var MOMENT_ORDRE = ['plats', 'boissons', 'vins', 'glaces', 'desserts', 'bieres'];
+  var MOMENT_DEFS = {
+    plats:     { titre: 'Les plats du moment',     sous: 'La carte change avec les saisons et le marché' },
+    boissons:  { titre: 'Les boissons du moment',  sous: 'Avec ou sans alcool' },
+    vins:      { titre: 'Vins & alcools du moment', sous: 'La sélection de la maison' },
+    glaces:    { titre: 'Glaces artisanales du moment', sous: 'Glaces et sorbets L’Angelys, fabriqués artisanalement' },
+    desserts:  { titre: 'Les desserts du moment',  sous: 'Faits maison, chaque jour' },
+    bieres:    { titre: 'Les bières du moment',    sous: 'Pression et bouteilles du moment' }
+  };
+
+  function momentConfDefaut(cle) {
+    var def = MOMENT_DEFS[cle];
+    var libres = cle === 'glaces' ? [
+      { id: 'lmgl0', nom: 'Vanille Bourbon', sous: 'Gousse de Madagascar', prix: 2.5, tva: 0.1 },
+      { id: 'lmgl1', nom: 'Chocolat noir 70 %', sous: 'Cacao intense', prix: 2.5, tva: 0.1 },
+      { id: 'lmgl2', nom: 'Pistache', sous: 'Pistaches de Sicile', prix: 2.8, tva: 0.1 },
+      { id: 'lmgl3', nom: 'Rhum-raisin', sous: 'Rhum ambré, raisins marinés', prix: 3, tva: 0.1 },
+      { id: 'lmgl4', nom: 'Sorbet citron de Sicile', sous: 'Vif et rafraîchissant', prix: 2.5, tva: 0.1 },
+      { id: 'lmgl5', nom: 'Sorbet framboise', sous: 'Fruité, sans lactose', prix: 2.5, tva: 0.1 }
+    ] : [];
+    var seeds = {
+      plats: 'plat', boissons: 'boisson'
+    };
+    var ordre = catalogue.filter(function (p) {
+      if (!p.actif) return false;
+      if (cle === 'plats') return p.type === 'plat';
+      if (cle === 'boissons') return p.type === 'boisson';
+      if (cle === 'vins') return /cave/i.test(String(p.cat || '')) || /limoncello|amaretto/i.test(String(p.nom || ''));
+      if (cle === 'desserts') return /dessert/i.test(String(p.fam || ''));
+      if (cle === 'bieres') return /bier/i.test(String(p.cat || '').toLowerCase());
+      return false;
+    }).map(function (p) { return p.id; });
+    var mentionsAlcool = 'Prix hors taxes en euros. L’abus d’alcool est dangereux pour la santé, à consommer avec modération. La vente d’alcool est interdite aux mineurs de moins de 18 ans (art. L. 3342-1 du Code de la santé publique).';
+    var mentions = {
+      plats: 'Prix hors taxes en euros. Nos plats sont préparés maison à partir de produits frais. Allergènes : la liste complète est disponible sur demande au comptoir.',
+      boissons: 'Prix hors taxes en euros. La vente d’alcool est interdite aux mineurs de moins de 18 ans (art. L. 3342-1 du Code de la santé publique).',
+      vins: mentionsAlcool,
+      glaces: 'Prix hors taxes en euros. Allergènes : lait, œuf, fruits à coque possibles selon les parfums. Glaces artisanales L’Angelys — parfums susceptibles de varier selon les arrivages.',
+      desserts: 'Prix hors taxes en euros. Nos desserts sont préparés maison. Allergènes : gluten, lait, œuf, fruits à coque possibles selon les desserts.',
+      bieres: mentionsAlcool
+    };
+    var libres = libres.map(function (l) {
+      return { id: l.id, nom: l.nom, sous: l.sous, desc: '', prix: l.prix, tva: l.tva };
+    });
+    libres.forEach(function (l) { ordre.push(l.id); });
+    return {
+      titre: def.titre, sous: def.sous, mentions: mentions[cle], ht: true,
+      ordre: ordre,
+      libres: libres
+    };
+  }
+
+  function momentConfNormalisee(src, cle, catalogue) {
+    var def = momentConfDefaut(cle, catalogue);
+    var conf = {
+      titre: String((src && src.titre) || '').trim().slice(0, 60) || def.titre,
+      sous: String((src && src.sous) || '').trim().slice(0, 120),
+      mentions: String((src && src.mentions) || '').trim().slice(0, 600) || def.mentions,
+      ht: (src && typeof src.ht === 'boolean') ? src.ht : true,
+      ordre: [],
+      libres: ((src && Object.prototype.toString.call(src.libres) === '[object Array]')
+        ? src.libres : def.libres).slice(0, 40).filter(function (l) {
+            return l && typeof l === 'object' && String(l.nom || '').trim();
+          })
+    };
+    var ids = {};
+    catalogue.forEach(function (p) { ids[p.id] = true; });
+    conf.libres.forEach(function (l) { ids[l.id] = true; });
+    var ordre = ((src && Object.prototype.toString.call(src.ordre) === '[object Array]')
+      ? src.ordre : def.ordre);
+    ordre.forEach(function (id) {
+      if (ids[id] && conf.ordre.indexOf(String(id)) < 0) conf.ordre.push(String(id));
+    });
+    if (!src) def.ordre.forEach(function (id) {
+      if (conf.ordre.indexOf(id) < 0) conf.ordre.push(id);
+    });
+    conf.libres.forEach(function (l) {
+      if (conf.ordre.indexOf(l.id) < 0) conf.ordre.push(l.id);
+    });
+    return conf;
+  }
+  var EXTRA_DEFS = {
+    formules: { titre: 'Nos formules',        sous: 'Menus et formules du moment' },
+    vins:     { titre: 'La carte des vins',   sous: 'Au pichet et à la bouteille' },
+    glaces:   { titre: 'La carte des glaces', sous: 'Glaces et sorbets maison' },
+    bieres:   { titre: 'La carte des bières', sous: 'Pression et bouteilles' }
+  };
+
+  // Produits du catalogue placés automatiquement dans une carte.
+  function extrasSeed(cle, catalogue) {
+    return catalogue.filter(function (p) {
+      if (cle === 'formules') return p.type === 'formule';
+      if (cle === 'bieres') return norm(p.cat).indexOf('bier') >= 0;
+      if (cle === 'vins') {
+        return /vin|cave/i.test(String(p.cat || '')) ||
+               /chianti|pinot|prosecco|ros[eé]/i.test(String(p.nom || ''));
+      }
+      return false;
+    }).map(function (p) { return p.id; });
+  }
+
+  function ligneLibreNormalisee(l, i) {
+    if (!l || typeof l !== 'object') return null;
+    var nom = String(l.nom || '').trim().slice(0, 60);
+    if (!nom) return null;
+    return {
+      id: String(l.id || ('l' + Date.now().toString(36) + i)).slice(0, 24),
+      nom: nom,
+      sous: String(l.sous || '').trim().slice(0, 90),
+      desc: String(l.desc || '').trim().slice(0, 200),
+      prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0)
+    };
+  }
+
+  function extrasDefaut(catalogue) {
+    var d = window.TRATTORIA_CONFIG_DEFAUT || {};
+    var out = {};
+    EXTRA_ORDRE.forEach(function (cle) {
+      var def = (d.extras && d.extras[cle]) || EXTRA_DEFS[cle];
+      out[cle] = {
+        titre: String(def.titre || '').trim() || EXTRA_DEFS[cle].titre,
+        sous: String(def.sous != null ? def.sous : EXTRA_DEFS[cle].sous).trim().slice(0, 120),
+        ordre: extrasSeed(cle, catalogue),
+        libres: (Object.prototype.toString.call(def.libres) === '[object Array]')
+          ? def.libres.map(ligneLibreNormalisee).filter(Boolean)
+          : []
+      };
+      // les lignes libres par défaut occupent leur place dans l'ordre
+      out[cle].libres.forEach(function (l) { out[cle].ordre.push(l.id); });
+    });
+    return out;
+  }
+
+  function confExtraNormalisee(src, cle, defaut, catalogue) {
+    var conf = {
+      titre: String((src && src.titre) || '').trim().slice(0, 60) || defaut.titre,
+      sous: String((src && src.sous) || '').trim().slice(0, 120),
+      ordre: [],
+      libres: ((src && Object.prototype.toString.call(src.libres) === '[object Array]')
+        ? src.libres : defaut.libres).slice(0, 40).map(ligneLibreNormalisee).filter(Boolean)
+    };
+    var idsValides = {};
+    catalogue.forEach(function (p) { idsValides[p.id] = true; });
+    conf.libres.forEach(function (l) { idsValides[l.id] = true; });
+    var ordre = ((src && Object.prototype.toString.call(src.ordre) === '[object Array]')
+      ? src.ordre : defaut.ordre);
+    ordre.forEach(function (id) {
+      if (idsValides[id] && conf.ordre.indexOf(String(id)) < 0) conf.ordre.push(String(id));
+    });
+    if (!src) extrasSeed(cle, catalogue).forEach(function (id) {
+      if (conf.ordre.indexOf(id) < 0) conf.ordre.push(id);
+    });
+    conf.libres.forEach(function (l) {
+      if (conf.ordre.indexOf(l.id) < 0) conf.ordre.push(l.id);
+    });
+    return conf;
+  }
+
+  function echap(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function eur(v) {
+    var n = Number(v);
+    if (!isFinite(n)) n = 0;
+    return n.toFixed(2).replace('.', ',') + ' €';
+  }
+  function prixAffiche(p) {
+    var min = Number(p.pv) || 0;
+    (p.formats || []).forEach(function (f) { if (f.pv > 0 && f.pv < min) min = f.pv; });
+    return min;
+  }
+  function norm(s) {
+    return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
+  /* ---- configuration par défaut + repli ---- */
+  function configDefaut(catalogue) {
+    var d = window.TRATTORIA_CONFIG_DEFAUT || {};
+    var vu = {}, fams = [];
+    catalogue.forEach(function (p) {
+      var f = String(p.fam || 'Divers');
+      if (!vu[f]) { vu[f] = true; fams.push(f); }
+    });
+    var out = {
+      site: d.site || 'https://latrattoria-saintes.fr/',
+      badges: (d.badges || []).slice(0, 4),
+      pates: {
+        titre: (d.pates && d.pates.titre) || 'Pâte à pizza maison',
+        sous: (d.pates && d.pates.sous) || 'Fraîche, maturée 48 heures'
+      },
+      fams: {}
+    };
+    fams.forEach(function (f) {
+      var def = (d.fams && d.fams[f]) || {};
+      fams[f] = {
+        titre: def.titre || f,
+        sous: def.sous || '',
+        ordre: catalogue.filter(function (p) { return String(p.fam) === f; })
+          .map(function (p) { return p.id; }),
+        libres: []
+      };
+    });
+    out.extras = extrasDefaut(catalogue);
+    out.moment = {};
+    MOMENT_ORDRE.forEach(function (cle) { out.moment[cle] = momentConfDefaut(cle, catalogue); });
+    return out;
+  }
+
+  function configNormalisee(c, catalogue) {
+    var def = configDefaut(catalogue);
+    if (!c || typeof c !== 'object') return def;
+    var out = {
+      site: String(c.site || '').trim() || def.site,
+      badges: (Object.prototype.toString.call(c.badges) === '[object Array]')
+        ? c.badges.filter(function (b) { return typeof b === 'string' && b.trim(); })
+          .map(function (b) { return b.trim().slice(0, 40); }).slice(0, 4)
+        : def.badges,
+      pates: {
+        titre: String((c.pates && c.pates.titre) || '').trim().slice(0, 60) || def.pates.titre,
+        sous: String((c.pates && c.pates.sous) || '').trim().slice(0, 120) || def.pates.sous
+      },
+      fams: {},
+      extras: {}
+    };
+    def.fams && Object.keys(def.fams).forEach(function (f) {
+      var src = (c.fams && c.fams[f]) || def.fams[f] || {};
+      var presents = def.fams[f].ordre;
+      var ordre = (Object.prototype.toString.call(src.ordre) === '[object Array]')
+        ? src.ordre.filter(function (id) { return presents.indexOf(id) >= 0; }) : [];
+      presents.forEach(function (id) { if (ordre.indexOf(id) < 0) ordre.push(id); });
+      var libres = (Object.prototype.toString.call(src.libres) === '[object Array]')
+        ? src.libres.slice(0, 30).filter(function (l) {
+            return l && typeof l === 'object' && String(l.nom || '').trim();
+          }) : [];
+      out.fams[f] = {
+        titre: String(src.titre || '').trim().slice(0, 60) || def.fams[f].titre,
+        sous: String(src.sous || '').trim().slice(0, 120),
+        ordre: ordre,
+        libres: libres
+      };
+    });
+    EXTRA_ORDRE.forEach(function (cle) {
+      var confStockee = (c.extras && typeof c.extras === 'object') ? c.extras[cle] : null;
+      out.extras[cle] = confExtraNormalisee(confStockee, cle, def.extras[cle], catalogue);
+    });
+    out.moment = {};
+    MOMENT_ORDRE.forEach(function (cle) {
+      var confMo = (c.moment && typeof c.moment === 'object') ? c.moment[cle] : null;
+      out.moment[cle] = momentConfNormalisee(confMo, cle, catalogue);
+    });
+    return out;
+  }
+
+  /* ---- rendu ---- */
+  function rendu(catalogue, cfg) {
+    var logo = (window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.logo) || '';
+    var h = '<div class="cadreBois">';
+    h += '<header class="enteteArdoise">' +
+      '<img class="logoCercle" alt="Logo La Trattoria" src="' + logo + '">' +
+      '<h1 class="craie--blanc">La Trattoria</h1>' +
+      '<div class="lieu craie--jaune">Saintes</div>' +
+      '<div class="filetCraie"></div>';
+    if (cfg.badges.length) {
+      h += '<div class="badgesCraie">' + cfg.badges.map(function (b) {
+        return '<span class="craie--verte">' + echap(b) + '</span>';
+      }).join('') + '</div>';
+    }
+    h += '<div class="pateCraie"><span class="t craie--jaune">🍕 ' +
+      echap(cfg.pates.titre) + '</span><span class="s craie--blanc">' +
+      echap(cfg.pates.sous) + '</span></div></header>';
+
+    var parId = {};
+    catalogue.forEach(function (p) { parId[p.id] = p; });
+    var ci = 0;
+    var dansExtras = {};
+    if (cfg.extras) {
+      Object.keys(cfg.extras).forEach(function (cle) {
+        (cfg.extras[cle].ordre || []).forEach(function (id) { dansExtras[id] = true; });
+      });
+    }
+
+    Object.keys(cfg.fams).forEach(function (fam) {
+      var conf = cfg.fams[fam];
+      var items = (conf.ordre || []).map(function (id) {
+        if (parId[id]) {
+          if (parId[id].actif === false) return null;
+          if (dansExtras[id]) return null; // dans une carte dédiée
+          return { kind: 'p', p: parId[id] };
+        }
+        var l = conf.libres.filter(function (x) { return x.id === id; })[0];
+        return l ? { kind: 'l', l: l } : null;
+      }).filter(Boolean);
+      if (!items.length) return;
+      var craie = CRAIE[ci % CRAIE.length];
+      ci++;
+      var photo = null;
+      items.some(function (it) {
+        if (it.kind === 'p') { photo = it.p.photoArdoise || it.p.photo || null; return !!photo; }
+        return false;
+      });
+      h += '<section class="catArdoise' + (photo ? ' catAvecPhoto' : '') + '">' +
+        '<h2 class="' + craie + '">' + echap(conf.titre) + '</h2>' +
+        (conf.sous ? '<div class="sousCat">' + echap(conf.sous) + '</div>' : '');
+      if (photo) {
+        h += '<figure class="photoCraie"><img src="' + photo + '" alt="Photo — ' +
+          echap(conf.titre) + '" loading="lazy"></figure>';
+      }
+      h += '<ul class="itemsArdoise' + (items.length > 9 ? ' tailleModeree' : '') + '">';
+      items.forEach(function (it) {
+        if (it.kind === 'l') {
+          h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
+            echap(it.l.nom) + '</span><span class="pts"></span>' +
+            '<span class="prix craie--jaune">' + (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></div>' +
+            (it.l.sous ? '<span class="desc">' + echap(it.l.sous) + '</span>' : '') +
+            (it.l.desc ? '<span class="desc">' + echap(it.l.desc) + '</span>' : '') + '</li>';
+        } else {
+          var q = it.p;
+          var sous = q.sous || q.desc || '';
+          var formats = (q.formats && q.formats.length)
+            ? q.formats.map(function (f) {
+                return echap(f.nom) + ' <b class="craie--jaune">' + eur(f.pv) + '</b>';
+              }).join(' · ') : null;
+          h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
+            echap(q.nom) + '</span><span class="pts"></span>' +
+            '<span class="prix craie--jaune">' + eur(prixAffiche(q)) + '</span></div>' +
+            (sous ? '<span class="desc">' + echap(sous) + '</span>' : '') +
+            (formats ? '<span class="desc">' + formats + '</span>' : '') + '</li>';
+        }
+      });
+      h += '</ul></section>';
+    });
+
+    // cartes additionnelles : formules, vins, glaces, bières
+    if (cfg.extras) {
+      EXTRA_ORDRE.forEach(function (cle) {
+        var conf = cfg.extras[cle];
+        var items = (conf.ordre || []).map(function (id) {
+          if (parId[id]) {
+            if (parId[id].actif === false) return null;
+            return { kind: 'p', p: parId[id] };
+          }
+          var l = conf.libres.filter(function (x) { return x.id === id; })[0];
+          return l ? { kind: 'l', l: l } : null;
+        }).filter(Boolean);
+        if (!items.length) return;
+        var craie = CRAIE[ci % CRAIE.length];
+        ci++;
+        var photo = null;
+        items.some(function (it) {
+          if (it.kind === 'p') { photo = it.p.photoArdoise || it.p.photo || null; return !!photo; }
+          return false;
+        });
+        h += '<section class="catArdoise' + (photo ? ' catAvecPhoto' : '') + ' carte-' + cle + '">' +
+          '<h2 class="' + craie + '">' + echap(conf.titre) + '</h2>' +
+          (conf.sous ? '<div class="sousCat">' + echap(conf.sous) + '</div>' : '');
+        if (photo) {
+          h += '<figure class="photoCraie"><img src="' + photo + '" alt="Photo — ' +
+            echap(conf.titre) + '" loading="lazy"></figure>';
+        }
+        h += '<ul class="itemsArdoise' + (items.length > 9 ? ' tailleModeree' : '') + '">';
+        items.forEach(function (it) {
+          if (it.kind === 'l') {
+            h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
+              echap(it.l.nom) + '</span><span class="pts"></span>' +
+              '<span class="prix craie--jaune">' + (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></div>' +
+              (it.l.sous ? '<span class="desc">' + echap(it.l.sous) + '</span>' : '') +
+              (it.l.desc ? '<span class="desc">' + echap(it.l.desc) + '</span>' : '') + '</li>';
+          } else {
+            var q = it.p;
+            var sousP = q.sous || q.desc || '';
+            var formats = (q.formats && q.formats.length)
+              ? q.formats.map(function (f) {
+                  return echap(f.nom) + ' <b class="craie--jaune">' + eur(f.pv) + '</b>';
+                }).join(' · ') : null;
+            h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
+              echap(q.nom) + '</span><span class="pts"></span>' +
+              '<span class="prix craie--jaune">' + eur(prixAffiche(q)) + '</span></div>' +
+              (sousP ? '<span class="desc">' + echap(sousP) + '</span>' : '') +
+              (formats ? '<span class="desc">' + formats + '</span>' : '') + '</li>';
+          }
+        });
+        h += '</ul></section>';
+      });
+    }
+
+    // cartes du moment : illustration craie + prix HT + mentions
+    if (cfg.moment) {
+      var assetsMo = (window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.moment) || {};
+      MOMENT_ORDRE.forEach(function (cle) {
+        var conf = cfg.moment[cle];
+        var items = (conf.ordre || []).map(function (id) {
+          if (parId[id]) {
+            return parId[id].actif === false ? null : { kind: 'p', p: parId[id] };
+          }
+          var l = conf.libres.filter(function (x) { return x.id === id; })[0];
+          return l ? { kind: 'l', l: l } : null;
+        }).filter(Boolean);
+        if (!items.length) return;
+        var craie = CRAIE[ci % CRAIE.length];
+        ci++;
+        h += '<section class="catArdoise carte-moment ' + craie + '">' +
+          '<img class="moment-illus" alt="" src="' + (assetsMo[cle] || '') + '">' +
+          '<h2>' + echap(conf.titre) + '</h2>' +
+          (conf.sous ? '<div class="sousCat">' + echap(conf.sous) + '</div>' : '');
+        h += '<ul class="moment-liste itemsArdoise">';
+        items.forEach(function (it) {
+          if (it.kind === 'l') {
+            var l = it.l;
+            var tvaL = l.tva || 0.1;
+            var prixL = conf.ht
+              ? eur(Math.round((l.prix / (1 + tvaL)) * 100) / 100) + ' HT' : eur(l.prix);
+            h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
+              echap(l.nom) + '</span><span class="pts"></span>' +
+              '<span class="prix craie--jaune">' + prixL + '</span></div>' +
+              (l.sous ? '<span class="desc">' + echap(l.sous) + '</span>' : '') + '</li>';
+          } else {
+            var q = it.p;
+            var prixP = conf.ht
+              ? eur(Math.round((q.pv / (1 + q.tva)) * 100) / 100) + ' HT' : eur(q.pv);
+            var sousP = q.sous || q.desc || '';
+            h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
+              echap(q.nom) + '</span><span class="pts"></span>' +
+              '<span class="prix craie--jaune">' + prixP + '</span></div>' +
+              (sousP ? '<span class="desc">' + echap(sousP) + '</span>' : '') + '</li>';
+          }
+        });
+        h += '</ul>';
+        h += '<div class="moment-mentions"><span>' +
+          (conf.ht ? 'Prix nets hors taxes — TVA en sus. ' : 'Prix TTC en euros. ') +
+          echap(conf.mentions) + '</span></div></section>';
+      });
+    }
+
+    h += '<div class="qrBlocArdoise">' +
+      '<div class="t craie--blanc">Retrouvez-nous en ligne</div>' +
+      '<span class="s">Scannez pour ouvrir le site, la carte et commander</span>' +
+      '<div class="qrCraie"><canvas id="qr-ardoise" aria-label="QR code du site"></canvas></div>' +
+      '<span class="url craie--jaune">' + echap(cfg.site) + '</span></div>';
+    h += '<div class="piedArdoise">La Trattoria — 15 rue de la Poste, 17100 Saintes — 06 27 21 31 90' +
+      '<span class="coords">SIRET 106 050 263 00016 · Tout est fait maison, dans la plus belle tradition italienne.</span></div>';
+    h += '</div>';
+    document.getElementById('ardoise-page').innerHTML = h;
+    dessinerQR(cfg.site);
+  }
+
+  function dessinerQR(url) {
+    var canvas = document.getElementById('qr-ardoise');
+    if (!canvas || !window.TrattoriaQR) return;
+    var u = String(url || '').trim();
+    if (u && u.indexOf('://') < 0) u = 'https://' + u;
+    var m = window.TrattoriaQR.makeMatrix(u, 'H');
+    if (!m) return;
+    window.TrattoriaQR.render(canvas, m, 512);
+  }
+
+  /* ---- sources de données ---- */
+  function depuisLocalStorage() {
+    var catalogue = [];
+    try { catalogue = JSON.parse(localStorage.getItem(CLE_STOCK) || '[]') || []; } catch (e) { }
+    if (!catalogue.length && window.TRATTORIA_CATALOGUE) catalogue = window.TRATTORIA_CATALOGUE;
+    var cfg = null;
+    try { cfg = JSON.parse(localStorage.getItem(CLE_CONFIG) || 'null'); } catch (e) { }
+    rendu(catalogue, configNormalisee(cfg, catalogue));
+  }
+
+  function charger() {
+    if (/^https?:$/.test(location.protocol) && typeof fetch === 'function') {
+      fetch('api/carte', { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) throw new Error('ko');
+        return r.json();
+      }).then(function (d) {
+        var catalogue = (d.carte && d.carte.length) ? d.carte
+          : (window.TRATTORIA_CATALOGUE || []);
+        rendu(catalogue, configNormalisee(d.config, catalogue));
+      }).catch(depuisLocalStorage);
+    } else {
+      depuisLocalStorage();
+    }
+  }
+
+  document.getElementById('btn-imprimer').addEventListener('click', function () {
+    window.print();
+  });
+  document.getElementById('btn-rafraichir').addEventListener('click', charger);
+
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', charger);
+  else charger();
+})();
+</script>
+</body>
+</html>
