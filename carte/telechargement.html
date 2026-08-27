@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#A51822">
+<title>La Trattoria — Télécharger l'application</title>
+<link rel="icon" type="image/png" href="img/icone-raccourci.png">
+<style>
+  :root{
+    --rouge:#A51822; --rougef:#7A1018; --creme:#FDFAF3; --fond:#F4F1EA;
+    --beige:#EFE9DA; --trait:#D8CFC0; --texte:#2B2B28; --gris:#6E6A63;
+    --ardoise:#24312B;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fond);color:var(--texte);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:16px;line-height:1.6}
+  header{background:var(--rouge);color:#fff;text-align:center;padding:30px 18px 26px}
+  header img{width:88px;height:88px;border-radius:50%;border:3px solid #fff;
+    box-shadow:0 2px 10px rgba(0,0,0,.3)}
+  header h1{margin:12px 0 4px;font-family:Georgia,serif;font-size:26px}
+  header p{margin:0;opacity:.85;font-size:14px}
+  main{max-width:560px;margin:0 auto;padding:24px 16px 50px}
+  .telecharger{
+    display:block;text-align:center;background:var(--rouge);color:#fff;
+    text-decoration:none;font-size:20px;font-weight:800;
+    padding:18px 22px;border-radius:16px;box-shadow:0 4px 14px rgba(165,24,34,.35);
+    margin:6px 0 10px;
+  }
+  .telecharger:active{transform:scale(.98)}
+  .telecharger small{display:block;font-weight:500;font-size:12.5px;opacity:.85;margin-top:4px}
+  .secondaire{
+    display:block;text-align:center;background:var(--ardoise);color:#F5D677;
+    text-decoration:none;font-size:15px;font-weight:700;
+    padding:13px 18px;border-radius:12px;margin:0 0 22px;
+  }
+  .carte{background:var(--creme);border:1px solid var(--trait);border-radius:14px;
+    box-shadow:0 2px 10px rgba(43,43,40,.08);padding:18px 20px;margin:0 0 16px}
+  .carte h2{font-family:Georgia,serif;color:var(--rougef);font-size:19px;margin:0 0 10px}
+  .carte ol,.carte ul{margin:6px 0;padding-left:22px}
+  .carte li{margin:5px 0;font-size:14.5px}
+  .avert{background:#FDF3D7;border:1px solid #E5C55B;border-radius:10px;
+    padding:10px 14px;font-size:14px;margin:8px 0 0}
+  code{background:var(--beige);padding:2px 8px;border-radius:6px;font-size:13.5px}
+  .hash{word-break:break-all;font-size:11.5px;color:var(--gris)}
+  footer{text-align:center;color:var(--gris);font-size:12.5px;padding:16px;line-height:1.7}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="img/icone-raccourci.png" alt="Logo La Trattoria">
+  <h1>La Trattoria</h1>
+  <p>Télécharger l'application — gestion &amp; édition des cartes</p>
+</header>
+
+<main>
+
+<a class="telecharger" href="trato-12.3-stable.apk" download>
+  📥 Télécharger l'application
+  <small>version 12.3 — 2,07 Mo — Android 5.0 et plus</small>
+</a>
+
+<a class="secondaire" href="trato-12.3-stable.zip" download>🗂️ Le téléchargement .apk échoue ? Prendre le .zip</a>
+
+<div class="carte">
+  <h2>Installer (2 minutes)</h2>
+  <ol>
+    <li><strong>Désinstallez d'abord</strong> l'ancienne version de
+      La Trattoria si elle est encore installée
+      (appui long sur l'icône → Désinstaller).</li>
+    <li>Toucher le bouton <strong>« Télécharger l'application »</strong> ci-dessus.</li>
+    <li>Ouvrir le fichier téléchargé (notification, ou application
+      <em>Fichiers</em> → Download).</li>
+    <li>Si Android demande d'autoriser les applications inconnues :
+      <strong>Autoriser</strong>.</li>
+    <li>Si un écran <strong>Play Protect</strong> apparaît :
+      « Plus de détails » → <strong>« Installer quand même »</strong>.</li>
+    <li>Toucher <strong>Installer</strong> puis <strong>Ouvrir</strong>. C'est prêt.</li>
+  </ol>
+  <div class="avert">⚠️ Message « <strong>Application non installée</strong> » ?
+    → Une ancienne version est encore installée : désinstallez-la, puis
+    réessayez (les clés de signature changent entre les grandes séries de
+    versions, Android refuse la mise à jour dans ce cas).</div>
+</div>
+
+<div class="carte">
+  <h2>Après l'installation</h2>
+  <ul>
+    <li>Lancez <strong>La Trattoria</strong> : le serveur démarre automatiquement.</li>
+    <li><strong>✏️ Éditer les cartes</strong> : panneau en haut de l'écran
+      d'accueil de l'app (carte standard, formules, vins, glaces, bières,
+      ardoise &amp; QR).</li>
+    <li>Astuce : sur la tablette, ouvrez
+      <code>127.0.0.1:8720/?carte</code> dans Chrome puis
+      <em>⋮ → Ajouter à l'écran d'accueil</em> : une icône
+      « Éditer les cartes » sera posée à côté de l'application.</li>
+    <li>Tout est publié automatiquement sur le site clients.</li>
+  </ul>
+</div>
+
+<div class="carte">
+  <h2>Vérifier le téléchargement</h2>
+  <p style="font-size:14px;margin:4px 0">Taille exacte :
+    <strong>2&nbsp;170&nbsp;249 octets</strong> (2,07 Mo).</p>
+  <p class="hash">SHA-256 :<br>
+    32bf792dc7fc1e785c00dc41a79e327c61def29be145ff592f9cfb1d2ac66525</p>
+</div>
+
+</main>
+
+<footer>
+  La Trattoria — 15 rue de la poste, 17100 Saintes — SIRET 106 050 263 00016<br>
+  <a href="legal.html" style="color:var(--rouge)">Mentions légales · CGV · Données personnelles</a><br>
+  <a href="index.html" style="color:var(--gris)">Module d'édition de la carte</a>
+</footer>
+
+</body>
+</html>
