@@ -2494,6 +2494,32 @@
 
     $('#form-produit').addEventListener('submit', enregistrer);
     $('#voile').addEventListener('click', function () { fermerFiche(); });
+
+    // Lien profond (depuis le panneau « Éditer les cartes » de l'application,
+    // ou URL directe) : #ecran-carte&vue=formules, #ecran-ardoise&apercu=1…
+    window.addEventListener('hashchange', appliquerHash);
+    appliquerHash();
+  }
+
+  function appliquerHash() {
+    var h = String(location.hash || '').replace(/^#/, '');
+    if (!h) return;
+    var mE = h.match(/^ecran-([a-z]+)/);
+    if (!mE) return;
+    var ecran = mE[1];
+    if (['carte', 'ardoises', 'ardoise', 'marges', 'donnees'].indexOf(ecran) < 0) return;
+    montrer(ecran);
+    var mV = h.match(/vue=([a-z]+)/);
+    if (mV && ['standard', 'formules', 'vins', 'glaces', 'bieres'].indexOf(mV[1]) >= 0) {
+      CARTE_VIEW = mV[1];
+      $$('.cv').forEach(function (b) {
+        var on = b.dataset.cv === CARTE_VIEW;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      dessinerCarte();
+    }
+    if (ecran === 'ardoise' && /apercu=1/.test(h)) ouvrirArdoise();
   }
 
   if (document.readyState === 'loading')
