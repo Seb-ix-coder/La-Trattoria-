@@ -585,7 +585,7 @@
               (p.sous ? '<small>' + echap(p.sous) + '</small>' : '') +
               (!p.actif ? '<small class="cf-off">masqué de la carte</small>' : '') +
             '</span>' +
-            '<span class="cf-prix">' + eur(prixAffiche(p)) + '</span>' +
+            '<span class="cf-prix">' + prixAffiche(p) + '</span>' +
             '<span class="cf-actions">' +
               '<button type="button" class="btn btn-mini" data-cf="photo" title="Photo pour l\'ardoise">' +
                 (aPhoto ? '🖼️' : '📷') + '</button>' +
@@ -749,6 +749,9 @@
   // Clics de l'onglet « La carte » : vues + édition en place.
   function clicCarteStandard(t) {
     if (ECRAN !== 'carte') return false;
+    var saut = t.closest('[data-cv-saut]');
+    if (saut) { montrer(saut.getAttribute('data-cv-saut')); return true; }
+    if (t.closest('[data-cv-imprimer]')) { ouvrirImpressionCarte(); return true; }
     var cv = t.closest('.cv[data-cv]');
     if (cv) {
       CARTE_VIEW = cv.dataset.cv;
@@ -828,6 +831,99 @@
       return true;
     }
     return false;
+  }
+
+  // ---------- aperçu / impression A4 de la carte standard ----------
+  function fermerImpressionCarte() {
+    var ov = document.getElementById('impression-carte-overlay');
+    if (ov) ov.remove();
+    document.body.classList.remove('impression-carte-a4');
+    document.body.style.overflow = '';
+  }
+
+  function ouvrirImpressionCarte() {
+    fermerImpressionCarte();
+    var dansExtras = idsDansExtras();
+    var fams = famsCatalogue();
+    var sections = '';
+    fams.forEach(function (fam) {
+      var conf = CF.fams[fam];
+      if (!conf) return;
+      var items = itemsFamille(fam).filter(function (it) {
+        if (it.kind === 'p') {
+          if (!it.p.actif) return false;
+          if (dansExtras[it.p.id]) return false;
+        }
+        return true;
+      });
+      if (!items.length) return;
+      sections += '<section class="a4-cat">' +
+        '<h2>' + echap(conf.titre) + '</h2>' +
+        (conf.sous ? '<p class="a4-sous">' + echap(conf.sous) + '</p>' : '') +
+        '<ul>';
+      items.forEach(function (it) {
+        if (it.kind === 'l') {
+          sections += '<li><span class="a4-nom">' + echap(it.l.nom) + '</span>' +
+            '<span class="a4-pts"></span><span class="a4-prix">' +
+            (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></li>' +
+            (it.l.sous ? '<li class="a4-desc"><span>' + echap(it.l.sous) + '</span></li>' : '');
+        } else {
+          var q = it.p;
+          var sous = q.sous || q.desc || '';
+          sections += '<li><span class="a4-nom">' + echap(q.nom) + '</span>' +
+            '<span class="a4-pts"></span><span class="a4-prix">' + prixAffiche(q) +
+            '</span></li>' +
+            (sous ? '<li class="a4-desc"><span>' + echap(sous) + '</span></li>' : '');
+        }
+      });
+      sections += '</ul></section>';
+    });
+    var ov = document.createElement('div');
+    ov.id = 'impression-carte-overlay';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('aria-label', 'Aperçu A4 de la carte');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:2147483000;overflow:auto;' +
+      'background:rgba(10,14,12,.82);padding:14px;';
+    ov.innerHTML =
+      '<div class="sansImpression" style="max-width:820px;margin:0 auto 12px;' +
+        'display:flex;gap:10px;justify-content:flex-end;align-items:center;">' +
+        '<span style="color:#F3F1E7;font-family:Georgia,serif;font-size:14px;margin-right:auto;">' +
+          'La carte standard — A4, prête à imprimer (données éditées ici)</span>' +
+        '<button type="button" id="btn-a4-imprimer" class="btn btn-s">🖨 Imprimer / PDF</button>' +
+        '<button type="button" id="btn-a4-fermer" class="btn btn-s">Fermer</button>' +
+      '</div>' +
+      '<div id="carte-a4" class="carteA4">' +
+        '<header class="a4-entete">' +
+          '<img class="a4-logo" alt="Logo" src="' +
+            ((window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.logo) || '') + '">' +
+          '<h1>La Trattoria</h1>' +
+          '<p class="a4-lieu">15 rue de la Poste, 17100 Saintes — 06 27 21 31 90</p>' +
+          '<p class="a4-promesse">Tout est fait maison · Tout est frais · Bio dès que possible' +
+          '<br>Pâte à pizza maison, maturée 48 heures</p>' +
+        '</header>' + sections +
+        '<footer class="a4-pied">SIRET 106 050 263 00016 · Prix TTC, service compris · ' +
+          'latrattoria-saintes.fr</footer>' +
+      '</div>';
+    document.body.appendChild(ov);
+    document.body.style.overflow = 'hidden';
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) fermerImpressionCarte();
+      if (e.target.closest('#btn-a4-fermer')) fermerImpressionCarte();
+      if (e.target.closest('#btn-a4-imprimer')) {
+        document.body.classList.add('impression-carte-a4');
+        window.print();
+        setTimeout(function () { document.body.classList.remove('impression-carte-a4'); }, 400);
+      }
+    });
+    document.addEventListener('keydown', impressionCarteEchap);
+  }
+
+  function impressionCarteEchap(e) {
+    if (e.key === 'Escape') {
+      fermerImpressionCarte();
+      document.removeEventListener('keydown', impressionCarteEchap);
+    }
   }
 
   function dessinerQR() {
@@ -1034,7 +1130,7 @@
             '<small>' + echap(p.fam) + (p.cat ? ' · ' + echap(p.cat) : '') + '</small>' +
             (!p.actif ? '<small class="cf-off">masqué de la carte</small>' : '') +
           '</span>' +
-          '<span class="cf-prix">' + eur(prixAffiche(p)) + '</span>' +
+          '<span class="cf-prix">' + prixAffiche(p) + '</span>' +
           '<span class="cf-actions">' +
             '<button type="button" class="btn btn-mini" data-cf="editer" title="Modifier le produit">✏️</button>' +
           '</span></li>';
@@ -1128,7 +1224,7 @@
           : null;
         h += '<li><div class="itemArdoise"><span class="nom craie--blanc">' +
           echap(q.nom) + '</span><span class="pts"></span>' +
-          '<span class="prix craie--jaune">' + eur(prixAffiche(q)) + '</span></div>' +
+          '<span class="prix craie--jaune">' + prixAffiche(q) + '</span></div>' +
           (sousP ? '<span class="desc">' + echap(sousP) + '</span>' : '') +
           (formats ? '<span class="desc">' + formats + '</span>' : '') +
           '</li>';
