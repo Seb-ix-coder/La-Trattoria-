@@ -27,6 +27,7 @@ social, cartes imprimables. **Tout le projet vit dans cette branche.**
 | `DIAGNOSTIQUE_CRASH.md` | **Diagnostic du crash au lancement** (cause : patchs byte-à-byte du DEX) et correctif |
 | `GUIDE_INSTALLATION.md` | Installation/mise en service de l'APK durci 11.1 |
 | `APP_CLIENT_PARTENAIRE.md` | Application client & partenaire (QR, modes, module social) |
+| `INFORMATIONS_LEGALES.md` | **Mentions légales / CGV / RGPD officielles** (SIRET, contact, LWS) — affichées sur le site et l'application |
 | `FIDELITE_PAIEMENT_PRODUITS.md`, `FACTURATION_ELECTRONIQUE.md`, `MENTIONS_LEGALES_2027.md` | Fonctionnalités et conformité |
 
 ## L'application unique
