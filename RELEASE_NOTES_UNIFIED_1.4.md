@@ -7,8 +7,8 @@
 - versionCode : `5`
 - package : `com.trattoria.cartes`
 - activité launcher : `com.trattoria.cartes.MainActivity`
-- taille : `16628610` octets
-- SHA-256 APK : `374426d349af20284faac368a8d6396b52cc009d26f28229a85ef14bfbac8dca`
+- taille : `16633125` octets
+- SHA-256 APK : `49a9a8ad6f042f1ac85fc5cfd7b91c2366057cd28e3eceb2e4c0a0cbdfa5eac2`
 - certificat v1/v2 SHA-256 : `46d7c630da555edf45c3edcd1cda4a5c50be9c01ade5fc59f20516c234100090`
 - signature : v1 JAR + v2 APK Signature Scheme ; v3/v4 non présents
 - minSdk : 21 · targetSdk : 33 · HTTP local autorisé pour les serveurs 8720/8721
@@ -16,6 +16,8 @@
 ## Intégration réellement livrée
 
 - source Java native recompilée depuis `build/app-src/src/com/trattoria/cartes` ;
+- accueil public premium : hero éditorial avec belle photo, sélection « À la une » en cartes photo généreuses, titres et descriptifs hiérarchisés, boutons « Ajouter » et sélection persistante ;
+- carte complète repensée en grandes cartes verticales : photo prioritaire, catégorie, prix et bouton d’ajout aligné, avec responsive smartphone/tablette ;
 - header natif compilé à deux niveaux : logo LT, établissement, écran courant,
   recherche clavier avec état vide, navigation tactile défilante ;
 - gestion native : accueil, salle, commande, ventes, tickets, cartes standard,
@@ -46,6 +48,8 @@ Aucun faux avis n'est prérempli : l'état initial est vide et professionnel.
 - `git diff --check` ;
 - `python3 -m py_compile build/*.py communaute/serveur_communaute.py` ;
 - `node --check` sur les scripts du site ;
+- contrôle HTTP du site standalone : placeholders retirés, 84 références produits, sélection et boutons d’ajout présents ;
+- contrôle de parité : `public-shell.html`, `site.js` et `unified-client.css` embarqués identiques aux sources buildées ;
 - test HTTP d'intégration du serveur communauté : refus sans achat, acceptation
   après ligne achetée, modification et moyenne ;
 - compilation ECJ + D8 de 4 sources natives, puis assemblage ;

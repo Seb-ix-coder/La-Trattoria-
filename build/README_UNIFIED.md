@@ -29,12 +29,13 @@ fusion de tables `R`.
   impression PDF et synchronisation locale ;
 - header natif compilé à deux niveaux avec logo LT, titre courant, recherche
   clavier des écrans/fonctions/produits et navigation tactile horizontale ;
-- site public local : première page responsive avec logo La Trattoria, 84
-  visuels générés haute définition (ardoise, angle et lumière homogènes) et
-  visuel de recommandation Petit Futé 2026 compact, carte depuis
-  l'administration, photos administrées en priorité, fallback clairement
-  marqué, plats du jour, slider, réservation, commande, paiement prévu,
-  pourboire, fidélité, conformité, modes client et partenaire ;
+- site public local : accueil premium avec hero éditorial photo, sélection « À la une »
+  en cartes photo généreuses, titres et descriptifs hiérarchisés, boutons
+  « Ajouter » et sélection persistante ; carte complète verticale responsive
+  avec photos administrées prioritaires ; 84 visuels générés haute définition
+  (ardoise, angle et lumière homogènes) explicitement marqués comme fallback ;
+  visuel Petit Futé 2026 compact, plats du jour, slider, réservation, commande,
+  paiement prévu, pourboire, fidélité, conformité, modes client et partenaire ;
 - communauté sociale embarquée dans l'APK sur le port 8721 : connexion,
   inscription, profils, photos, posts, commentaires, réactions, messages,
   partenaires, offres, fidélité, missions, badges, classement, consentements,

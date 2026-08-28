@@ -2438,7 +2438,7 @@ function lostPoint(m) {
     if(document.getElementById('lt-premium-header')) return;
     var old=document.querySelector('header');
     var h=document.createElement('header'); h.id='lt-premium-header'; h.className='lt-premium-header';
-    h.innerHTML='<div class="lt-head-main"><a class="lt-brand" href="#accueil" aria-label="La Trattoria, accueil"><span class="lt-mark"><img src="/assets/brand/logo-la-trattoria-saintes.svg" alt=""></span><span><b>La Trattoria</b><small>Maison italienne · Saintes</small></span></a><label class="lt-search"><span aria-hidden="true">⌕</span><input id="lt-search-input" type="search" placeholder="Rechercher dans la carte…" aria-label="Rechercher dans la carte"></label></div><nav class="lt-head-nav" aria-label="Navigation principale"><a href="#accueil">Accueil</a><a href="#carte">La carte</a><a href="#moment">Du moment</a><a href="#avis">Avis clients</a><a href="#communaute">Communauté</a><a href="#contact">Nous trouver</a></nav>';
+    h.innerHTML='<div class="lt-head-main"><a class="lt-brand" href="#accueil" aria-label="La Trattoria, accueil"><span class="lt-mark"><img src="/assets/brand/logo-la-trattoria-saintes.svg" alt=""></span><span><b>La Trattoria</b><small>Maison italienne · Saintes</small></span></a><label class="lt-search"><span aria-hidden="true">⌕</span><input id="lt-search-input" type="search" placeholder="Rechercher dans la carte…" aria-label="Rechercher dans la carte"></label></div><nav class="lt-head-nav" aria-label="Navigation principale"><a href="#accueil">Accueil</a><a href="#selection">À la une</a><a href="#carte">La carte</a><a href="#moment">Du moment</a><a href="#avis">Avis clients</a><a href="#communaute">Communauté</a><a href="#contact">Nous trouver</a></nav>';
     if(old&&old.parentNode) old.parentNode.replaceChild(h,old); else document.body.insertBefore(h,document.body.firstChild);
     var input=document.getElementById('lt-search-input');
     var status=document.createElement('div'); status.id='lt-search-status'; status.setAttribute('role','status'); status.setAttribute('aria-live','polite');
@@ -2528,7 +2528,7 @@ function lostPoint(m) {
 
     // barre sociale rapide (appeler + avis) sous le hero
     if (!document.getElementById('barre-sociale')) {
-      var hero = document.querySelector('.hero .in');
+      var hero = document.querySelector('.hero .lt-hero-copy') || document.querySelector('.hero .in');
       if (hero) {
         var barre = document.createElement('div');
         barre.id = 'barre-sociale';

@@ -488,13 +488,18 @@ public class ServeurSite implements Runnable {
         String html = assetTexte("public-shell.html");
         if (html.length() == 0) html = "<!doctype html><html lang='fr'><body><h1>La Trattoria</h1><p>Site local indisponible.</p></body></html>";
         try {
-            html = html.replace("{{PRODUITS}}", rendreProduits(tableauCatalogue()))
-                    .replace("{{OPTIONS_PLATS}}", rendreOptions(tableauCatalogue()))
-                    .replace("{{MOMENT}}", rendreMoment(tableauCatalogue()))
+            JSONArray catalogue = tableauCatalogue();
+            html = html.replace("{{HERO_PHOTO}}", rendreHeroPhoto(catalogue))
+                    .replace("{{UNE_A_LA_UNE}}", rendreSelection(catalogue))
+                    .replace("{{PRODUITS}}", rendreProduits(catalogue))
+                    .replace("{{OPTIONS_PLATS}}", rendreOptions(catalogue))
+                    .replace("{{MOMENT}}", rendreMoment(catalogue))
                     .replace("{{COMMUNICATIONS}}", rendreCommunications())
                     .replace("{{ETABLISSEMENT}}", safeJson(ecouteur.etablissementJson(), "{}"));
         } catch (Exception e) {
-            html = html.replace("{{PRODUITS}}", "<p class='lt-empty'>Carte temporairement indisponible.</p>")
+            html = html.replace("{{HERO_PHOTO}}", "<div class='lt-hero-photo lt-hero-photo-empty'><span>La sélection de la maison arrive bientôt.</span></div>")
+                    .replace("{{UNE_A_LA_UNE}}", "<div class='lt-empty'>La carte sera bientôt disponible.</div>")
+                    .replace("{{PRODUITS}}", "<p class='lt-empty'>Carte temporairement indisponible.</p>")
                     .replace("{{OPTIONS_PLATS}}", "").replace("{{MOMENT}}", "").replace("{{COMMUNICATIONS}}", "");
         }
         return html;
@@ -538,6 +543,73 @@ public class ServeurSite implements Runnable {
 
     private JSONArray tableauCatalogue() { try { return new JSONArray(ecouteur.catalogueJson()); } catch (Exception e) { return new JSONArray(); } }
 
+    /** Retourne en priorité la photo publiée par l'administration, puis le visuel généré de repli. */
+    private String photoProduit(JSONObject p) {
+        if (p == null) return "";
+        String photo = p.optString("photo", "");
+        if (photo.startsWith("data:image/") || photo.startsWith("/")) return photo;
+        return generatedPhotoFor(p.optString("id", ""));
+    }
+
+    private boolean photoAdministree(JSONObject p) {
+        if (p == null) return false;
+        String photo = p.optString("photo", "");
+        return photo.startsWith("data:image/") || photo.startsWith("/");
+    }
+
+    /** Visuel éditorial de la page d'accueil : il suit toujours la sélection publiée. */
+    private String rendreHeroPhoto(JSONArray produits) throws Exception {
+        JSONObject choix = null;
+        for (int i = 0; i < produits.length(); i++) {
+            JSONObject p = produits.optJSONObject(i);
+            if (p != null && p.optBoolean("actif", true) && p.optString("id", "").length() > 0) { choix = p; break; }
+        }
+        if (choix == null) return "<div class='lt-hero-photo lt-hero-photo-empty'><span>La sélection de la maison arrive bientôt.</span></div>";
+        String photo = photoProduit(choix);
+        String nom = choix.optString("nom", "La sélection du moment");
+        String desc = choix.optString("desc", choix.optString("sous", ""));
+        String cat = choix.optString("cat", choix.optString("fam", "La carte"));
+        if (photo.length() == 0) return "<div class='lt-hero-photo lt-hero-photo-empty'><span>Aucune photo publiée pour cette sélection.</span></div>";
+        StringBuilder h = new StringBuilder();
+        h.append("<figure class='lt-hero-dish'><div class='lt-hero-photo'><img src='").append(echAttr(photo))
+                .append("' alt='").append(echAttr(nom)).append("' fetchpriority='high'>");
+        if (!photoAdministree(choix)) h.append("<span class='lt-demo-flag'>Visuel généré — à valider</span>");
+        h.append("</div><figcaption><span class='lt-hero-dish-cat'>").append(ech(cat)).append("</span><strong>")
+                .append(ech(nom)).append("</strong>");
+        if (desc.length() > 0) h.append("<span class='lt-hero-dish-desc'>").append(ech(desc)).append("</span>");
+        h.append("<span class='lt-hero-dish-price'>").append(eur(choix.optDouble("pv", 0))).append("</span></figcaption></figure>");
+        return h.toString();
+    }
+
+    /** Trois cartes éditoriales en haut de l'accueil, sans remplacer la carte complète. */
+    private String rendreSelection(JSONArray produits) throws Exception {
+        ArrayList<JSONObject> choix = new ArrayList<JSONObject>();
+        for (int i = 0; i < produits.length() && choix.size() < 3; i++) {
+            JSONObject p = produits.optJSONObject(i);
+            if (p != null && p.optBoolean("actif", true) && p.optString("id", "").length() > 0) choix.add(p);
+        }
+        if (choix.size() == 0) return "<div class='lt-empty'>Aucune sélection publiée pour le moment.</div>";
+        StringBuilder h = new StringBuilder();
+        for (int i = 0; i < choix.size(); i++) {
+            JSONObject p = choix.get(i); String id = propre(p.optString("id", ""), 100);
+            String photo = photoProduit(p); String nom = p.optString("nom", "Produit");
+            String desc = p.optString("desc", p.optString("sous", "Préparé sur place selon la sélection publiée."));
+            String cat = p.optString("cat", p.optString("fam", "La carte"));
+            h.append("<article class='lt-featured-card ").append(i == 0 ? "lt-featured-card-main" : "lt-featured-card-side").append("'>");
+            if (photo.length() > 0) {
+                h.append("<div class='lt-featured-photo'><img src='").append(echAttr(photo)).append("' alt='").append(echAttr(nom)).append("' loading='lazy'>");
+                if (!photoAdministree(p)) h.append("<span class='lt-demo-flag'>Visuel généré — à valider</span>");
+                h.append("</div>");
+            } else h.append("<div class='lt-featured-photo no-photo'><span>Aucune photo publiée</span></div>");
+            h.append("<div class='lt-featured-copy'><span class='lt-featured-cat'>").append(ech(cat)).append("</span><h3>")
+                    .append(ech(nom)).append("</h3><p>").append(ech(desc)).append("</p><div class='lt-featured-foot'><strong class='lt-featured-price'>")
+                    .append(eur(p.optDouble("pv", 0))).append("</strong><button type='button' class='ajout btn btn-p' data-ajout='")
+                    .append(echAttr(id)).append("' data-id='").append(echAttr(id)).append("' data-nom='").append(echAttr(nom))
+                    .append("' data-prix='").append(p.optDouble("pv", 0)).append("'><span>Ajouter</span><span class='lt-add-symbol' aria-hidden='true'>＋</span></button></div></div></article>");
+        }
+        return h.toString();
+    }
+
     private String rendreProduits(JSONArray produits) throws Exception {
         StringBuilder h = new StringBuilder(); String famille = null; int visibles = 0;
         for (int i = 0; i < produits.length(); i++) {
@@ -546,24 +618,28 @@ public class ServeurSite implements Runnable {
             String fam = p.optString("fam", "Divers");
             if (!fam.equals(famille)) {
                 if (famille != null) h.append("</div></section>");
-                famille = fam; h.append("<section class='famille'><h2>").append(ech(fam)).append("</h2><div class='grille'>");
+                famille = fam;
+                h.append("<section class='famille'><div class='lt-famille-heading'><div><span class='lt-eyebrow'>La sélection</span><h2>")
+                        .append(ech(fam)).append("</h2></div><span class='lt-famille-rule' aria-hidden='true'></span></div><div class='grille'>");
             }
-            String nom = p.optString("nom", "Produit"); String desc = p.optString("desc", p.optString("sous", ""));
+            String nom = p.optString("nom", "Produit"); String desc = p.optString("desc", p.optString("sous", "Préparé sur place selon la sélection publiée."));
             double prix = p.optDouble("pv", 0); String tags = fam + " " + p.optString("cat", "") + " " + p.optString("allergenes", "");
-            String photo = p.optString("photo", "");
-            boolean adminPhoto = photo.startsWith("data:image/") || photo.startsWith("/");
-            boolean generatedPhoto = false;
-            if (!adminPhoto) {
-                String candidate = generatedPhotoFor(id);
-                if (candidate.length() > 0) { photo = candidate; generatedPhoto = true; }
-            }
+            String photo = photoProduit(p);
+            boolean adminPhoto = photoAdministree(p);
+            boolean generatedPhoto = photo.length() > 0 && !adminPhoto;
             h.append("<article class='plat prod' data-product-id='").append(echAttr(id)).append("' data-tags='").append(echAttr(tags.toLowerCase(Locale.FRENCH))).append("'>");
-            if (adminPhoto || generatedPhoto) {
+            if (photo.length() > 0) {
                 h.append("<div class='lt-plat-photo'><img src='").append(echAttr(photo)).append("' alt='").append(echAttr(nom)).append("' loading='lazy'>");
+                h.append("<span class='lt-photo-category'>").append(ech(p.optString("cat", fam))).append("</span>");
                 if (generatedPhoto) h.append("<span class='lt-demo-flag'>Visuel généré — à valider par l'administration</span>");
                 h.append("</div>");
-            } else h.append("<div class='lt-plat-photo no-photo'><span class='lt-no-photo'>Aucune photo administrée ni visuel généré disponible</span></div>");
-            h.append("<div class='infos'><span class='cat'>").append(ech(p.optString("cat", fam))).append("</span><h3>").append(ech(nom)).append("</h3><p class='d'>").append(ech(desc)).append("</p><div class='ligne-prix'><span class='pv'>").append(eur(prix)).append("</span></div><button type='button' class='ajout btn btn-p' data-ajout='").append(echAttr(id)).append("' data-id='").append(echAttr(id)).append("' data-nom='").append(echAttr(nom)).append("' data-prix='").append(prix).append("'>Ajouter à la commande</button><div class='lt-menu-rating' data-rating-for='").append(echAttr(id)).append("'></div></div></article>");
+            } else h.append("<div class='lt-plat-photo no-photo'><span class='lt-no-photo'>Aucune photo publiée pour cette sélection</span></div>");
+            h.append("<div class='infos'><div class='lt-product-meta'><span class='cat'>").append(ech(p.optString("cat", fam)))
+                    .append("</span><span class='pv'>").append(eur(prix)).append("</span></div><h3>").append(ech(nom)).append("</h3><p class='d'>")
+                    .append(ech(desc)).append("</p><div class='lt-product-actions'><button type='button' class='ajout btn btn-p' data-ajout='")
+                    .append(echAttr(id)).append("' data-id='").append(echAttr(id)).append("' data-nom='").append(echAttr(nom))
+                    .append("' data-prix='").append(prix).append("'><span>Ajouter à ma commande</span><span class='lt-add-symbol' aria-hidden='true'>＋</span></button></div><div class='lt-menu-rating' data-rating-for='")
+                    .append(echAttr(id)).append("'></div></div></article>");
             visibles++;
         }
         if (famille != null) h.append("</div></section>");
@@ -611,12 +687,22 @@ public class ServeurSite implements Runnable {
         if (selection.size() == 0) return "<div class='lt-empty'>Aucun plat du jour n'est actuellement publié.</div>";
         StringBuilder h = new StringBuilder(); int n = Math.min(selection.size(), 12);
         for (int i = 0; i < n; i++) {
-            JSONObject p = selection.get(i); String photo = p.optString("photo", "");
-            if (!photo.startsWith("data:image/") && !photo.startsWith("/")) photo = generatedPhotoFor(p.optString("id", ""));
+            JSONObject p = selection.get(i); String id = propre(p.optString("id", ""), 100);
+            String photo = photoProduit(p);
             h.append("<article class='lt-slider-card'>");
-            if (photo.startsWith("data:image/") || photo.startsWith("/")) h.append("<img src='").append(echAttr(photo)).append("' alt='").append(echAttr(p.optString("nom", "Plat du jour"))).append("'>");
-            else h.append("<div class='lt-plat-photo no-photo'><span class='lt-no-photo'>Aucune photo publiée pour cette sélection</span></div>");
-            h.append("<div class='lt-slider-copy'><strong>").append(ech(p.optString("nom", "Plat du jour"))).append("</strong><p>").append(ech(p.optString("desc", p.optString("sous", "")))).append("</p><b>").append(eur(p.optDouble("pv", p.optDouble("prix", 0)))).append("</b></div></article>");
+            if (photo.length() > 0) {
+                h.append("<div class='lt-plat-photo'><img src='").append(echAttr(photo)).append("' alt='").append(echAttr(p.optString("nom", "Plat du jour"))).append("' loading='lazy'>");
+                if (!photoAdministree(p)) h.append("<span class='lt-demo-flag'>Visuel généré — à valider</span>");
+                h.append("</div>");
+            } else h.append("<div class='lt-plat-photo no-photo'><span class='lt-no-photo'>Aucune photo publiée pour cette sélection</span></div>");
+            h.append("<div class='lt-slider-copy'><span class='lt-featured-cat'>").append(ech(p.optString("cat", p.optString("fam", "Sélection du jour"))))
+                    .append("</span><strong>").append(ech(p.optString("nom", "Plat du jour"))).append("</strong><p>")
+                    .append(ech(p.optString("desc", p.optString("sous", "")))).append("</p><b>")
+                    .append(eur(p.optDouble("pv", p.optDouble("prix", 0)))).append("</b>");
+            if (id.length() > 0) h.append("<button type='button' class='ajout btn btn-p' data-ajout='").append(echAttr(id))
+                    .append("' data-id='").append(echAttr(id)).append("' data-nom='").append(echAttr(p.optString("nom", "Plat du jour")))
+                    .append("' data-prix='").append(p.optDouble("pv", p.optDouble("prix", 0))).append("'><span>Ajouter</span><span class='lt-add-symbol' aria-hidden='true'>＋</span></button>");
+            h.append("</div></article>");
         }
         return h.toString();
     }

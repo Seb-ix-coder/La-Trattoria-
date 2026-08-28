@@ -99,9 +99,11 @@ python3 serveur_carte.py        # port 8080 par défaut
 - toutes les tablettes ouvertes sur `http://<serveur>:8080/index.html` se
   **synchronisent automatiquement** (relevé toutes les 15 s ; la dernière
   modification fait foi) — le badge en haut de l'écran indique l'état ;
-- **`public.html`** : page clients en **lecture seule** — première page
-  responsive avec logo La Trattoria, visuel Petit Futé 2026 compact, navigation,
-  recherche, carte filtrable, plats du jour, réservation, avis et partenaires ;
+- **`public.html`** : page clients responsive avec accueil éditorial premium,
+  belle photo mise en avant, sélection « À la une », boutons d'ajout et panier
+  local conservé dans la session (confirmation de commande par téléphone), logo
+  La Trattoria, visuel Petit Futé 2026 compact, navigation, recherche, carte
+  filtrable, plats du jour, réservation, avis et partenaires ;
   les photos administrées sont prioritaires et les absences sont signalées.
   Le catalogue contient aussi 84 visuels générés haute définition de repli,
   homogènes (même angle trois-quarts, ardoise sombre, lumière chaude) et
