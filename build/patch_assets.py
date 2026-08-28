@@ -110,6 +110,12 @@ def patch_site_js(source: str) -> str:
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
         print('[patch] site.js : paiement + carte de fidélité (CLIENT)')
 
+    # -- header premium à deux niveaux (idempotent)
+    if 'APK Premium header' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__), 'apk_premium_header.js'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.js : header premium + recherche + navigation (APK)')
+
     # -- addon modes App client/partenaire (idempotent)
     if 'Modes App' not in source:
         addon = _read(os.path.join(os.path.dirname(__file__),
@@ -143,6 +149,12 @@ def patch_site_css(source: str) -> str:
                                    'paiement_fidelite.css'))
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
         print('[patch] site.css : styles paiement + fidélité (CLIENT)')
+
+    # -- header premium à deux niveaux (idempotent)
+    if 'APK Premium header' not in source:
+        addon = _read(os.path.join(os.path.dirname(__file__), 'apk_premium_header.css'))
+        source = source.rstrip('\n') + '\n\n' + addon + '\n'
+        print('[patch] site.css : header premium + recherche + navigation (APK)')
 
     if 'Modes App' not in source:
         addon = _read(os.path.join(os.path.dirname(__file__),
