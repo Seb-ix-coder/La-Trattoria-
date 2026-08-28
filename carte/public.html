@@ -1,279 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#A51822">
-<title>La Trattoria — La carte du jour</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#781b22">
+<meta name="description" content="La Trattoria à Saintes — cuisine italienne faite maison, pâte maturée 48 heures.">
+<title>La Trattoria — Saintes</title>
 <style>
-  /* Page publique servie par serveur_carte.py — lecture seule.
-     Palette identique au site public de l'APK. */
-  :root{
-    --rouge:#A51822; --rougef:#7A1018; --olive:#8A8A55;
-    --creme:#FDFAF3; --fond:#F4F1EA; --beige:#EFE9DA;
-    --trait:#D8CFC0; --texte:#2B2B28; --gris:#6E6A63;
-    --r:14px; --ombre:0 2px 10px rgba(43,43,40,.08);
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--fond);color:var(--texte);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    font-size:16px;line-height:1.5}
-  h1,h2,h3{font-family:Georgia,"Times New Roman",serif;margin:0;line-height:1.2}
-  .hero{background:var(--rouge);color:#fff;text-align:center;padding:42px 18px 34px}
-  .hero .titre{font-size:38px;font-weight:700}
-  .hero .sous{font-family:Georgia,serif;font-style:italic;font-size:16px;opacity:.85;margin-top:6px}
-  .hero .date{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;margin-top:12px}
-  .conteneur{max-width:1020px;margin:0 auto;padding:26px 18px 70px}
-  .ardoise{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
-    box-shadow:var(--ombre);padding:22px 24px;margin:0 0 22px}
-  .ardoise h2{color:var(--rougef);font-size:24px;text-align:center}
-  .ardoise .sous-titre{text-align:center;font-family:Georgia,serif;font-style:italic;
-    color:var(--gris);margin:4px 0 14px}
-  .ligne{display:flex;align-items:baseline;gap:10px;padding:9px 4px;border-bottom:1px dotted var(--trait)}
-  .ligne:last-child{border-bottom:0}
-  .ligne .nom{font-family:Georgia,serif;font-weight:700;font-size:15.5px}
-  .ligne .desc{display:block;font-family:inherit;font-style:italic;font-weight:400;
-    font-size:12.5px;color:var(--gris)}
-  .ligne .pts{flex:1}
-  .ligne .prix{font-family:Georgia,serif;font-weight:700;white-space:nowrap}
-  .famille{margin:34px 0 8px;text-align:center}
-  .famille h2{font-size:26px;color:var(--rougef)}
-  .famille h2::after{content:"";display:block;width:56px;height:2px;background:var(--olive);
-    margin:8px auto 0}
-  .grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:16px}
-  .prod{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
-    overflow:hidden;box-shadow:var(--ombre);display:flex;flex-direction:column}
-  .prod .photo{aspect-ratio:16/9;background:var(--beige);overflow:hidden}
-  .prod .photo img{width:100%;height:100%;object-fit:cover}
-  .prod .infos{padding:12px 14px;display:flex;flex-direction:column;gap:4px;flex:1}
-  .prod .cat{font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:.05em}
-  .prod h3{font-size:16px}
-  .prod .d{font-size:12.5px;color:var(--gris);display:-webkit-box;-webkit-line-clamp:2;
-    -webkit-box-orient:vertical;overflow:hidden}
-  .prod .ligne-prix{margin-top:auto;padding-top:6px;display:flex;justify-content:flex-end}
-  .prod .pv{font-family:Georgia,serif;font-weight:700;font-size:16.5px;color:var(--rougef)}
-  .pied{text-align:center;color:var(--gris);font-size:12px;padding:30px 18px 20px;
-    border-top:1px solid var(--trait);margin-top:30px;line-height:1.7}
-  .hs{text-align:center;padding:80px 20px;color:var(--gris)}
-  .hs h2{color:var(--rougef);margin-bottom:10px}
-  .hs code{background:var(--beige);padding:2px 8px;border-radius:6px}
-  .live{position:fixed;top:10px;right:12px;background:rgba(28,28,26,.8);color:#fff;
-    font-size:10.5px;padding:4px 10px;border-radius:12px;letter-spacing:.06em}
-  .barre-filtre{text-align:center;padding:14px 0 0}
-  .barre-filtre select{min-height:42px;border:1px solid var(--trait);border-radius:21px;
-    background:var(--creme);padding:0 16px;font:inherit;font-size:14px;box-shadow:var(--ombre)}
-  .alg{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
-  .alg span{font-size:13px;background:var(--beige);border-radius:8px;padding:2px 6px}
-  .fmts{display:flex;flex-direction:column;gap:2px;margin-top:2px}
-  .fmts .f{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--gris);
-    border-bottom:1px dotted var(--beige);padding:2px 0}
-  .fmts .f b{font-family:Georgia,serif;color:var(--rougef);font-weight:700}
-  .legende{max-width:1020px;margin:26px auto;border:1px solid var(--trait);border-radius:var(--r);
-    background:var(--creme);padding:12px 16px}
-  .legende summary{font-weight:700;font-size:13.5px;cursor:pointer}
-  .legende .grille-alg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
-    gap:6px;margin-top:10px;font-size:12px;color:var(--gris)}
+:root{--ink:#231b17;--muted:#6f665d;--wine:#781b22;--red:#a51822;--gold:#bd9142;--cream:#fffaf0;--paper:#f6efe3;--line:#e3d6c5;--olive:#5d693b;--shadow:0 16px 42px rgba(54,31,20,.11);--radius:20px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%;display:block}a{color:var(--wine)}button,input,select{font:inherit}button{cursor:pointer}h1,h2,h3{font-family:Georgia,"Times New Roman",serif;line-height:1.15;margin:0}.skip{position:absolute;left:-9999px;top:8px;padding:10px 14px;background:var(--wine);color:#fff;z-index:50}.skip:focus{left:8px}.wrap{width:min(1160px,calc(100% - 36px));margin:auto}
+.site-header{position:sticky;top:0;z-index:20;background:rgba(255,250,240,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}.head-row{min-height:72px;display:flex;align-items:center;gap:14px}.brand{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none;color:var(--ink)}.brand img{width:48px;height:48px;object-fit:contain;flex:0 0 48px}.brand-copy{min-width:0}.brand-name{display:block;color:var(--wine);font:700 clamp(17px,2.5vw,21px)/1.1 Georgia,serif;white-space:nowrap}.brand-sub{display:block;color:var(--muted);font-size:10px;letter-spacing:.11em;text-transform:uppercase;white-space:nowrap}.head-actions{margin-left:auto;display:flex;align-items:center;gap:8px}.call{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 15px;border-radius:24px;background:var(--red);color:#fff;text-decoration:none;font-weight:750;box-shadow:0 5px 14px rgba(165,24,34,.2);white-space:nowrap}.nav{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:6px 0 9px}.nav::-webkit-scrollbar{display:none}.nav a{display:flex;align-items:center;min-height:42px;padding:0 14px;border-radius:22px;text-decoration:none;color:var(--ink);font-size:14px;font-weight:700;white-space:nowrap}.nav a:hover,.nav a.active{background:#efe2ce;color:var(--wine)}
+.hero{padding:54px 0 62px;background:radial-gradient(circle at 20% 20%,#fffdf7 0,#f8efe0 48%,#ecdfcd 100%);border-bottom:1px solid var(--line)}.hero-grid{display:grid;grid-template-columns:minmax(0,1.13fr) minmax(270px,.87fr);align-items:center;gap:44px}.eyebrow{margin:0 0 13px;color:var(--olive);font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}.hero h1{max-width:670px;color:var(--wine);font-size:clamp(42px,7vw,78px);letter-spacing:-.045em}.hero-lead{max-width:600px;color:#51463e;font:italic clamp(18px,2.5vw,23px)/1.4 Georgia,serif;margin:15px 0 23px}.actions{display:flex;flex-wrap:wrap;gap:10px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 17px;border-radius:25px;border:1px solid var(--line);font-weight:750;text-decoration:none;transition:transform .16s,box-shadow .16s,background .16s}.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow)}.btn-primary{background:var(--wine);border-color:var(--wine);color:#fff}.btn-secondary{background:var(--cream);color:var(--wine)}.hero-note{margin:17px 0 0;color:var(--muted);font-size:13px}.hero-note strong{color:var(--wine)}.proof-card{justify-self:end;width:min(100%,390px);padding:14px;background:rgba(255,253,248,.84);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow)}.proof-card img{width:100%;height:auto;max-height:225px;object-fit:contain;border-radius:15px}.proof-caption{display:flex;align-items:flex-start;gap:10px;padding:13px 3px 1px}.proof-dot{width:10px;height:10px;margin-top:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 5px #f6d5d0;flex:none}.proof-caption strong{display:block;color:var(--wine);font-size:14px}.proof-caption span{display:block;color:var(--muted);font-size:12px}
+.section{padding:66px 0}.section.alt{background:#efe4d4}.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:23px}.section-kicker{margin:0 0 7px;color:var(--gold);font-size:11px;font-weight:850;letter-spacing:.17em;text-transform:uppercase}.section h2{color:var(--wine);font-size:clamp(28px,4vw,43px)}.section-intro{max-width:570px;color:var(--muted);margin:8px 0 0}.section-link{font-size:14px;font-weight:750;white-space:nowrap}.story-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.story{padding:21px;background:var(--cream);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 5px 18px rgba(54,31,20,.05)}.story-mark{font-size:26px}.story h3{margin:11px 0 5px;color:var(--wine);font-size:21px}.story p{margin:0;color:var(--muted);font-size:14px}.brand-strip{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:center}.brand-intro{display:flex;align-items:center;gap:18px}.brand-intro img{width:104px;height:104px;object-fit:contain;flex:none}.brand-intro p{color:var(--muted);margin:8px 0 0}.brand-intro h2{font-size:clamp(28px,4vw,42px)}
+.toolbar{display:grid;grid-template-columns:minmax(180px,1fr) auto;gap:12px;align-items:center;margin-bottom:19px}.searchbox{position:relative}.searchbox span{position:absolute;left:14px;top:10px;color:var(--wine);font-size:21px}.searchbox input,.toolbar select{width:100%;min-height:46px;border:1px solid var(--line);border-radius:13px;background:var(--cream);padding:0 14px 0 43px;color:var(--ink);outline:none}.toolbar select{padding-left:13px;min-width:170px}.searchbox input:focus,.toolbar select:focus{border-color:var(--gold);box-shadow:0 0 0 3px #c49a4530}.catalogue-status{min-height:22px;margin:0 0 12px;color:var(--muted);font-size:13px}.catalogue-status strong{color:var(--wine)}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}.product{display:flex;flex-direction:column;min-width:0;background:var(--cream);border:1px solid var(--line);border-radius:17px;overflow:hidden;box-shadow:0 5px 17px rgba(54,31,20,.055)}.product-media{position:relative;aspect-ratio:1.42;background:linear-gradient(135deg,#efe0c9,#e5d1b6);overflow:hidden}.product-media img{width:100%;height:100%;object-fit:cover}.product-media.no-photo{display:grid;place-items:center;padding:16px;color:#6b5e52;text-align:center;font-size:12px;font-style:italic}.product-media.no-photo:before{content:"✦";display:block;color:var(--gold);font-size:28px;font-style:normal}.demo-label{position:absolute;left:8px;bottom:8px;right:8px;padding:4px 7px;border-radius:7px;background:#413a33dc;color:#fff;font-size:10px;font-style:normal;font-weight:800;text-align:center}.product-body{display:flex;flex-direction:column;gap:6px;flex:1;padding:14px}.product-cat{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.product h3{font-size:19px;color:var(--wine)}.product p{margin:0;color:var(--muted);font-size:13px;line-height:1.4}.product-bottom{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;padding-top:8px}.price{color:var(--wine);font:700 18px Georgia,serif}.tag{font-size:10px;color:var(--olive);font-weight:750}.empty{padding:30px 18px;text-align:center;color:var(--muted);background:var(--cream);border:1px dashed var(--line);border-radius:15px}.empty[hidden]{display:none}.admin-note{display:flex;gap:10px;align-items:flex-start;margin:0 0 18px;padding:12px 14px;border-left:4px solid var(--gold);border-radius:10px;background:#fff9ed;color:var(--muted);font-size:13px}.admin-note b{color:var(--wine)}
+.day-slider{display:flex;gap:15px;overflow-x:auto;scroll-snap-type:x proximity;padding:2px 2px 10px;scrollbar-width:thin}.day-card{flex:0 0 min(310px,82vw);scroll-snap-align:start;background:var(--cream);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 5px 17px rgba(54,31,20,.06)}.day-card .product-media{aspect-ratio:1.7}.day-card-body{padding:16px}.day-card h3{color:var(--wine);font-size:21px}.day-card p{color:var(--muted);font-size:13px;margin:7px 0}.day-empty{flex:1;padding:27px;background:var(--cream);border:1px dashed var(--line);border-radius:15px;color:var(--muted);text-align:center}
+.booking{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}.booking-copy{padding:6px 0}.booking-copy h2{font-size:clamp(30px,4vw,46px)}.booking-copy p{color:var(--muted);max-width:470px}.booking-list{padding:0;margin:20px 0;list-style:none}.booking-list li{display:flex;gap:9px;align-items:flex-start;margin:9px 0;color:#51463e;font-size:14px}.booking-list li:before{content:"✓";color:var(--olive);font-weight:900}.booking-card{background:var(--cream);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:var(--shadow)}.booking-card label{display:block;margin:0 0 5px;color:var(--wine);font-size:13px;font-weight:800}.booking-card input,.booking-card textarea,.booking-card select{width:100%;min-height:45px;margin:0 0 13px;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}.booking-card textarea{min-height:85px;resize:vertical}.booking-card .btn{width:100%;border:0}.fine{color:var(--muted);font-size:12px}.review-empty{display:grid;grid-template-columns:auto 1fr;gap:15px;align-items:center;padding:22px;background:var(--cream);border:1px solid var(--line);border-radius:17px}.review-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:#f1dfc3;color:var(--gold);font-size:25px}.review-empty h3{font-size:20px;color:var(--wine)}.review-empty p{margin:4px 0 0;color:var(--muted);font-size:14px}.partner-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.partner{padding:20px;background:var(--cream);border:1px solid var(--line);border-radius:17px}.partner h3{color:var(--wine);font-size:22px}.partner p{margin:7px 0;color:var(--muted);font-size:14px}.footer{padding:32px 0 38px;background:#2c211c;color:#e9dccb;font-size:13px}.footer a{color:#f3ca86}.footer-grid{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.footer p{margin:3px 0}.backtop{font-weight:800;text-decoration:none}
+@media(max-width:930px){.hero-grid{gap:25px}.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.brand-strip{grid-template-columns:1fr}.brand-intro img{width:88px;height:88px}}
+@media(max-width:680px){.wrap{width:min(100% - 26px,560px)}.head-row{min-height:64px}.brand img{width:42px;height:42px;flex-basis:42px}.brand-sub{font-size:8px}.brand-name{font-size:17px}.call{min-height:40px;padding:0 11px;font-size:13px}.nav a{min-height:40px;padding:0 12px;font-size:13px}.hero{padding:35px 0 41px}.hero-grid{grid-template-columns:1fr;gap:26px}.hero h1{font-size:clamp(39px,13vw,64px)}.hero-lead{font-size:18px}.proof-card{justify-self:stretch;width:100%;display:flex;align-items:center;gap:13px;padding:10px}.proof-card img{width:44%;max-height:145px}.proof-caption{padding:0;display:block}.proof-dot{display:none}.section{padding:45px 0}.section-head{display:block}.section-link{display:inline-block;margin-top:10px}.story-grid,.partner-grid,.booking{grid-template-columns:1fr}.story{padding:17px}.toolbar{grid-template-columns:1fr;gap:8px}.toolbar select{width:100%}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.product-body{padding:11px}.product h3{font-size:16px}.product p{font-size:12px}.price{font-size:16px}.product-bottom{align-items:flex-end}.brand-intro{align-items:flex-start;gap:12px}.brand-intro img{width:72px;height:72px}.review-empty{grid-template-columns:1fr;text-align:center}.review-icon{margin:auto}}
+@media(max-width:360px){.wrap{width:calc(100% - 20px)}.brand-sub{display:none}.call{font-size:0;width:41px;padding:0}.call:first-letter{font-size:17px}.grid{grid-template-columns:1fr}.product-media{aspect-ratio:1.8}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
 </style>
 </head>
 <body>
-
-<header class="hero">
-  <h1 class="titre">La Trattoria</h1>
-  <p class="sous">Cuisine italienne — fait maison, servi au restaurant</p>
-  <p class="date" id="date"></p>
-</header>
-
-<div class="live" id="live" hidden>EN DIRECT</div>
-
-<div class="barre-filtre">
-  <select id="filtre-alg" aria-label="Filtrer selon un allergène">
-    <option value="">Toute la carte</option>
-    <option value="gluten">Sans gluten</option>
-    <option value="lactose">Sans lactose</option>
-    <option value="fruitsacoque">Sans fruits à coque</option>
-    <option value="oeufs">Sans œufs</option>
-    <option value="poissons">Sans poisson</option>
-  </select>
-</div>
-
-<main class="conteneur" id="contenu">
-  <a class="lien-ardoise" href="apercu-carte.html" 
-     style="display:block;text-align:center;margin:0 auto 18px;max-width:540px;
-     background:#24312B;color:#F5D67B;border-radius:12px;padding:12px 18px;
-     text-decoration:none;font-family:Georgia,serif;font-size:16px;
-     box-shadow:0 2px 10px rgba(43,43,40,.25);">
-    🧾&nbsp; <b>Voir l'ardoise du moment</b> — fait maison, frais, pâte maturée 48 h
-  </a>
-  <div class="hs">
-    <h2>Un instant…</h2>
-    <p>La carte arrive.</p>
-  </div>
+<a class="skip" href="#contenu">Aller au contenu</a>
+<header class="site-header"><div class="wrap"><div class="head-row"><a class="brand" href="#accueil" aria-label="La Trattoria, accueil"><img src="img/logo-la-trattoria-saintes.svg" alt=""><span class="brand-copy"><span class="brand-name">La Trattoria</span><span class="brand-sub">Maison italienne · Saintes</span></span></a><div class="head-actions"><a class="call" href="tel:0627213190">☎ Appeler</a></div></div><nav class="nav" aria-label="Navigation principale"><a class="active" href="#accueil">Accueil</a><a href="#carte">La carte</a><a href="#jour">Aujourd'hui</a><a href="#reservation">Réserver</a><a href="#avis">Avis</a><a href="#partenaires">Partenaires</a></nav></div></header>
+<main id="contenu">
+<section id="accueil" class="hero"><div class="wrap hero-grid"><div><p class="eyebrow">Pizzeria artisanale · Saintes</p><h1>La cuisine italienne, avec le temps comme ingrédient.</h1><p class="hero-lead">Une pâte maturée 48 heures, des produits choisis et une carte qui suit les envies de la maison.</p><div class="actions"><a class="btn btn-primary" href="#carte">Voir la carte</a><a class="btn btn-secondary" href="#reservation">Réserver une table</a></div><p class="hero-note"><strong>15 rue de la Poste · 17100 Saintes</strong><br>Du fait maison, servi simplement.</p></div><aside class="proof-card" aria-label="Logo et recommandation"><img src="img/petit-fute-2026.svg" alt="Établissement recommandé Petit Futé 2026 — La Trattoria, Saintes"><div class="proof-caption"><span class="proof-dot"></span><div><strong>Une adresse recommandée en 2026</strong><span>Visuel de recommandation fourni par l'établissement.</span></div></div></aside></div></section>
+<section class="section"><div class="wrap story-grid"><article class="story"><span class="story-mark" aria-hidden="true">◌</span><h3>48 heures</h3><p>Une fermentation lente pour une pâte légère, travaillée avec patience.</p></article><article class="story"><span class="story-mark" aria-hidden="true">✦</span><h3>Fait maison</h3><p>Des recettes préparées sur place, au rythme du service et des arrivages.</p></article><article class="story"><span class="story-mark" aria-hidden="true">⌁</span><h3>La carte en direct</h3><p>Les sélections publiées par l'équipe apparaissent ici sans doublon ni promesse inventée.</p></article></div></section>
+<section id="carte" class="section alt"><div class="wrap"><div class="section-head"><div><p class="section-kicker">La carte</p><h2>Choisir son assiette</h2><p class="section-intro">Une carte lisible, filtrable et mise à jour depuis la gestion du restaurant.</p></div><a class="section-link" href="index.html">Accès gestion →</a></div><div class="admin-note"><span aria-hidden="true">✦</span><span><b>Photos et données administrées en priorité.</b> Si une photo n'a pas été publiée par l'équipe, aucun visuel de démonstration ne sera présenté comme une photo du restaurant.</span></div><div class="toolbar"><label class="searchbox"><span aria-hidden="true">⌕</span><input id="recherche" type="search" placeholder="Rechercher un plat ou une catégorie" autocomplete="off" aria-label="Rechercher un plat ou une catégorie"></label><select id="famille" aria-label="Filtrer par catégorie"><option value="">Toutes les catégories</option></select></div><p id="statut-carte" class="catalogue-status" role="status" aria-live="polite">Chargement de la carte…</p><div id="grille" class="grid"></div><p id="vide" class="empty" hidden>Aucun résultat dans cette sélection.</p></div></section>
+<section id="jour" class="section"><div class="wrap"><div class="section-head"><div><p class="section-kicker">Sélection du moment</p><h2>Aujourd'hui à La Trattoria</h2><p class="section-intro">Les plats du jour et l'ardoise sont publiés par l'administration.</p></div></div><div id="slider" class="day-slider" aria-live="polite"><div class="day-empty">La sélection du jour est en cours de publication.</div></div></div></section>
+<section class="section alt"><div class="wrap brand-strip"><div class="brand-intro"><img src="img/logo-la-trattoria-saintes.svg" alt="Logo La Trattoria Saintes"><div><p class="section-kicker">Notre maison</p><h2>Une identité sincère</h2><p>Une adresse italienne de quartier, un accueil attentif et une pâte qui prend le temps.</p></div></div><div class="partner"><h3>Vous êtes partenaire local ?</h3><p>Présentez votre établissement et vos offres dans l'espace partenaire après validation par l'équipe.</p><a class="btn btn-secondary" href="#partenaires">Découvrir l'espace</a></div></div></section>
+<section id="reservation" class="section"><div class="wrap booking"><div class="booking-copy"><p class="section-kicker">À table</p><h2>Réserver sans friction.</h2><p>Votre demande est transmise au restaurant. La réservation n'est confirmée qu'après le retour de l'équipe.</p><ul class="booking-list"><li>Réponse directe au 06 27 21 31 90</li><li>Service sur place ou commande à emporter</li><li>Allergènes et adaptations à signaler lors de l'échange</li></ul><a class="btn btn-primary" href="tel:0627213190">Appeler pour réserver</a></div><form class="booking-card" id="form-reservation"><label for="nom">Votre nom</label><input id="nom" name="nom" required autocomplete="name"><label for="telephone">Téléphone</label><input id="telephone" name="telephone" required inputmode="tel" autocomplete="tel"><label for="date">Date souhaitée</label><input id="date" name="date" required type="date"><label for="couverts">Nombre de couverts</label><select id="couverts" name="couverts"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>8</option></select><label for="message">Précision (facultatif)</label><textarea id="message" name="message" maxlength="500" placeholder="Terrasse, allergie, horaire…"></textarea><button class="btn btn-primary" type="submit">Envoyer la demande</button><p id="reservation-status" class="fine" role="status" aria-live="polite">Votre demande sera vérifiée par l'équipe.</p></form></div></section>
+<section id="avis" class="section alt"><div class="wrap"><div class="section-head"><div><p class="section-kicker">Avis vérifiés</p><h2>La parole aux clients</h2><p class="section-intro">Les avis affichés doivent être reliés à un achat identifié. Aucun avis de démonstration n'est publié.</p></div></div><div class="review-empty"><div class="review-icon" aria-hidden="true">★</div><div><h3>Aucun avis vérifié pour le moment</h3><p>Après votre achat, connectez-vous pour noter un plat. Vous pourrez ensuite modifier votre propre note.</p></div></div></div></section>
+<section id="partenaires" class="section"><div class="wrap"><div class="section-head"><div><p class="section-kicker">Écosystème local</p><h2>Partenaires & fournisseurs</h2><p class="section-intro">Les partenaires bio, locaux et leurs offres sont publiés après validation.</p></div></div><div class="partner-grid"><article class="partner"><h3>Partenaires recommandés</h3><p>Aucun partenaire publié actuellement. Revenez bientôt pour découvrir les adresses vérifiées autour de La Trattoria.</p></article><article class="partner"><h3>Fournisseurs</h3><p>Les informations d'approvisionnement sont administrées par l'équipe et ne sont affichées que lorsqu'elles sont disponibles.</p></article></div></div></section>
+<section id="contact" class="section alt"><div class="wrap"><div class="section-head"><div><p class="section-kicker">Nous trouver</p><h2>Saintes, rue de la Poste.</h2><p class="section-intro">15 rue de la Poste · 17100 Saintes · 06 27 21 31 90</p></div><a class="btn btn-primary" href="tel:0627213190">Nous appeler</a></div></div></section>
 </main>
-
-<details class="legende">
-  <summary>🌾 Allergènes — signification des pictogrammes</summary>
-  <div class="grille-alg" id="legende-alg"></div>
-</details>
-
-<footer class="pied">
-  La Trattoria · 15 rue de la Poste · 17100 Saintes · SIRET 106 050 263 00016<br>
-  Prix TTC, service compris. Merci de votre visite !<br>
-  <a href="legal.html" style="color:var(--rouge);font-weight:700">Mentions légales · CGV · Données personnelles</a>
-</footer>
-
+<footer class="footer"><div class="wrap footer-grid"><div><strong>La Trattoria</strong><p>15 rue de la Poste · 17100 Saintes</p><p><a href="tel:0627213190">06 27 21 31 90</a></p></div><div><p>Prix TTC, service compris.</p><p>Allergènes : demandez la liste à l'équipe.</p><p><a href="legal.html">Mentions légales · CGV · Données</a></p></div><a class="backtop" href="#accueil">Retour en haut ↑</a></div></footer>
+<script src="donnees.js"></script>
 <script>
-/* Consulte l'API locale (serveur_carte.py) ; se rafraîchit toutes les 60 s
-   — pratique pour un écran en vitrine ou en salle. */
-(function () {
-  'use strict';
-
-  var ORDRE_ARDOISES = ['plats', 'bieres', 'desserts'];
-  var FILTRE_ALG = '';
-  var dernierEtat = null;
-  var ALLERGENES = {
-    gluten: ['Gluten', '🌾'], crustaces: ['Crustacés', '🦐'], oeufs: ['Œufs', '🥚'],
-    poissons: ['Poissons', '🐟'], arachides: ['Arachides', '🥜'], soja: ['Soja', '🌿'],
-    lactose: ['Lactose', '🥛'], fruitsacoque: ['Fruits à coque', '🌰'],
-    celeri: ['Céleri', '🥬'], moutarde: ['Moutarde', '🟡'], sesame: ['Sésame', '◻️'],
-    sulfites: ['Sulfites', '🍷'], lupin: ['Lupin', '🌼'], mollusques: ['Mollusques', '🐚']
-  };
-
-  function prixHTML(p) {
-    if (p.formats && p.formats.length) {
-      var lignes = p.formats.map(function (f) {
-        return '<span class="f"><span>' + echap(f.nom || '—') + '</span><b>' + eur(f.pv) + '</b></span>';
-      }).join('');
-      return (p.pv > 0
-          ? '<div class="ligne-prix"><span class="pv">' + eur(p.pv) + '</span></div>'
-          : '<div style="margin-top:auto"></div>') +
-        '<div class="fmts">' + lignes + '</div>';
-    }
-    return '<div class="ligne-prix"><span class="pv">' + eur(p.pv) + '</span></div>';
-  }
-
-  function algBadges(p) {
-    if (!p.allergenes || !p.allergenes.length) return '';
-    return '<div class="alg">' + p.allergenes.map(function (c) {
-      var a = ALLERGENES[c];
-      return a ? '<span title="' + echap(a[0]) + '">' + a[1] + '</span>' : '';
-    }).join('') + '</div>';
-  }
-
-  function passeFiltre(p) {
-    return !FILTRE_ALG || (p.allergenes || []).indexOf(FILTRE_ALG) < 0;
-  }
-
-  function echap(s) {
-    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-  function eur(v) {
-    var n = Number(v);
-    if (!isFinite(n)) n = 0;
-    return n.toFixed(2).replace('.', ',') + ' €';
-  }
-
-  function ligneHTML(l) {
-    return '<div class="ligne"><span class="nom">' + echap(l.nom) +
-      (l.desc ? '<span class="desc">' + echap(l.desc) + '</span>' : '') +
-      '</span><span class="pts"></span><span class="prix">' + eur(l.prix) + '</span></div>';
-  }
-
-  function ardoiseHTML(cle, a, carte) {
-    var lignes = [];
-    (a.selection || []).forEach(function (id) {
-      for (var i = 0; i < carte.length; i++) {
-        if (carte[i].id === id && carte[i].actif !== false) {
-          lignes.push({ nom: carte[i].nom, desc: carte[i].desc, prix: carte[i].pv });
-          break;
-        }
-      }
-    });
-    (a.libres || []).forEach(function (l) { lignes.push(l); });
-    if (!lignes.length) return '';
-    return '<section class="ardoise" data-cle="' + cle + '">' +
-      '<h2>' + echap(a.titre) + '</h2>' +
-      (a.sous ? '<p class="sous-titre">' + echap(a.sous) + '</p>' : '') +
-      lignes.map(ligneHTML).join('') + '</section>';
-  }
-
-  function carteHTML(carte) {
-    var ordre = [];
-    var parFam = {};
-    carte.forEach(function (p) {
-      if (p.actif === false || !passeFiltre(p)) return;
-      if (!parFam[p.fam]) { parFam[p.fam] = []; ordre.push(p.fam); }
-      parFam[p.fam].push(p);
-    });
-    if (!ordre.length && FILTRE_ALG) {
-      return '<p class="hs">Rien à la carte sans cet allergène pour le moment — ' +
-        'demandez-nous, la cuisine s’adapte souvent.</p>';
-    }
-    return ordre.map(function (fam) {
-      var prods = parFam[fam].map(function (p) {
-        return '<article class="prod">' +
-          (p.photo ? '<div class="photo"><img src="' + p.photo + '" alt="' +
-            echap(p.nom) + '" loading="lazy"></div>' : '') +
-          '<div class="infos">' +
-          '<span class="cat">' + echap(p.cat || p.fam) + '</span>' +
-          '<h3>' + echap(p.nom) + '</h3>' +
-          (p.desc ? '<p class="d">' + echap(p.desc) + '</p>' : '') +
-          prixHTML(p) + algBadges(p) +
-          '</div></article>';
-      }).join('');
-      return '<section class="famille"><h2>' + echap(fam) + '</h2>' +
-        '<div class="grille">' + prods + '</div></section>';
-    }).join('');
-  }
-
-  function legender() {
-    var el = document.getElementById('legende-alg');
-    if (el) el.innerHTML = Object.keys(ALLERGENES).map(function (c) {
-      return '<span>' + ALLERGENES[c][1] + ' ' + ALLERGENES[c][0] + '</span>';
-    }).join('');
-  }
-
-  function afficher(etat) {
-    dernierEtat = etat;
-    var carte = etat.carte || [];
-    var ardoises = etat.ardoises || {};
-    var h = ORDRE_ARDOISES.map(function (cle) {
-      return ardoises[cle] ? ardoiseHTML(cle, ardoises[cle], carte) : '';
-    }).join('');
-    h += carteHTML(carte);
-    document.getElementById('contenu').innerHTML = h;
-    document.getElementById('live').hidden = false;
-  }
-
-  function horsService() {
-    document.getElementById('contenu').innerHTML =
-      '<div class="hs"><h2>La carte n\u2019est pas servie ici</h2>' +
-      '<p>Cette page doit être ouverte via le serveur du restaurant ' +
-      '(<code>serveur_carte.py</code>) sur le Wi-Fi.<br>' +
-      'Adressez-vous au comptoir pour conna\u00eetre la carte du jour.</p></div>';
-  }
-
-  function rafraichir() {
-    fetch('api/carte', { cache: 'no-store' }).then(function (r) {
-      if (!r.ok) throw new Error('ko');
-      return r.json();
-    }).then(afficher).catch(horsService);
-  }
-
-  try {
-    document.getElementById('date').textContent =
-      new Date().toLocaleDateString('fr-FR',
-        { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  } catch (e) { }
-
-  legender();
-  document.getElementById('filtre-alg').addEventListener('change', function (e) {
-    FILTRE_ALG = e.target.value;
-    if (dernierEtat) afficher(dernierEtat);
-  });
-
-  rafraichir();
-  setInterval(rafraichir, 60000);
+(function(){'use strict';
+ var catalogue=[],admin=false,query='',fam='';
+ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+ function eur(v){var n=Number(v);return (isFinite(n)?n:0).toFixed(2).replace('.',',')+' €'}
+ function photo(p,cls){if(p.photo){return '<div class="product-media '+(cls||'')+'"><img src="'+esc(p.photo)+'" alt="'+esc(p.nom)+'" loading="lazy"></div>'}return '<div class="product-media no-photo '+(cls||'')+'"><span>Pas de photo administrée</span><span class="demo-label">Visuel non fourni — aucune photo de démonstration</span></div>'}
+ function renderFilters(){var select=document.getElementById('famille'),old=select.value;var fams=[];catalogue.forEach(function(p){var f=p.fam||p.cat||'Autres';if(fams.indexOf(f)<0)fams.push(f)});select.innerHTML='<option value="">Toutes les catégories</option>'+fams.sort().map(function(f){return '<option value="'+esc(f)+'">'+esc(f)+'</option>'}).join('');if(fams.indexOf(old)>=0)select.value=old}
+ function render(){var list=catalogue.filter(function(p){if(p.actif===false)return false;var text=(p.nom+' '+(p.desc||'')+' '+(p.fam||'')+' '+(p.cat||'')).toLowerCase();return (!query||text.indexOf(query)>=0)&&(!fam||(p.fam||p.cat||'Autres')===fam)});var grid=document.getElementById('grille'),empty=document.getElementById('vide');grid.innerHTML=list.map(function(p){return '<article class="product"><div>'+photo(p)+'</div><div class="product-body"><span class="product-cat">'+esc(p.cat||p.fam||'La carte')+'</span><h3>'+esc(p.nom)+'</h3><p>'+esc(p.desc||'Préparé sur place selon la sélection publiée.')+'</p><div class="product-bottom"><span class="price">'+eur(p.pv)+'</span><span class="tag">'+(admin?'Publié par l\'administration':'Catalogue local')+'</span></div></div></article>'}).join('');empty.hidden=list.length>0;document.getElementById('statut-carte').innerHTML=list.length?'<strong>'+list.length+'</strong> plat'+(list.length>1?'s':'')+' affiché'+(list.length>1?'s':'')+(admin?' · sélection administrée':' · données locales de repli'):''}
+ function renderDay(state){var out=[],seen={};(state.ardoises?Object.keys(state.ardoises):[]).forEach(function(k){var a=state.ardoises[k]||{};(a.selection||[]).forEach(function(id){var p=catalogue.find(function(x){return x.id===id});if(p&&!seen[p.id]){out.push(p);seen[p.id]=1}});(a.libres||[]).forEach(function(l){out.push({nom:l.nom||'Sélection du jour',desc:l.sous||'',pv:l.prix||0,photo:null,libre:true})})});var slider=document.getElementById('slider');if(!out.length){slider.innerHTML='<div class="day-empty"><strong>Aucun plat du jour publié.</strong><br>La sélection sera mise à jour par l\'équipe.</div>';return}slider.innerHTML=out.slice(0,12).map(function(p){return '<article class="day-card">'+photo(p,'day-photo')+'<div class="day-card-body"><h3>'+esc(p.nom)+'</h3><p>'+esc(p.desc||'')+'</p><strong class="price">'+eur(p.pv)+'</strong></div></article>'}).join('')}
+ function load(){var local=window.TRATTORIA_CATALOGUE||[];fetch('api/carte',{cache:'no-store'}).then(function(r){if(!r.ok)throw Error('offline');return r.json()}).then(function(state){if(state.carte&&state.carte.length){catalogue=state.carte;admin=true}else{catalogue=local;admin=false}renderFilters();render();renderDay(state)}).catch(function(){catalogue=local;admin=false;renderFilters();render();renderDay({});document.getElementById('statut-carte').textContent='Données locales de repli — vérifiez la sélection auprès de l’équipe.'})}
+ document.getElementById('recherche').addEventListener('input',function(){query=this.value.toLowerCase().trim();render()});document.getElementById('famille').addEventListener('change',function(){fam=this.value;render()});document.getElementById('form-reservation').addEventListener('submit',function(e){e.preventDefault();var s=document.getElementById('reservation-status');s.textContent='Les réservations se confirment par téléphone : appelez le 06 27 21 31 90 pour finaliser votre demande.';window.location.href='tel:0627213190'});load();
 })();
 </script>
 </body>

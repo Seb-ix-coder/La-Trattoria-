@@ -99,9 +99,10 @@ python3 serveur_carte.py        # port 8080 par défaut
 - toutes les tablettes ouvertes sur `http://<serveur>:8080/index.html` se
   **synchronisent automatiquement** (relevé toutes les 15 s ; la dernière
   modification fait foi) — le badge en haut de l'écran indique l'état ;
-- **`public.html`** : page clients en **lecture seule** — carte avec photos et
-  cartes du jour, rafraîchie chaque minute (parfaite sur un écran en salle ou un
-  terminal invité du Wi-Fi).
+- **`public.html`** : page clients en **lecture seule** — première page
+  responsive avec logo La Trattoria, visuel Petit Futé 2026 compact, navigation,
+  recherche, carte filtrable, plats du jour, réservation, avis et partenaires ;
+  les photos administrées sont prioritaires et les absences sont signalées.
 
 ### Données
 - Préchargé avec les **84 produits** extraits de l'APK (`trato.apk` v11.0) ;
@@ -122,7 +123,7 @@ python3 serveur_carte.py        # port 8080 par défaut
 | `carte.js` | logique : catalogue, photos, marges, cartes du jour, synchronisation, import/export |
 | `donnees.js` | catalogue d'origine extrait de l'APK |
 | `serveur_carte.py` | serveur local : synchronisation entre tablettes + page clients |
-| `public.html` | page publique lecture seule (carte + cartes du jour, avec photos) |
+| `public.html` | page publique lecture seule : accueil responsive, logo, visuel Petit Futé 2026, carte, recherche, plats du jour, réservation, avis et partenaires |
 | `manifest.webmanifest`, `sw.js`, `icones/` | installation PWA + fonctionnement hors ligne |
 
 ## Ardoise & QR (carte principale éditable)
