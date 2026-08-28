@@ -331,7 +331,7 @@
       "nom": "Menu Enfant",
       "famille": "Formules",
       "fichier": "carte/img/produits-generes/p41.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -339,7 +339,7 @@
       "nom": "Formule Midi",
       "famille": "Formules",
       "fichier": "carte/img/produits-generes/p42.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -347,7 +347,7 @@
       "nom": "Formule Complète",
       "famille": "Formules",
       "fichier": "carte/img/produits-generes/p43.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -355,7 +355,7 @@
       "nom": "Formule Salade",
       "famille": "Formules",
       "fichier": "carte/img/produits-generes/p44.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -371,7 +371,7 @@
       "nom": "Americano",
       "famille": "Apéritif",
       "fichier": "carte/img/produits-generes/p46.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -379,7 +379,7 @@
       "nom": "Kir",
       "famille": "Apéritif",
       "fichier": "carte/img/produits-generes/p47.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -387,7 +387,7 @@
       "nom": "Picon bière 25 cl",
       "famille": "Apéritif",
       "fichier": "carte/img/produits-generes/p48.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -395,7 +395,7 @@
       "nom": "Apéritif sans alcool",
       "famille": "Apéritif",
       "fichier": "carte/img/produits-generes/p49.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -403,7 +403,7 @@
       "nom": "Planche & pichet",
       "famille": "Apéritif",
       "fichier": "carte/img/produits-generes/p50.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
