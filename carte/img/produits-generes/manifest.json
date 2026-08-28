@@ -251,7 +251,7 @@
       "nom": "Le Caramel Spéculoos",
       "famille": "Desserts",
       "fichier": "carte/img/produits-generes/p31.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -259,7 +259,7 @@
       "nom": "Le Noisette",
       "famille": "Desserts",
       "fichier": "carte/img/produits-generes/p32.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -267,7 +267,7 @@
       "nom": "Le Pistache",
       "famille": "Desserts",
       "fichier": "carte/img/produits-generes/p33.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -275,7 +275,7 @@
       "nom": "Le Crousti",
       "famille": "Desserts",
       "fichier": "carte/img/produits-generes/p34.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -283,7 +283,7 @@
       "nom": "1 boule",
       "famille": "Desserts",
       "fichier": "carte/img/produits-generes/p35.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -291,7 +291,7 @@
       "nom": "2 boules",
       "famille": "Desserts",
       "fichier": "carte/img/produits-generes/p36.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -299,7 +299,7 @@
       "nom": "3 boules",
       "famille": "Desserts",
       "fichier": "carte/img/produits-generes/p37.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -307,7 +307,7 @@
       "nom": "Coupe maison",
       "famille": "Desserts",
       "fichier": "carte/img/produits-generes/p38.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -315,7 +315,7 @@
       "nom": "Affogato",
       "famille": "Desserts",
       "fichier": "carte/img/produits-generes/p39.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -323,7 +323,7 @@
       "nom": "Coupe enfant",
       "famille": "Desserts",
       "fichier": "carte/img/produits-generes/p40.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
