@@ -28,6 +28,7 @@ Usage :
 
 import base64
 import hashlib
+import struct
 import sys
 import zipfile
 
@@ -202,8 +203,17 @@ def sign(src_apk: str, p12_path: str, password: str, dst_apk: str) -> None:
             zi.external_attr = info.external_attr
             zi.create_system = info.create_system
             zi.comment = info.comment
+            method = (zipfile.ZIP_STORED if info.filename == 'resources.arsc'
+                      else zipfile.ZIP_DEFLATED)
+            if method == zipfile.ZIP_STORED:
+                here = out.fp.tell()
+                base = here + 30 + len(info.filename.encode('utf-8'))
+                need = (4 - (base % 4)) % 4
+                zi.extra = (struct.pack('<HH', 0, need) + b'\0' * need
+                            if need else b'')
+            zi.compress_type = method
             out.writestr(zi, src.read(info.filename),
-                         compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+                         compress_type=method, compresslevel=9)
         # 2) les fichiers de signature v1
         for name, data in meta:
             zi = zipfile.ZipInfo(name, date_time=(1981, 1, 1, 1, 1, 2))

@@ -8,6 +8,7 @@ fichiers d'assets (aucun identifiant R à remapper).
 """
 from __future__ import annotations
 import argparse
+import struct
 import sys
 import zipfile
 from pathlib import Path
@@ -39,8 +40,14 @@ def make_unsigned(dex:Path,out:Path)->None:
     out.parent.mkdir(parents=True,exist_ok=True)
     with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
         for name,payload in entries.items():
-            i=zipfile.ZipInfo(name,date_time=(1980,1,1,0,0,0));i.compress_type=zipfile.ZIP_DEFLATED;i.create_system=3;i.external_attr=0o100644<<16
-            z.writestr(i,payload,compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
+            i=zipfile.ZipInfo(name,date_time=(1980,1,1,0,0,0));i.create_system=3;i.external_attr=0o100644<<16
+            method=zipfile.ZIP_STORED if name == 'resources.arsc' else zipfile.ZIP_DEFLATED
+            # Android expects resources.arsc to be STORE and 4-byte aligned.
+            if method == zipfile.ZIP_STORED:
+                here=z.fp.tell(); base=here+30+len(name.encode('utf-8')); need=(4-(base%4))%4
+                i.extra=struct.pack('<HH',0,need)+b'\0'*need if need else b''
+            i.compress_type=method
+            z.writestr(i,payload,compress_type=method,compresslevel=9)
     print('[ok] APK native base + DEX + assets : %s (%d octets)'%(out,out.stat().st_size))
 
 def sign(unsigned:Path,out:Path,keystore:Path,password:str)->None:

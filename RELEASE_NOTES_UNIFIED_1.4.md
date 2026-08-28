@@ -7,8 +7,8 @@
 - versionCode : `5`
 - package : `com.trattoria.cartes`
 - activité launcher : `com.trattoria.cartes.MainActivity`
-- taille : `855590` octets
-- SHA-256 APK : `c3ac65045c1240bad9796abebb32b42b60e939da5103c26c67fc9f0ca9651c16`
+- taille : `856006` octets
+- SHA-256 APK : `793beec326170dff8fabe5a4475d3f72b4df5c4f638354f782be451d51d8fe6f`
 - certificat v1/v2 SHA-256 : `46d7c630da555edf45c3edcd1cda4a5c50be9c01ade5fc59f20516c234100090`
 - signature : v1 JAR + v2 APK Signature Scheme ; v3/v4 non présents
 - minSdk : 21 · targetSdk : 33
