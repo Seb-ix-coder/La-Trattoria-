@@ -54,3 +54,6 @@ communaute/__pycache__/
 affiche/build/node_modules/
 affiche/build/*.png
 affiche/build/*.pdf
+
+# local compiler cache
+build/.toolcache/

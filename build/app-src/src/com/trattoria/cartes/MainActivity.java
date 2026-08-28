@@ -9,6 +9,8 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.print.PrintManager;
 import android.text.InputType;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +23,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.HorizontalScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -54,6 +57,8 @@ public class MainActivity extends Activity {
     private String catCourante = null;   // famille en édition (carte standard)
     private String tableCourante = null; // table en prise de commande
     private LinearLayout contenu;
+    private LinearLayout resultatsRecherche;
+    private EditText champRecherche;
 
     private static final String ROUGE = "#A51822";
     private static final String ROUGE_F = "#7A1018";
@@ -70,8 +75,13 @@ public class MainActivity extends Activity {
     // ==========================================================
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        if (getActionBar() != null) getActionBar().hide();
         charger();
         afficher("menu");
+        // Le point d'entrée unique démarre aussi le service local afin que
+        // le QR client, la réservation et la carte soient disponibles sans
+        // étape cachée dans l'écran Administration.
+        demarrerServeur();
     }
 
     @Override protected void onDestroy() {
@@ -225,11 +235,9 @@ public class MainActivity extends Activity {
         LinearLayout racine = colonne();
         racine.setBackgroundColor(c(FOND));
 
-        // barre de titre commune
-        TextView titre = texte(titreEcran(), 20, "#FFFFFF", true);
-        titre.setBackgroundColor(c(ROUGE));
-        titre.setPadding(dp(16), dp(14), dp(16), dp(14));
-        racine.addView(titre);
+        // En-tête natif premium à deux niveaux : identité, recherche clavier,
+        // puis navigation horizontale utilisable au doigt sur petit écran.
+        ajouterEntetePro(racine);
 
         ScrollView sc = new ScrollView(this);
         sc.setFillViewport(true);
@@ -245,6 +253,7 @@ public class MainActivity extends Activity {
             case "salle": ecranSalle(); break;
             case "commande": ecranCommande(); break;
             case "ventes": ecranVentes(); break;
+            case "ticket": ecranTicket(); break;
             case "site": ecranSite(); break;
             case "stock": ecranStock(); break;
             case "compta": ecranCompta(); break;
@@ -263,6 +272,176 @@ public class MainActivity extends Activity {
             case "apropos": ecranAPropos(); break;
             default: ecranMenu(); break;
         }
+    }
+
+    /**
+     * Header compilé dans le DEX final. Le champ n'est pas décoratif : il
+     * propose les écrans, fonctions et produits du catalogue courant.
+     */
+    private void ajouterEntetePro(LinearLayout racine) {
+        LinearLayout niveau1 = colonne();
+        niveau1.setPadding(dp(12), dp(9), dp(12), dp(8));
+        niveau1.setBackgroundColor(c(CREME));
+
+        LinearLayout ligne = new LinearLayout(this);
+        ligne.setOrientation(LinearLayout.HORIZONTAL);
+        ligne.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView logo = texte("LT", 18, ROUGE_F, true);
+        logo.setGravity(Gravity.CENTER);
+        logo.setContentDescription("Logo La Trattoria");
+        logo.setBackground(fondBord("#F3E6D4", "#C99B4A", dp(22), dp(1)));
+        ligne.addView(logo, new LinearLayout.LayoutParams(dp(44), dp(44)));
+
+        LinearLayout nom = colonne();
+        nom.setPadding(dp(9), 0, dp(8), 0);
+        TextView nomEtablissement = texte("La Trattoria", 17, ROUGE_F, true);
+        nomEtablissement.setSingleLine(true);
+        TextView ecranCourant = texte(titreEcran(), 10.5f, GRIS, false);
+        ecranCourant.setSingleLine(true);
+        nom.addView(nomEtablissement);
+        nom.addView(ecranCourant);
+        ligne.addView(nom, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 0.9f));
+
+        champRecherche = champ("", "Rechercher…");
+        champRecherche.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        champRecherche.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        champRecherche.setContentDescription("Rechercher un écran, une fonction ou un produit");
+        champRecherche.setTextSize(13);
+        champRecherche.setPadding(dp(10), 0, dp(8), 0);
+        champRecherche.setBackground(fondBord("#F4F1EA", TRAIT, dp(22), dp(1)));
+        ligne.addView(champRecherche, new LinearLayout.LayoutParams(0, dp(44), 1.25f));
+        niveau1.addView(ligne);
+        racine.addView(niveau1);
+
+        HorizontalScrollView defilement = new HorizontalScrollView(this);
+        defilement.setHorizontalScrollBarEnabled(false);
+        defilement.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        LinearLayout niveau2 = new LinearLayout(this);
+        niveau2.setOrientation(LinearLayout.HORIZONTAL);
+        niveau2.setGravity(Gravity.CENTER_VERTICAL);
+        niveau2.setPadding(dp(7), dp(3), dp(7), dp(4));
+        niveau2.setBackgroundColor(c(ARDOISE));
+        String[][] items = {{"Accueil", "menu"}, {"Salle", "salle"}, {"Cartes", "cartes"},
+                {"Site", "site"}, {"Communication", "com"}, {"Plus", "admin"}};
+        for (String[] item : items) {
+            final String cible = item[1];
+            Button b = new Button(this);
+            b.setText(item[0]);
+            b.setAllCaps(false);
+            b.setTextSize(13);
+            b.setMinHeight(dp(44));
+            b.setMinimumHeight(dp(44));
+            b.setPadding(dp(13), 0, dp(13), 0);
+            b.setContentDescription("Ouvrir " + item[0]);
+            b.setTextColor(c(sectionActive(cible) ? JAUNE : CREME));
+            b.setBackgroundColor(c(ARDOISE));
+            b.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) { afficher(cible); }
+            });
+            niveau2.addView(b);
+        }
+        defilement.addView(niveau2);
+        racine.addView(defilement, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(51)));
+
+        resultatsRecherche = colonne();
+        resultatsRecherche.setPadding(dp(10), dp(6), dp(10), dp(4));
+        resultatsRecherche.setBackgroundColor(c("#FFFDF8"));
+        resultatsRecherche.setVisibility(View.GONE);
+        racine.addView(resultatsRecherche);
+        champRecherche.addTextChangedListener(new TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                afficherResultatsRecherche(s == null ? "" : s.toString());
+            }
+            public void afterTextChanged(Editable s) { }
+        });
+    }
+
+    private boolean sectionActive(String cible) {
+        if ("menu".equals(cible)) return "menu".equals(ecran);
+        if ("salle".equals(cible)) return "salle".equals(ecran) || "commande".equals(ecran)
+                || "ventes".equals(ecran) || "ticket".equals(ecran);
+        if ("cartes".equals(cible)) return "cartes".equals(ecran) || "standard".equals(ecran)
+                || "produits".equals(ecran) || "moment".equals(ecran)
+                || "momentEdit".equals(ecran) || "ardoise".equals(ecran);
+        if ("site".equals(cible)) return "site".equals(ecran);
+        if ("com".equals(cible)) return "com".equals(ecran);
+        return "admin".equals(ecran) || "donnees".equals(ecran) || "apropos".equals(ecran)
+                || "stock".equals(ecran) || "compta".equals(ecran) || "objectifs".equals(ecran)
+                || "invendus".equals(ecran) || "personnel".equals(ecran);
+    }
+
+    private void afficherResultatsRecherche(String saisie) {
+        if (resultatsRecherche == null) return;
+        String q = saisie == null ? "" : saisie.trim().toLowerCase(java.util.Locale.FRENCH);
+        resultatsRecherche.removeAllViews();
+        if (q.length() == 0) {
+            resultatsRecherche.setVisibility(View.GONE);
+            return;
+        }
+        resultatsRecherche.setVisibility(View.VISIBLE);
+        String[][] fonctions = {
+                {"Accueil", "menu", "accueil tableau de bord"},
+                {"Salle & commandes", "salle", "salle tables prise de commande commandes en ligne"},
+                {"Ventes du jour & tickets", "ventes", "ventes tickets encaissement"},
+                {"Carte standard & produits", "cartes", "carte standard produits catégories"},
+                {"Cartes du jour", "moment", "cartes du jour moment"},
+                {"Ardoise & QR code", "ardoise", "ardoise qr code"},
+                {"Site en ligne & réservation", "site", "site client réservation slider"},
+                {"Communication & journal", "com", "communication posts journal blog"},
+                {"Stock & fournisseurs bio/local", "stock", "stock fournisseurs bio local"},
+                {"Comptabilité & export", "compta", "comptabilité tva export pdf"},
+                {"Objectifs", "objectifs", "objectifs"},
+                {"Invendus & anti-gaspi", "invendus", "invendus gaspillage"},
+                {"Personnel", "personnel", "personnel équipe"},
+                {"Administration & paramètres", "admin", "administration paramètres synchronisation"},
+                {"Données — import/export", "donnees", "données import export sauvegarde"},
+                {"Avis clients vérifiés", "site", "avis note notation achat"},
+                {"Paiement, pourboire & fidélité", "site", "paiement pourboire fidélité"},
+                {"Communauté & partenaires", "site", "communauté partenaires forum messages"}
+        };
+        int trouves = 0;
+        for (String[] f : fonctions) {
+            if (f[0].toLowerCase(java.util.Locale.FRENCH).contains(q)
+                    || f[2].contains(q)) {
+                ajouterResultatRecherche(f[0], f[1], false);
+                trouves++;
+            }
+        }
+        JSONArray catalogue = jarr(donnees, "carte");
+        for (int i = 0; i < catalogue.length(); i++) {
+            JSONObject p = catalogue.optJSONObject(i);
+            if (p == null || !p.optBoolean("actif", true)) continue;
+            String nom = s(p, "nom", "Produit");
+            String desc = s(p, "fam", "");
+            if (nom.toLowerCase(java.util.Locale.FRENCH).contains(q)
+                    || desc.toLowerCase(java.util.Locale.FRENCH).contains(q)) {
+                catCourante = desc;
+                ajouterResultatRecherche(nom + " — " + desc, "produits", true);
+                trouves++;
+            }
+        }
+        if (trouves == 0) {
+            TextView aucun = texte("Aucun résultat — essayez un nom de produit ou une fonction.",
+                    13, GRIS, false);
+            aucun.setPadding(dp(4), dp(6), dp(4), dp(8));
+            resultatsRecherche.addView(aucun);
+        }
+    }
+
+    private void ajouterResultatRecherche(String libelle, final String cible, boolean produit) {
+        Button b = bouton((produit ? "🍽️  " : "→  ") + libelle, "#FFFDF8", ROUGE_F,
+                new View.OnClickListener() {
+                    public void onClick(View v) {
+                        if (champRecherche != null) champRecherche.setText("");
+                        afficher(cible);
+                    }
+                });
+        b.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
+        b.setMinHeight(dp(48));
+        resultatsRecherche.addView(b);
     }
 
     private String titreEcran() {
@@ -801,13 +980,13 @@ public class MainActivity extends Activity {
                 + "qui apparaît dans la Salle.", 13.5f, GRIS, false));
         contenu.addView(espace(12));
 
-        TextView etat = texte(actif ? "● Serveur ACTIF — port 8721" : "○ Serveur arrêté",
+        TextView etat = texte(actif ? "● Serveur ACTIF — port 8720" : "○ Serveur arrêté",
                 16, actif ? "#2E7D32" : GRIS, true);
         contenu.addView(etat);
         contenu.addView(espace(8));
         if (actif) {
             contenu.addView(texte("Adresse pour les clients (écran du restaurant) :\n"
-                    + adresseLocale() + ":" + 8721 + "/", 13, "#2B2B28", false));
+                    + adresseLocale() + ":" + 8720 + "/", 13, "#2B2B28", false));
             contenu.addView(espace(10));
             contenu.addView(bouton("⏹ Arrêter le serveur", "#7A1018", "#FFFFFF",
                     new View.OnClickListener() {
@@ -878,14 +1057,17 @@ public class MainActivity extends Activity {
 
     private void demarrerServeur() {
         arreterServeur();
-        serveur = new ServeurSite(8721, new ServeurSite.Ecouteur() {
+        serveur = new ServeurSite(8720, new ServeurSite.Ecouteur() {
             public String catalogueJson() { return jarr(donnees, "carte").toString(); }
             public String commJson() { return comms().toString(); }
+            public String momentJson() { return jobj(donnees, "moment").toString(); }
             public String etablissementJson() {
                 try {
                     JSONObject conf = jobj(donnees, "config");
                     JSONObject e = new JSONObject();
                     e.put("nom", "La Trattoria");
+                    e.put("adresse", "15 rue de la Poste, 17100 Saintes");
+                    e.put("telephone", "06 27 21 31 90");
                     JSONArray b = conf.optJSONArray("badges");
                     if (b == null) {
                         b = new JSONArray();
@@ -901,15 +1083,34 @@ public class MainActivity extends Activity {
                         commandesEnLigne().put(c);
                         sauver();
                         toast("🌐 Nouvelle commande du site : " + s(c, "client", "client")
-                                + " (" + eur(c.optDouble("total", 0)) + ")");
+                                + " (" + eur(c.optDouble("total_verifie", c.optDouble("total", 0))) + ")");
                         if ("salle".equals(ecran) || "site".equals(ecran)) afficher(ecran);
                     }
                 });
             }
+            public void reservationRecue(JSONObject r) {
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        jarr(donnees, "reservations").put(r);
+                        sauver();
+                        toast("📅 Nouvelle demande de réservation");
+                        if ("site".equals(ecran) || "com".equals(ecran)) afficher(ecran);
+                    }
+                });
+            }
+            public void partenaireMessage(JSONObject m) {
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        jarr(donnees, "messagesPartenaires").put(m);
+                        sauver();
+                        toast("🤝 Message partenaire reçu");
+                    }
+                });
+            }
             public String journal() { return ""; }
-        });
+        }, this);
         serveur.demarrer();
-        toast("Serveur démarré sur le port 8721");
+        toast("Serveur démarré sur le port 8720");
     }
 
     private void arreterServeur() {
@@ -2286,7 +2487,7 @@ public class MainActivity extends Activity {
         barre.setGravity(Gravity.CENTER_VERTICAL);
         barre.setBackgroundColor(c(ARDOISE));
         barre.setPadding(dp(14), dp(8), dp(14), dp(8));
-        TextView t = texte("Aperçu du site clients — " + adresseLocale() + ":8721",
+        TextView t = texte("Aperçu du site clients — " + adresseLocale() + ":8720",
                 12.5f, JAUNE, true);
         t.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         barre.addView(t);
@@ -2308,7 +2509,7 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         l.addView(wv);
         dlg.setContentView(l);
-        wv.loadUrl("http://127.0.0.1:8721/");
+        wv.loadUrl("http://127.0.0.1:8720/");
         dlg.show();
     }
 
@@ -2319,7 +2520,7 @@ public class MainActivity extends Activity {
             i.putExtra(android.content.Intent.EXTRA_SUBJECT, "La Trattoria — commandez en ligne");
             i.putExtra(android.content.Intent.EXTRA_TEXT,
                     "Commandez chez La Trattoria (fait maison, pâte maturée 48 h) : "
-                            + "http://" + adresseLocale() + ":8721/"
+                            + "http://" + adresseLocale() + ":8720/"
                             + " — sur le Wi-Fi du restaurant.");
             startActivity(android.content.Intent.createChooser(i, "Partager l'adresse du site"));
         } catch (Exception e) { toast("Partage impossible : " + e.getMessage()); }

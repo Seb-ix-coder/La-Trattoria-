@@ -46,10 +46,11 @@ from urllib.parse import parse_qs, urlparse
 
 HERE = Path(__file__).resolve().parent
 DB_PATH = HERE / 'communaute.db'
+SCHEMA_VERSION = 4
 PHOTOS = HERE / 'photos'
 AVATARS = HERE / 'avatars'
 LOGOS = HERE / 'logos'
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8721
+PORT = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 8721
 HOST = '0.0.0.0'
 
 PHOTO_MAX = 4 * 1024 * 1024          # 4 Mo par photo
@@ -70,6 +71,31 @@ except Exception:
 # ---------------------------------------------------------------------------
 #  Base de données
 # ---------------------------------------------------------------------------
+def sauvegarder_avant_migration() -> None:
+    """Conserve une copie avant la migration des achats/notes.
+
+    Les bases existantes contiennent parfois uniquement le texte libre
+    ``achats.produits``. La copie est créée une seule fois avant la première
+    migration v4 et n'est jamais supprimée par le serveur.
+    """
+    if not DB_PATH.exists():
+        return
+    marqueur = DB_PATH.with_name(DB_PATH.name + '.pre-migration-v4.bak')
+    if marqueur.exists():
+        return
+    try:
+        con = sqlite3.connect(DB_PATH)
+        tables = {r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        con.close()
+        if 'lignes_achat' not in tables or 'notes_plats' not in tables:
+            shutil.copy2(DB_PATH, marqueur)
+    except Exception:
+        # Une sauvegarde manquée ne doit pas empêcher le démarrage, mais la
+        # migration reste documentée et les erreurs sont visibles au test.
+        pass
+
+
 def db() -> sqlite3.Connection:
     c = sqlite3.connect(DB_PATH, timeout=5)
     c.row_factory = sqlite3.Row
@@ -77,7 +103,54 @@ def db() -> sqlite3.Connection:
     return c
 
 
+def migrer_lignes_achat_legacy() -> None:
+    """Crée les lignes d'achat sans détruire l'ancien texte libre.
+
+    Les commandes récentes peuvent déjà fournir une liste JSON structurée.
+    Une ancienne commande qui ne contient qu'un libellé est conservée comme
+    ligne ``plat_id=''`` : elle reste visible dans la fidélité mais ne peut
+    pas autoriser abusivement une notation.
+    """
+    with db() as c:
+        achats = c.execute('SELECT * FROM achats').fetchall()
+        for achat in achats:
+            existe = c.execute('SELECT 1 FROM lignes_achat WHERE achat_id=? LIMIT 1',
+                               (achat['id'],)).fetchone()
+            if existe:
+                continue
+            brut = achat['produits'] or ''
+            lignes = []
+            try:
+                valeur = json.loads(brut)
+                if isinstance(valeur, list):
+                    lignes = valeur
+            except Exception:
+                lignes = []
+            if not lignes:
+                lignes = [{'plat_id': '', 'nom': brut[:200], 'qte': 1,
+                           'pv': float(achat['montant'] or 0)}]
+            for ligne in lignes:
+                if not isinstance(ligne, dict):
+                    continue
+                plat_id = str(ligne.get('plat_id') or ligne.get('id') or '').strip()[:100]
+                nom = str(ligne.get('nom') or '').strip()[:200]
+                try:
+                    qte = max(1, min(100, int(ligne.get('qte', ligne.get('quantite', 1)))))
+                except (TypeError, ValueError):
+                    qte = 1
+                try:
+                    prix = round(float(ligne.get('pv', ligne.get('prix', 0)) or 0), 2)
+                except (TypeError, ValueError):
+                    prix = 0
+                c.execute('''INSERT INTO lignes_achat
+                             (id,achat_id,plat_id,nom,quantite,prix,cree_le)
+                             VALUES (?,?,?,?,?,?,?)''',
+                          (uuid.uuid4().hex, achat['id'], plat_id, nom, qte,
+                           prix, achat['cree_le']))
+
+
 def init_db() -> None:
+    sauvegarder_avant_migration()
     for d in (PHOTOS, AVATARS, LOGOS):
         d.mkdir(parents=True, exist_ok=True)
     with db() as c:
@@ -164,6 +237,33 @@ def init_db() -> None:
           points INTEGER NOT NULL,
           cree_le REAL NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS lignes_achat (
+          id TEXT PRIMARY KEY,
+          achat_id TEXT NOT NULL,
+          plat_id TEXT NOT NULL DEFAULT '',
+          nom TEXT NOT NULL DEFAULT '',
+          quantite INTEGER NOT NULL CHECK(quantite > 0),
+          prix REAL NOT NULL DEFAULT 0,
+          cree_le REAL NOT NULL,
+          FOREIGN KEY(achat_id) REFERENCES achats(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_lignes_achat_plat
+          ON lignes_achat(plat_id, achat_id);
+        CREATE TABLE IF NOT EXISTS notes_plats (
+          plat_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          achat_id TEXT NOT NULL,
+          ligne_achat_id TEXT NOT NULL,
+          note INTEGER NOT NULL CHECK(note BETWEEN 1 AND 5),
+          commentaire TEXT NOT NULL DEFAULT '',
+          cree_le REAL NOT NULL,
+          modifie_le REAL NOT NULL,
+          PRIMARY KEY (plat_id, user_id),
+          FOREIGN KEY(achat_id) REFERENCES achats(id),
+          FOREIGN KEY(ligne_achat_id) REFERENCES lignes_achat(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_notes_plats_plat
+          ON notes_plats(plat_id);
         CREATE TABLE IF NOT EXISTS pro_loyaute (
           user_id TEXT PRIMARY KEY,
           points INTEGER NOT NULL DEFAULT 0,
@@ -231,6 +331,18 @@ def init_db() -> None:
                 c.execute('ALTER TABLE users ADD COLUMN %s %s' % (col, typ))
         except Exception:
             pass
+    # Compatibilité avec la table notes_plats du build 3 : les anciennes
+    # lignes sont conservées mais restent non vérifiées tant qu'aucun achat
+    # identifié ne les relie à une ligne d'achat.
+    for col, typ in (('achat_id', "TEXT NOT NULL DEFAULT ''"),
+                     ('ligne_achat_id', "TEXT NOT NULL DEFAULT ''"),
+                     ('modifie_le', 'REAL NOT NULL DEFAULT 0')):
+        try:
+            with db() as c:
+                c.execute('ALTER TABLE notes_plats ADD COLUMN %s %s' % (col, typ))
+        except Exception:
+            pass
+    migrer_lignes_achat_legacy()
     # compte staff « La Trattoria » (messagerie pro, enregistrement des achats)
     sel = secrets.token_hex(16)
     with db() as c:
@@ -733,6 +845,8 @@ class H(BaseHTTPRequestHandler):
                  'logo': '/logo/' + r['logo'] if r['logo'] else None,
                  'pts': r['pts'], 'niveau': niveau(r['pts'])}
                 for r in rows]})
+        elif p == '/api/notes-plats':
+            self.notes_plats_get()
         elif p == '/api/fidelite/moi':
             self.fidelite_moi()
         elif p == '/api/fidelite':
@@ -812,6 +926,8 @@ class H(BaseHTTPRequestHandler):
                 self.nouvelle_offre()
             elif p == '/api/offres/fin':
                 self.fin_offre()
+            elif p in ('/api/notes-plats', '/api/rating'):
+                self.note_plat()
             elif p == '/api/fidelite/achat':
                 self.fidelite_achat()
             elif p == '/api/envoi':
@@ -1172,6 +1288,35 @@ class H(BaseHTTPRequestHandler):
             montant = 0
         mode = d.get('mode')
         produits = (d.get('produits') or '').strip()[:200]
+        raw_lignes = d.get('lignes')
+        if not isinstance(raw_lignes, list):
+            raw_lignes = []
+        lignes = []
+        for raw in raw_lignes[:100]:
+            if not isinstance(raw, dict):
+                continue
+            plat_id = str(raw.get('plat_id') or raw.get('id') or '').strip()[:100]
+            # Un identifiant stable est nécessaire pour autoriser une note.
+            # Une ligne legacy sans id est conservée mais ne sera jamais notable.
+            if plat_id and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]{0,99}', plat_id):
+                continue
+            nom_ligne = str(raw.get('nom') or '').strip()[:200]
+            try:
+                qte_ligne = max(1, min(100, int(raw.get('qte', raw.get('quantite', 1)))))
+            except (TypeError, ValueError):
+                qte_ligne = 1
+            try:
+                prix_ligne = round(float(raw.get('pv', raw.get('prix', 0)) or 0), 2)
+            except (TypeError, ValueError):
+                prix_ligne = 0
+            lignes.append({'plat_id': plat_id, 'nom': nom_ligne,
+                           'qte': qte_ligne, 'pv': prix_ligne})
+        if not lignes:
+            # Anciennes données : ne pas les supprimer ni leur attribuer un
+            # identifiant deviné à partir d'un texte libre.
+            lignes = [{'plat_id': '', 'nom': produits, 'qte': 1, 'pv': montant}]
+        if not produits:
+            produits = json.dumps(lignes, ensure_ascii=False)
         if len(tel) < 6 or montant <= 0 or mode not in ('sur_place', 'a_emporter'):
             self._json({'ok': False, 'erreur':
                         'Téléphone, montant > 0 et mode (sur_place/a_emporter) requis.'})
@@ -1193,9 +1338,16 @@ class H(BaseHTTPRequestHandler):
                              (tel,nom,points,nb_achats,total,cree_le)
                              VALUES (?,?,?,?,?,?)''',
                           (tel, nom or 'Client', pts_achat + bonus, 1, montant, now))
+            achat_id = uuid.uuid4().hex
             c.execute('INSERT INTO achats VALUES (?,?,?,?,?,?,?)',
-                      (uuid.uuid4().hex, tel, montant, mode, produits,
+                      (achat_id, tel, montant, mode, produits,
                        pts_achat + bonus, now))
+            for ligne in lignes:
+                c.execute('''INSERT INTO lignes_achat
+                             (id,achat_id,plat_id,nom,quantite,prix,cree_le)
+                             VALUES (?,?,?,?,?,?,?)''',
+                          (uuid.uuid4().hex, achat_id, ligne['plat_id'],
+                           ligne['nom'], ligne['qte'], ligne['pv'], now))
             carte = self._carte_fidelite(c, tel)
             u = c.execute('SELECT id FROM users WHERE tel=?', (tel,)).fetchone()
             if u:
@@ -1211,6 +1363,102 @@ class H(BaseHTTPRequestHandler):
                 if u3:
                     self._badge(c, u3['id'], 'fidele')
         self._json({'ok': True, 'carte': carte, 'points': pts_achat + bonus})
+
+    # ===== Avis vérifiés sur les plats (build 4) =========================
+    def notes_plats_get(self):
+        """Retourne uniquement les notes reliées à une ligne d'achat.
+
+        Les anciennes notes éventuellement importées sans achat_id restent
+        dans la base pour archivage mais ne sont pas publiées.
+        """
+        with db() as c:
+            rows = c.execute('''SELECT n.plat_id, MAX(l.nom) AS plat_nom,
+                                       ROUND(AVG(n.note), 2) AS moyenne,
+                                       COUNT(*) AS compteur
+                                FROM notes_plats n
+                                JOIN achats a ON a.id=n.achat_id
+                                JOIN lignes_achat l ON l.id=n.ligne_achat_id
+                                WHERE n.achat_id <> '' AND n.ligne_achat_id <> ''
+                                  AND l.plat_id <> ''
+                                GROUP BY n.plat_id ORDER BY plat_nom''').fetchall()
+            sorties = []
+            for r in rows:
+                avis = c.execute('''SELECT note, commentaire, cree_le, modifie_le
+                                    FROM notes_plats
+                                    WHERE plat_id=? AND achat_id <> ''
+                                    ORDER BY modifie_le DESC LIMIT 20''',
+                                 (r['plat_id'],)).fetchall()
+                sorties.append({
+                    'plat_id': r['plat_id'], 'plat_nom': r['plat_nom'] or r['plat_id'],
+                    'moyenne': float(r['moyenne'] or 0), 'compteur': r['compteur'],
+                    'avis': [{'note': a['note'], 'commentaire': a['commentaire'],
+                              'date': a['modifie_le'] or a['cree_le']}
+                             for a in avis if a['commentaire']]
+                })
+        self._json({'ok': True, 'ratings': sorties})
+
+    def note_plat(self):
+        """Crée ou modifie une note après vérification SQL d'un achat.
+
+        La preuve n'utilise jamais le nom libre du produit : elle exige un
+        plat_id stable présent dans lignes_achat et rattaché à un achat du
+        téléphone du compte connecté.
+        """
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'code': 'connexion_requise',
+                        'erreur': 'Connectez-vous pour noter un plat.'}, 401)
+            return
+        d = self._json_corps()
+        plat_id = str(d.get('plat_id') or '').strip()[:100]
+        commentaire = str(d.get('commentaire') or '').strip()[:500]
+        try:
+            note = int(d.get('note'))
+        except (TypeError, ValueError):
+            note = 0
+        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]{0,99}', plat_id or ''):
+            self._json({'ok': False, 'erreur': 'Identifiant de plat invalide.'}, 400)
+            return
+        if note not in range(1, 6):
+            self._json({'ok': False, 'erreur': 'La note doit être comprise entre 1 et 5.'}, 400)
+            return
+        with db() as c:
+            preuve = c.execute('''SELECT a.id AS achat_id, l.id AS ligne_id
+                                  FROM achats a JOIN lignes_achat l ON l.achat_id=a.id
+                                  WHERE a.tel=? AND l.plat_id=? AND l.quantite > 0
+                                  ORDER BY a.cree_le DESC LIMIT 1''',
+                               (moi['tel'], plat_id)).fetchone()
+            if not preuve:
+                self._json({'ok': False, 'code': 'achat_requis',
+                            'erreur': 'Ce plat doit apparaître dans un achat enregistré.'}, 403)
+                return
+            maintenant = time.time()
+            ancienne = c.execute('''SELECT 1 FROM notes_plats
+                                    WHERE plat_id=? AND user_id=?''',
+                                 (plat_id, moi['id'])).fetchone()
+            if ancienne:
+                c.execute('''UPDATE notes_plats SET note=?, commentaire=?,
+                             modifie_le=?, achat_id=?, ligne_achat_id=?
+                             WHERE plat_id=? AND user_id=?''',
+                          (note, commentaire, maintenant, preuve['achat_id'],
+                           preuve['ligne_id'], plat_id, moi['id']))
+                modifiee = True
+            else:
+                c.execute('''INSERT INTO notes_plats
+                             (plat_id,user_id,achat_id,ligne_achat_id,note,
+                              commentaire,cree_le,modifie_le)
+                             VALUES (?,?,?,?,?,?,?,?)''',
+                          (plat_id, moi['id'], preuve['achat_id'], preuve['ligne_id'],
+                           note, commentaire, maintenant, maintenant))
+                modifiee = False
+            stats = c.execute("""SELECT ROUND(AVG(note),2) moyenne, COUNT(*) compteur
+                                 FROM notes_plats WHERE plat_id=? AND achat_id <> ''""",
+                              (plat_id,)).fetchone()
+        self._json({'ok': True, 'modifie': modifiee,
+                    'moyenne': float(stats['moyenne'] or 0),
+                    'compteur': stats['compteur'],
+                    'message': 'Votre note a été modifiée.' if modifiee
+                               else 'Merci, votre avis est enregistré après vérification de votre achat.'})
 
     def pro_moi(self):
         moi = self._user()

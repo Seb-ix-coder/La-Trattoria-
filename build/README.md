@@ -145,3 +145,8 @@ Le présent outillage de build restera compatible : il suffira de remplacer
 `trato.apk` par l'APK compilé depuis les sources, les correctifs P1-P5
 s'appliquant de la même façon (et les nouveaux correctifs seront ajoutés
 aux scripts au fil de l'eau).
+
+> Pour le livrable actuel, utilisez `README_UNIFIED.md` et
+> `build_final_apk.sh` : la base native `com.trattoria.cartes` est compilée
+> depuis les sources et les assets publics sont ajoutés sans importer le DEX
+> `com.trattoria.commande`.
