@@ -21,6 +21,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.HorizontalScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -225,11 +226,8 @@ public class MainActivity extends Activity {
         LinearLayout racine = colonne();
         racine.setBackgroundColor(c(FOND));
 
-        // barre de titre commune
-        TextView titre = texte(titreEcran(), 20, "#FFFFFF", true);
-        titre.setBackgroundColor(c(ROUGE));
-        titre.setPadding(dp(16), dp(14), dp(16), dp(14));
-        racine.addView(titre);
+        // En-tête premium à deux niveaux : identité + recherche, puis navigation.
+        ajouterEntetePro(racine);
 
         ScrollView sc = new ScrollView(this);
         sc.setFillViewport(true);
@@ -330,6 +328,56 @@ public class MainActivity extends Activity {
         if ("glaces".equals(cle)) return "Prix nets hors taxes — TVA en sus. Glaces artisanales L'Angelys. Allergènes : lait, œuf, fruits à coque possibles selon les parfums. Parfums susceptibles de varier selon les arrivages.";
         if ("desserts".equals(cle)) return "Prix nets hors taxes — TVA en sus. Nos desserts sont préparés maison. Allergènes : gluten, lait, œuf, fruits à coque possibles selon les desserts.";
         return "Prix nets hors taxes — TVA en sus.";
+    }
+
+    private void ajouterEntetePro(LinearLayout racine) {
+        LinearLayout niveau1 = colonne();
+        niveau1.setPadding(dp(16), dp(12), dp(16), dp(10));
+        niveau1.setBackgroundColor(c(CREME));
+        LinearLayout identiteRecherche = new LinearLayout(this);
+        identiteRecherche.setGravity(Gravity.CENTER_VERTICAL);
+        TextView logo = texte("LT", 19, ROUGE_F, true);
+        logo.setGravity(Gravity.CENTER);
+        logo.setBackground(fondBord("#F3E6D4", "#C99B4A", dp(22), dp(1)));
+        identiteRecherche.addView(logo, new LinearLayout.LayoutParams(dp(46), dp(46)));
+        LinearLayout nom = colonne();
+        nom.setPadding(dp(10), 0, dp(12), 0);
+        nom.addView(texte("La Trattoria", 18, ROUGE_F, true));
+        nom.addView(texte(titreEcran(), 11.5f, GRIS, false));
+        identiteRecherche.addView(nom, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        EditText recherche = champ("", "Rechercher une fonction…");
+        recherche.setContentDescription("Rechercher dans l'application");
+        recherche.setSingleLine(true);
+        recherche.setTextSize(13);
+        recherche.setPadding(dp(12), 0, dp(10), 0);
+        recherche.setBackground(fondBord("#F4F1EA", TRAIT, dp(22), dp(1)));
+        identiteRecherche.addView(recherche, new LinearLayout.LayoutParams(dp(176), dp(44)));
+        niveau1.addView(identiteRecherche);
+        racine.addView(niveau1);
+
+        HorizontalScrollView defilement = new HorizontalScrollView(this);
+        defilement.setHorizontalScrollBarEnabled(false);
+        LinearLayout niveau2 = new LinearLayout(this);
+        niveau2.setGravity(Gravity.CENTER_VERTICAL);
+        niveau2.setPadding(dp(10), dp(4), dp(10), dp(5));
+        niveau2.setBackgroundColor(c(ARDOISE));
+        String[][] items = {{"Accueil", "menu"}, {"Salle", "salle"}, {"Cartes", "cartes"},
+                {"Site", "site"}, {"Communication", "com"}, {"Plus", "admin"}};
+        for (String[] item : items) {
+            final String cible = item[1];
+            Button b = new Button(this);
+            b.setText(item[0]);
+            b.setAllCaps(false);
+            b.setTextSize(13);
+            b.setTextColor(c("menu".equals(ecran) && "menu".equals(cible) ? JAUNE : CREME));
+            b.setMinHeight(dp(42));
+            b.setPadding(dp(15), 0, dp(15), 0);
+            b.setBackgroundColor(c(ARDOISE));
+            b.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { afficher(cible); } });
+            niveau2.addView(b);
+        }
+        defilement.addView(niveau2);
+        racine.addView(defilement, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
     }
 
     // ==========================================================
