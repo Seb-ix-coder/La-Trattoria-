@@ -9,7 +9,7 @@ HERE=Path(__file__).resolve().parent;ROOT=HERE.parent
 def manifest(apk):
  from androguard.core.apk import APK
  a=APK(str(apk));assert a.get_package()=='com.trattoria.cartes';assert a.get_androidversion_name()=='1.4';assert a.get_androidversion_code()=='5';assert a.get_main_activity()=='com.trattoria.cartes.MainActivity';assert a.get_min_sdk_version()=='21';assert a.get_target_sdk_version()=='33'
- ns='{http://schemas.android.com/apk/res/android}';app=next(x for x in a.get_android_manifest_xml().iter() if x.tag.endswith('application'));assert app.get(ns+'allowBackup')=='false';print('[ok] manifeste : package, version, activité, SDK et allowBackup')
+ ns='{http://schemas.android.com/apk/res/android}';app=next(x for x in a.get_android_manifest_xml().iter() if x.tag.endswith('application'));assert app.get(ns+'allowBackup')=='false';assert app.get(ns+'usesCleartextTraffic')=='true';print('[ok] manifeste : package, version, activité, SDK, cleartext local et allowBackup')
 
 def dex(apk):
  from androguard.core.dex import DEX

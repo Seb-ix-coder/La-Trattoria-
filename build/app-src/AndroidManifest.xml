@@ -11,6 +11,7 @@
         android:label="La Trattoria — Gestion"
         android:icon="@drawable/icon"
         android:allowBackup="false"
+        android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.Light.DarkActionBar">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>

@@ -11,6 +11,10 @@ python3 build/build_unified.py \
 python3 build/verify_final_apk.py trato-unifie-1.4-stable.apk build/keystore/trattoria-release.p12
 ```
 
+Le manifest final active `usesCleartextTraffic` uniquement pour les deux
+services HTTP locaux 8720/8721 ; cela évite `ERR_CLEARTEXT_NOT_PERMITTED`
+dans le WebView de la tablette.
+
 Le pipeline compile `MainActivity.java`, `Modules.java`, `ServeurSite.java`
 et `ServeurCommunaute.java` avec ECJ puis D8. La base est `app-src/base.apk`,
 dérivée de `trato-gestion-1.3.apk`; le DEX de `com.trattoria.commande` n'est
