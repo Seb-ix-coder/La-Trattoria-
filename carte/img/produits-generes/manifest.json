@@ -1,0 +1,682 @@
+{
+  "style": {
+    "camera": "three-quarter 45 degree",
+    "support": "dark charcoal slate board",
+    "lighting": "warm softbox upper-left, subtle golden rim",
+    "format": "1200x896 JPEG"
+  },
+  "items": [
+    {
+      "id": "p1",
+      "nom": "La Margherita",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p1.jpg",
+      "source": "generated-fallback",
+      "validated": false
+    },
+    {
+      "id": "p2",
+      "nom": "La Regina",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p2.jpg",
+      "source": "generated-fallback",
+      "validated": false
+    },
+    {
+      "id": "p3",
+      "nom": "La 4 Fromages",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p3.jpg",
+      "source": "generated-fallback",
+      "validated": false
+    },
+    {
+      "id": "p4",
+      "nom": "La Chorizo",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p4.jpg",
+      "source": "generated-fallback",
+      "validated": false
+    },
+    {
+      "id": "p5",
+      "nom": "La Montagnarde",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p5.jpg",
+      "source": "generated-fallback",
+      "validated": false
+    },
+    {
+      "id": "p6",
+      "nom": "La Chèvre Miel",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p6.jpg",
+      "source": "generated-fallback",
+      "validated": false
+    },
+    {
+      "id": "p7",
+      "nom": "La Poulet Curry",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p7.jpg",
+      "source": "generated-fallback",
+      "validated": false
+    },
+    {
+      "id": "p8",
+      "nom": "La Fermière",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p8.jpg",
+      "source": "generated-fallback",
+      "validated": false
+    },
+    {
+      "id": "p9",
+      "nom": "La Parme",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p9.jpg",
+      "source": "generated-fallback",
+      "validated": false
+    },
+    {
+      "id": "p10",
+      "nom": "La Diavola",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p10.jpg",
+      "source": "generated-fallback",
+      "validated": false
+    },
+    {
+      "id": "p11",
+      "nom": "La Végétarienne",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p11.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p12",
+      "nom": "La Saumon",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p12.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p13",
+      "nom": "La Calzone",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p13.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p14",
+      "nom": "La Truffe",
+      "famille": "Pizzas",
+      "fichier": "carte/img/produits-generes/p14.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p15",
+      "nom": "La César",
+      "famille": "Salades",
+      "fichier": "carte/img/produits-generes/p15.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p16",
+      "nom": "L'Italienne",
+      "famille": "Salades",
+      "fichier": "carte/img/produits-generes/p16.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p17",
+      "nom": "La Burrata",
+      "famille": "Salades",
+      "fichier": "carte/img/produits-generes/p17.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p18",
+      "nom": "La Chèvre Chaud",
+      "famille": "Salades",
+      "fichier": "carte/img/produits-generes/p18.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p19",
+      "nom": "Planche apéritive",
+      "famille": "Entrées",
+      "fichier": "carte/img/produits-generes/p19.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p20",
+      "nom": "Focaccia maison",
+      "famille": "Entrées",
+      "fichier": "carte/img/produits-generes/p20.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p21",
+      "nom": "Bâtonnets de pâte",
+      "famille": "Entrées",
+      "fichier": "carte/img/produits-generes/p21.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p22",
+      "nom": "Tomate & basilic",
+      "famille": "Entrées",
+      "fichier": "carte/img/produits-generes/p22.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p23",
+      "nom": "Burrata & pesto",
+      "famille": "Entrées",
+      "fichier": "carte/img/produits-generes/p23.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p24",
+      "nom": "Parme & ricotta",
+      "famille": "Entrées",
+      "fichier": "carte/img/produits-generes/p24.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p25",
+      "nom": "Bolognaise",
+      "famille": "Pâtes",
+      "fichier": "carte/img/produits-generes/p25.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p26",
+      "nom": "Carbonara",
+      "famille": "Pâtes",
+      "fichier": "carte/img/produits-generes/p26.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p27",
+      "nom": "Poulet & champignons",
+      "famille": "Pâtes",
+      "fichier": "carte/img/produits-generes/p27.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p28",
+      "nom": "Arrabbiata",
+      "famille": "Pâtes",
+      "fichier": "carte/img/produits-generes/p28.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p29",
+      "nom": "Lasagnes maison",
+      "famille": "Pâtes",
+      "fichier": "carte/img/produits-generes/p29.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p30",
+      "nom": "Le Classique",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p30.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p31",
+      "nom": "Le Caramel Spéculoos",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p31.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p32",
+      "nom": "Le Noisette",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p32.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p33",
+      "nom": "Le Pistache",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p33.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p34",
+      "nom": "Le Crousti",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p34.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p35",
+      "nom": "1 boule",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p35.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p36",
+      "nom": "2 boules",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p36.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p37",
+      "nom": "3 boules",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p37.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p38",
+      "nom": "Coupe maison",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p38.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p39",
+      "nom": "Affogato",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p39.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p40",
+      "nom": "Coupe enfant",
+      "famille": "Desserts",
+      "fichier": "carte/img/produits-generes/p40.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p41",
+      "nom": "Menu Enfant",
+      "famille": "Formules",
+      "fichier": "carte/img/produits-generes/p41.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p42",
+      "nom": "Formule Midi",
+      "famille": "Formules",
+      "fichier": "carte/img/produits-generes/p42.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p43",
+      "nom": "Formule Complète",
+      "famille": "Formules",
+      "fichier": "carte/img/produits-generes/p43.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p44",
+      "nom": "Formule Salade",
+      "famille": "Formules",
+      "fichier": "carte/img/produits-generes/p44.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p45",
+      "nom": "Spritz maison",
+      "famille": "Apéritif",
+      "fichier": "carte/img/produits-generes/p45.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p46",
+      "nom": "Americano",
+      "famille": "Apéritif",
+      "fichier": "carte/img/produits-generes/p46.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p47",
+      "nom": "Kir",
+      "famille": "Apéritif",
+      "fichier": "carte/img/produits-generes/p47.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p48",
+      "nom": "Picon bière 25 cl",
+      "famille": "Apéritif",
+      "fichier": "carte/img/produits-generes/p48.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p49",
+      "nom": "Apéritif sans alcool",
+      "famille": "Apéritif",
+      "fichier": "carte/img/produits-generes/p49.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p50",
+      "nom": "Planche & pichet",
+      "famille": "Apéritif",
+      "fichier": "carte/img/produits-generes/p50.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p51",
+      "nom": "Planche & Spritz",
+      "famille": "Apéritif",
+      "fichier": "carte/img/produits-generes/p51.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p52",
+      "nom": "Eau plate 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p52.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p53",
+      "nom": "Eau gazeuse 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p53.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p54",
+      "nom": "Coca-Cola 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p54.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p55",
+      "nom": "Coca-Cola Cherry 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p55.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p56",
+      "nom": "Coca-Cola Zero 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p56.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p57",
+      "nom": "Fuze Tea 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p57.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p58",
+      "nom": "Limonade artisanale 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p58.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p59",
+      "nom": "San Pellegrino 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p59.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p60",
+      "nom": "Jus de fruits 25 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p60.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p61",
+      "nom": "Citronnade maison",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p61.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p62",
+      "nom": "Sirop à l'eau 25 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p62.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p63",
+      "nom": "Pichet 25 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p63.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p64",
+      "nom": "Pichet 50 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p64.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p65",
+      "nom": "Pichet 1 litre",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p65.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p66",
+      "nom": "Chianti — verre",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p66.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p67",
+      "nom": "Chianti — bouteille",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p67.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p68",
+      "nom": "Pinot Grigio — verre",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p68.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p69",
+      "nom": "Pinot Grigio — bouteille",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p69.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p70",
+      "nom": "Rosé de Provence — verre",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p70.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p71",
+      "nom": "Rosé de Provence — bouteille",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p71.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p72",
+      "nom": "Prosecco — coupe",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p72.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p73",
+      "nom": "Pression 25 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p73.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p74",
+      "nom": "Pression 50 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p74.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p75",
+      "nom": "Peroni 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p75.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p76",
+      "nom": "Moretti 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p76.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p77",
+      "nom": "Bière sans alcool 33 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p77.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p78",
+      "nom": "Espresso",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p78.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p79",
+      "nom": "Café allongé",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p79.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p80",
+      "nom": "Cappuccino",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p80.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p81",
+      "nom": "Café gourmand",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p81.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p82",
+      "nom": "Thé ou infusion",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p82.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p83",
+      "nom": "Limoncello 4 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p83.jpg",
+      "source": "pending",
+      "validated": false
+    },
+    {
+      "id": "p84",
+      "nom": "Amaretto 4 cl",
+      "famille": "Boissons",
+      "fichier": "carte/img/produits-generes/p84.jpg",
+      "source": "pending",
+      "validated": false
+    }
+  ]
+}
