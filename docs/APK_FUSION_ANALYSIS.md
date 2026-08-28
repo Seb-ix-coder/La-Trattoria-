@@ -26,11 +26,15 @@ les sources `carte/`, `communaute/` et `build/app-src/src`.
 
 1. base de ressources et manifest issus de `build/app-src/base.apk`, dérivé de
    `trato-gestion-1.3.apk` ;
-2. compilation de `MainActivity.java`, `Modules.java` et `ServeurSite.java` ;
-3. ajout d'assets publics (`site.js`, `site.css`, shell responsive, notation)
-   sans fusion de ressources Android ni changement de `R` ;
-4. serveur local natif pour carte administrée, commande, réservation, assets,
-   authentification locale et notation après achat confirmé par `plat_id` ;
+2. compilation de `MainActivity.java`, `Modules.java`, `ServeurSite.java` et
+   `ServeurCommunaute.java` ;
+3. ajout d'assets publics et sociaux (`site.js`, `site.css`, shell responsive,
+   interface communauté et icônes) sans fusion de ressources Android ni
+   changement de `R` ;
+4. deux services locaux natifs démarrés par l'activité : site/carte sur 8720
+   et communauté sur 8721, avec comptes, profils, posts, photos,
+   commentaires, réactions, messages, partenaires, offres, fidélité,
+   missions, badges, classement, consentements, parrainage et notation ;
 5. aucune classe `com.trattoria.commande`, aucun `classes2.dex`, aucun
    remplacement arbitraire de `classes.dex` ;
 6. signature v1 + v2 après assemblage.

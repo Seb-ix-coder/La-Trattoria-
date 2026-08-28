@@ -7,8 +7,8 @@
 - versionCode : `5`
 - package : `com.trattoria.cartes`
 - activité launcher : `com.trattoria.cartes.MainActivity`
-- taille : `856006` octets
-- SHA-256 APK : `793beec326170dff8fabe5a4475d3f72b4df5c4f638354f782be451d51d8fe6f`
+- taille : `1291273` octets
+- SHA-256 APK : `0d91e3b07bedc5b9a04098b3de37c00c58e765e9f4627a099d551be3f766eaa4`
 - certificat v1/v2 SHA-256 : `46d7c630da555edf45c3edcd1cda4a5c50be9c01ade5fc59f20516c234100090`
 - signature : v1 JAR + v2 APK Signature Scheme ; v3/v4 non présents
 - minSdk : 21 · targetSdk : 33
@@ -29,7 +29,11 @@
   partenaire ;
 - notation serveur : session, achat structuré, `plat_id`, note 1–5, une note
   par utilisateur et plat, modification, moyenne et compteur ;
-- migration additive du serveur communauté : lignes d'achat, sauvegarde
+- backend social natif `ServeurCommunaute.java` embarqué dans l'APK sur le
+  port 8721 : inscription, connexion, profils, photos, posts publics,
+  commentaires, réactions, messages, partenaires, offres, fidélité, missions,
+  badges, classement, consentements, parrainage et validation ;
+- migration additive du serveur communauté Python : lignes d'achat, sauvegarde
   pré-migration, conservation du texte legacy, refus de noter une ligne sans
   identifiant stable.
 
@@ -43,7 +47,7 @@ Aucun faux avis n'est prérempli : l'état initial est vide et professionnel.
 - `node --check` sur les scripts du site ;
 - test HTTP d'intégration du serveur communauté : refus sans achat, acceptation
   après ligne achetée, modification et moyenne ;
-- compilation ECJ + D8 de 3 sources natives, puis assemblage ;
+- compilation ECJ + D8 de 4 sources natives, puis assemblage ;
 - `aapt2-x64 dump badging` ;
 - intégrité ZIP ;
 - signature v1 et v2 par vérificateur Python indépendant ;
@@ -70,7 +74,7 @@ Aucun faux avis n'est prérempli : l'état initial est vide et professionnel.
 4. Depuis le Wi-Fi du restaurant, ouvrir l'adresse affichée dans l'écran
    **Site** ou scanner le QR.
 
-La 1.4 n'est pas une mise à jour de la famille `com.trattoria.commande`.
+La communauté native est disponible dans l'APK sur le port 8721. La 1.4 n'est pas une mise à jour de la famille `com.trattoria.commande`.
 Pour migrer cette famille, exporter ses données, installer séparément la
 nouvelle application puis réimporter les données compatibles ; voir
 `docs/APK_FUSION_ANALYSIS.md` et `docs/MIGRATION_RATING.md`.

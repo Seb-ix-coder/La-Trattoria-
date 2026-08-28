@@ -15,16 +15,18 @@ def dex(apk):
  from androguard.core.dex import DEX
  with zipfile.ZipFile(apk) as z:
   names=set(z.namelist());assert 'classes.dex' in names;assert not any(x.startswith('classes2.dex') for x in names);d=DEX(z.read('classes.dex'))
- names={c.get_name() for c in d.get_classes()};assert 'Lcom/trattoria/cartes/MainActivity;' in names;assert not any(x.startswith('Lcom/trattoria/commande/') for x in names);print('[ok] DEX : namespace native cartes, aucun classes2.dex')
+ names={c.get_name() for c in d.get_classes()};assert 'Lcom/trattoria/cartes/MainActivity;' in names;assert 'Lcom/trattoria/cartes/ServeurCommunaute;' in names;assert not any(x.startswith('Lcom/trattoria/commande/') for x in names);print('[ok] DEX : interface et backend social natifs, aucun classes2.dex')
 
 def assets(apk):
  with zipfile.ZipFile(apk) as z:
-  names=set(z.namelist());req={'assets/public-shell.html','assets/unified-client.css','assets/unified-rating.js','assets/site.js','assets/site.css','assets/community.html','assets/community.css'};assert req<=names
-  shell=z.read('assets/public-shell.html').decode();js=z.read('assets/site.js').decode();css=z.read('assets/site.css').decode();rating=z.read('assets/unified-rating.js').decode()
+  names=set(z.namelist());req={'assets/public-shell.html','assets/unified-client.css','assets/unified-rating.js','assets/site.js','assets/site.css','assets/community-index.html','assets/community-app.js','assets/community-app.css','assets/community-manifest.webmanifest','assets/community-icone-192.png','assets/community-icone-512.png'};assert req<=names
+  shell=z.read('assets/public-shell.html').decode();js=z.read('assets/site.js').decode();css=z.read('assets/site.css').decode();rating=z.read('assets/unified-rating.js').decode();community=z.read('assets/community-app.js').decode();community_html=z.read('assets/community-index.html').decode()
   for x in ('lt-search','Accueil','Salle','Cartes','Communication','Administration','rating-form','Aucun avis vérifié'):assert x in shell,x
   for x in ('TrattoriaQR','Pourboire numérique','Mode de paiement prévu','Cartes de fidélité','Modes App','APK Premium header'):assert x in js,x
   assert 'overflow-x:auto' in css
   for x in ('/api/public/auth','/api/public/rating','plat_id','note','achat'):assert x in rating,x
+  for x in ('COMMUNAUTE_API','inscription','connexion','feed','commentaires','messages','partenaire','fidelite','recompense','realtime'):assert x in community,x
+  assert '/assets/community-app.js' in community_html
  print('[ok] assets : shell public, header, recherche, paiement, fidélité, QR et notation')
 
 def zip_sign(apk):

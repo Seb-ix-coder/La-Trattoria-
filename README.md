@@ -66,16 +66,19 @@ données compatibles avec le module intégré (même modèle, export JSON).
 
 ### Installer
 
-1. Installer `trato-11.5-stable.apk` sur la tablette (désinstaller toute
-   version 11.x avant — clé de signature différente ; voir
-   `GUIDE_INSTALLATION.md` et `DIAGNOSTIQUE_CRASH.md` pour l'historique du
-   crash au lancement).
+1. Installer `trato-unifie-1.4-stable.apk` sur la tablette. Les anciennes
+   familles avec un autre package ou un autre certificat doivent être
+   désinstallées après export des données ; voir `GUIDE_INSTALLATION.md` et
+   `docs/APK_FUSION_ANALYSIS.md`.
 2. Lancer l'application : le serveur local démarre sur le port `8720`.
 3. Les clients/partenaires scannent le QR `qr/QR-app-client.png` (salle) ou
    `qr/QR-app-partenaire.png` et ajoutent la page à leur écran d'accueil.
 4. Le module carte s'ouvre via le bouton 📋 ou `http://<tablette>:8720/?carte`.
-5. Le réseau social : `python3 communaute/serveur_communaute.py` sur la machine
-   du réseau (port 8721), QR `qr/QR-communaute.png` en salle — voir `COMMUNAUTE.md`.
+5. La communauté sociale est embarquée dans l'APK et démarrée automatiquement
+   sur le port `8721`; l'écran **Communauté** ouvre l'interface intégrée. Le
+   serveur Python `communaute/serveur_communaute.py` reste disponible pour un
+   déploiement serveur séparé ou une migration de données — voir
+   `COMMUNAUTE.md`.
 
 ## Régénérer les éléments imprimables
 

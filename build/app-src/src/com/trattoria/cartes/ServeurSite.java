@@ -234,7 +234,7 @@ public class ServeurSite implements Runnable {
             return;
         }
         if ("/communaute/".equals(path) || "/communaute".equals(path)) {
-            servirAsset(client, "community.html");
+            servirAsset(client, "community-index.html");
             return;
         }
         envoyerJson(client, 404, objetErreur("Ressource introuvable"));

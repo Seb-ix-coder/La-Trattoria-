@@ -11,10 +11,11 @@ python3 build/build_unified.py \
 python3 build/verify_final_apk.py trato-unifie-1.4-stable.apk build/keystore/trattoria-release.p12
 ```
 
-Le pipeline compile `MainActivity.java`, `Modules.java` et `ServeurSite.java`
-avec ECJ puis D8. La base est `app-src/base.apk`, dérivée de
-`trato-gestion-1.3.apk`; le DEX de `com.trattoria.commande` n'est jamais
-injecté. Les assets du site sont ajoutés sans fusion de tables `R`.
+Le pipeline compile `MainActivity.java`, `Modules.java`, `ServeurSite.java`
+et `ServeurCommunaute.java` avec ECJ puis D8. La base est `app-src/base.apk`,
+dérivée de `trato-gestion-1.3.apk`; le DEX de `com.trattoria.commande` n'est
+jamais injecté. Les assets du site et de la communauté sont ajoutés sans
+fusion de tables `R`.
 
 ## Contenu
 
@@ -28,6 +29,10 @@ injecté. Les assets du site sont ajoutés sans fusion de tables `R`.
   priorité, fallback clairement marqué, plats du jour, slider, réservation,
   commande, paiement prévu, pourboire, fidélité, conformité, modes client et
   partenaire ;
+- communauté sociale embarquée dans l'APK sur le port 8721 : connexion,
+  inscription, profils, photos, posts, commentaires, réactions, messages,
+  partenaires, offres, fidélité, missions, badges, classement, consentements,
+  parrainage client et validation ;
 - serveur de notation avec connexion, achat et `plat_id` stable côté serveur.
 
 ## Validation

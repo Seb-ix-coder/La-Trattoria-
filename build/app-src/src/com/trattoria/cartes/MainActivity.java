@@ -82,10 +82,12 @@ public class MainActivity extends Activity {
         // le QR client, la réservation et la carte soient disponibles sans
         // étape cachée dans l'écran Administration.
         demarrerServeur();
+        demarrerCommunaute();
     }
 
     @Override protected void onDestroy() {
         arreterServeur();
+        arreterCommunaute();
         super.onDestroy();
     }
 
@@ -255,6 +257,7 @@ public class MainActivity extends Activity {
             case "ventes": ecranVentes(); break;
             case "ticket": ecranTicket(); break;
             case "site": ecranSite(); break;
+            case "communaute": ecranCommunaute(); break;
             case "stock": ecranStock(); break;
             case "compta": ecranCompta(); break;
             case "objectifs": ecranObjectifs(); break;
@@ -400,7 +403,7 @@ public class MainActivity extends Activity {
                 {"Données — import/export", "donnees", "données import export sauvegarde"},
                 {"Avis clients vérifiés", "site", "avis note notation achat"},
                 {"Paiement, pourboire & fidélité", "site", "paiement pourboire fidélité"},
-                {"Communauté & partenaires", "site", "communauté partenaires forum messages"}
+                {"Communauté & partenaires", "communaute", "communauté partenaires forum messages posts commentaires"}
         };
         int trouves = 0;
         for (String[] f : fonctions) {
@@ -449,6 +452,7 @@ public class MainActivity extends Activity {
         if ("commande".equals(ecran)) return "Commande — " + (tableCourante == null ? "" : tableCourante);
         if ("ventes".equals(ecran)) return "Ventes du jour";
         if ("site".equals(ecran)) return "Site en ligne — commandes clients";
+        if ("communaute".equals(ecran)) return "Communauté — social local";
         if ("admin".equals(ecran)) return "Administration";
         if ("stock".equals(ecran)) return "Stock & commandes fournisseurs";
         if ("compta".equals(ecran)) return "Comptabilité";
@@ -472,7 +476,7 @@ public class MainActivity extends Activity {
         if ("menu".equals(ecran)) { super.onBackPressed(); return; }
         if ("cartes".equals(ecran) || "donnees".equals(ecran) || "apropos".equals(ecran)
                 || "salle".equals(ecran) || "ventes".equals(ecran) || "site".equals(ecran)
-                || "admin".equals(ecran) || "stock".equals(ecran) || "compta".equals(ecran)
+                || "communaute".equals(ecran) || "admin".equals(ecran) || "stock".equals(ecran) || "compta".equals(ecran)
                 || "objectifs".equals(ecran) || "invendus".equals(ecran)
                 || "personnel".equals(ecran) || "com".equals(ecran)) {
             afficher("menu"); return;
@@ -525,6 +529,7 @@ public class MainActivity extends Activity {
         tuiles.put("ventes", new String[]{"📈", "Ventes du jour — CA, tickets, meilleures ventes"});
         tuiles.put("cartes", new String[]{"🧾", "La carte standard, les cartes du moment, l'ardoise, l'impression"});
         tuiles.put("site", new String[]{"🌐", "Site en ligne — serveur, commandes clients, ouvrir et partager"});
+        tuiles.put("communaute", new String[]{"🤝", "Communauté — profils, posts, messages, partenaires et fidélité"});
         tuiles.put("com", new String[]{"📣", "Communication — messages visuels du site (éditer, visualiser)"});
         tuiles.put("objectifs", new String[]{"🎯", "Objectifs — CA et couverts du jour"});
         tuiles.put("stock", new String[]{"📦", "Stock & commandes fournisseurs"});
@@ -551,6 +556,7 @@ public class MainActivity extends Activity {
             else if ("ventes".equals(nomT)) nomT = "Ventes du jour";
             else if ("cartes".equals(nomT)) nomT = "Cartes";
             else if ("site".equals(nomT)) nomT = "Site en ligne";
+            else if ("communaute".equals(nomT)) nomT = "Communauté";
             else if ("stock".equals(nomT)) nomT = "Stock";
             else if ("compta".equals(nomT)) nomT = "Comptabilité";
             else if ("objectifs".equals(nomT)) nomT = "Objectifs";
@@ -972,6 +978,25 @@ public class MainActivity extends Activity {
     //  SITE EN LIGNE (serveur local)
     // ==========================================================
     private ServeurSite serveur = null;
+    private ServeurCommunaute serveurCommunaute = null;
+
+    private void ecranCommunaute() {
+        contenu.addView(texte("Le serveur social est embarqué dans cette APK et démarre avec l'application.", 13.5f, GRIS, false));
+        contenu.addView(espace(12));
+        contenu.addView(texte("● Communauté active — port 8721", 16, "#2E7D32", true));
+        contenu.addView(espace(8));
+        contenu.addView(texte("Comptes, profils, photos, posts publics, commentaires, réactions, messages, partenaires, offres, fidélité, missions, badges, classement et consentements sont gérés localement.", 13.5f, "#2B2B28", false));
+        contenu.addView(espace(12));
+        contenu.addView(bouton("👥 Ouvrir la communauté intégrée", ROUGE, "#FFFFFF", new View.OnClickListener() {
+            public void onClick(View v) { ouvrirCommunauteApercu(); }
+        }));
+        contenu.addView(espace(8));
+        contenu.addView(bouton("🔗 Partager l'adresse communauté", BEIGE, "#2B2B28", new View.OnClickListener() {
+            public void onClick(View v) { partagerCommunaute(); }
+        }));
+        contenu.addView(espace(12));
+        contenu.addView(texte("Les données sociales sont distinctes des données de caisse et stockées dans community-data.json. Les comptes et droits ne sont pas exposés dans le site public.", 12.5f, GRIS, false));
+    }
 
     private void ecranSite() {
         boolean actif = serveur != null && serveur.estActif();
@@ -1111,6 +1136,16 @@ public class MainActivity extends Activity {
         }, this);
         serveur.demarrer();
         toast("Serveur démarré sur le port 8720");
+    }
+
+    private void demarrerCommunaute() {
+        arreterCommunaute();
+        serveurCommunaute = new ServeurCommunaute(this);
+        serveurCommunaute.start();
+    }
+
+    private void arreterCommunaute() {
+        if (serveurCommunaute != null) serveurCommunaute.stop();
     }
 
     private void arreterServeur() {
@@ -2511,6 +2546,20 @@ public class MainActivity extends Activity {
         dlg.setContentView(l);
         wv.loadUrl("http://127.0.0.1:8720/");
         dlg.show();
+    }
+
+    private void ouvrirCommunauteApercu() {
+        if (serveur == null || !serveur.estActif()) demarrerServeur();
+        final android.app.Dialog dlg = new android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        LinearLayout l = colonne(); l.setBackgroundColor(c("#111814"));
+        LinearLayout barre = new LinearLayout(this); barre.setOrientation(LinearLayout.HORIZONTAL); barre.setGravity(Gravity.CENTER_VERTICAL); barre.setBackgroundColor(c(ARDOISE)); barre.setPadding(dp(14), dp(8), dp(14), dp(8));
+        TextView t = texte("Communauté intégrée — port 8721", 12.5f, JAUNE, true); t.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)); barre.addView(t);
+        Button fermer = bouton("✕", ARDOISE, "#FFFFFF", new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } }); fermer.setPadding(dp(14), 0, dp(14), 0); barre.addView(fermer); l.addView(barre);
+        WebView wv = new WebView(this); wv.getSettings().setJavaScriptEnabled(true); wv.setWebViewClient(new WebViewClient()); wv.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)); l.addView(wv); dlg.setContentView(l); wv.loadUrl("http://127.0.0.1:8720/communaute/"); dlg.show();
+    }
+
+    private void partagerCommunaute() {
+        try { android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_SEND); i.setType("text/plain"); i.putExtra(android.content.Intent.EXTRA_SUBJECT, "La Trattoria — Communauté"); i.putExtra(android.content.Intent.EXTRA_TEXT, "Rejoignez la communauté locale La Trattoria : http://" + adresseLocale() + ":8721/"); startActivity(android.content.Intent.createChooser(i, "Partager la communauté")); } catch (Exception e) { toast("Partage impossible : " + e.getMessage()); }
     }
 
     private void partagerSite() {

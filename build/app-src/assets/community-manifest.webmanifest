@@ -1,0 +1,12 @@
+{
+  "name": "La Trattoria — Communauté",
+  "short_name": "La Commu",
+  "start_url": "/communaute/",
+  "display": "standalone",
+  "background_color": "#F4F1EA",
+  "theme_color": "#A51822",
+  "icons": [
+    { "src": "/assets/community-icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/community-icone-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
