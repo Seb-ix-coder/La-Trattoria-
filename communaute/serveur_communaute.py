@@ -164,6 +164,14 @@ def init_db() -> None:
           points INTEGER NOT NULL,
           cree_le REAL NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS notes_plats (
+          plat_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          note INTEGER NOT NULL CHECK(note BETWEEN 1 AND 5),
+          commentaire TEXT NOT NULL DEFAULT '',
+          cree_le REAL NOT NULL,
+          PRIMARY KEY (plat_id, user_id)
+        );
         CREATE TABLE IF NOT EXISTS pro_loyaute (
           user_id TEXT PRIMARY KEY,
           points INTEGER NOT NULL DEFAULT 0,
@@ -832,6 +840,8 @@ class H(BaseHTTPRequestHandler):
                 self.offres_essayer()
             elif p == '/api/consent':
                 self.consent_mettre()
+            elif p == '/api/notes-plats':
+                self.note_plat()
             else:
                 self._json({'ok': False, 'erreur': 'route inconnue'}, 404)
         except Exception as e:  # ne jamais faire planter le serveur
@@ -1211,6 +1221,39 @@ class H(BaseHTTPRequestHandler):
                 if u3:
                     self._badge(c, u3['id'], 'fidele')
         self._json({'ok': True, 'carte': carte, 'points': pts_achat + bonus})
+
+    def note_plat(self):
+        """Une note est possible uniquement après un achat identifié du plat."""
+        moi = self._user()
+        if not moi:
+            self._json({'ok': False, 'code': 'connexion_requise',
+                        'erreur': 'Connectez-vous pour noter un plat.'}, 401)
+            return
+        d = self._json_corps()
+        plat_id = str(d.get('plat_id') or '').strip()[:100]
+        plat_nom = str(d.get('plat_nom') or '').strip()[:80]
+        commentaire = str(d.get('commentaire') or '').strip()[:500]
+        try:
+            note = int(d.get('note'))
+        except (TypeError, ValueError):
+            note = 0
+        if not plat_id or not plat_nom or note not in range(1, 6):
+            self._json({'ok': False, 'erreur': 'Plat et note de 1 à 5 requis.'}, 400)
+            return
+        with db() as c:
+            achat = c.execute(
+                "SELECT id FROM achats WHERE tel=? AND lower(produits) LIKE lower(?) LIMIT 1",
+                (moi['tel'], '%' + plat_nom + '%')).fetchone()
+            if not achat:
+                self._json({'ok': False, 'code': 'achat_requis',
+                            'erreur': 'Ce plat doit apparaître dans un achat enregistré.'}, 403)
+                return
+            c.execute('''INSERT INTO notes_plats(plat_id,user_id,note,commentaire,cree_le)
+                         VALUES(?,?,?,?,?)
+                         ON CONFLICT(plat_id,user_id) DO UPDATE SET note=excluded.note,
+                         commentaire=excluded.commentaire, cree_le=excluded.cree_le''',
+                      (plat_id, moi['id'], note, commentaire, time.time()))
+        self._json({'ok': True, 'message': 'Merci pour votre avis.'})
 
     def pro_moi(self):
         moi = self._user()
