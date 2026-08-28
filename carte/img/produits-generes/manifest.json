@@ -483,7 +483,7 @@
       "nom": "Jus de fruits 25 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p60.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -491,7 +491,7 @@
       "nom": "Citronnade maison",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p61.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -499,7 +499,7 @@
       "nom": "Sirop à l'eau 25 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p62.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -507,7 +507,7 @@
       "nom": "Pichet 25 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p63.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -515,7 +515,7 @@
       "nom": "Pichet 50 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p64.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -523,7 +523,7 @@
       "nom": "Pichet 1 litre",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p65.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -531,7 +531,7 @@
       "nom": "Chianti — verre",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p66.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -539,7 +539,7 @@
       "nom": "Chianti — bouteille",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p67.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -547,7 +547,7 @@
       "nom": "Pinot Grigio — verre",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p68.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -555,7 +555,7 @@
       "nom": "Pinot Grigio — bouteille",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p69.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
