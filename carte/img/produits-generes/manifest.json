@@ -91,7 +91,7 @@
       "nom": "La Végétarienne",
       "famille": "Pizzas",
       "fichier": "carte/img/produits-generes/p11.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -99,7 +99,7 @@
       "nom": "La Saumon",
       "famille": "Pizzas",
       "fichier": "carte/img/produits-generes/p12.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -107,7 +107,7 @@
       "nom": "La Calzone",
       "famille": "Pizzas",
       "fichier": "carte/img/produits-generes/p13.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -115,7 +115,7 @@
       "nom": "La Truffe",
       "famille": "Pizzas",
       "fichier": "carte/img/produits-generes/p14.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -123,7 +123,7 @@
       "nom": "La César",
       "famille": "Salades",
       "fichier": "carte/img/produits-generes/p15.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -131,7 +131,7 @@
       "nom": "L'Italienne",
       "famille": "Salades",
       "fichier": "carte/img/produits-generes/p16.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -139,7 +139,7 @@
       "nom": "La Burrata",
       "famille": "Salades",
       "fichier": "carte/img/produits-generes/p17.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -147,7 +147,7 @@
       "nom": "La Chèvre Chaud",
       "famille": "Salades",
       "fichier": "carte/img/produits-generes/p18.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -155,7 +155,7 @@
       "nom": "Planche apéritive",
       "famille": "Entrées",
       "fichier": "carte/img/produits-generes/p19.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -163,7 +163,7 @@
       "nom": "Focaccia maison",
       "famille": "Entrées",
       "fichier": "carte/img/produits-generes/p20.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
