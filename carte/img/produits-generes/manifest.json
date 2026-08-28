@@ -363,7 +363,7 @@
       "nom": "Spritz maison",
       "famille": "Apéritif",
       "fichier": "carte/img/produits-generes/p45.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -411,7 +411,7 @@
       "nom": "Planche & Spritz",
       "famille": "Apéritif",
       "fichier": "carte/img/produits-generes/p51.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -419,7 +419,7 @@
       "nom": "Eau plate 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p52.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -427,7 +427,7 @@
       "nom": "Eau gazeuse 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p53.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -435,7 +435,7 @@
       "nom": "Coca-Cola 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p54.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -443,7 +443,7 @@
       "nom": "Coca-Cola Cherry 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p55.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -451,7 +451,7 @@
       "nom": "Coca-Cola Zero 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p56.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -459,7 +459,7 @@
       "nom": "Fuze Tea 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p57.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -467,7 +467,7 @@
       "nom": "Limonade artisanale 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p58.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -475,7 +475,7 @@
       "nom": "San Pellegrino 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p59.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
