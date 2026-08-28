@@ -200,6 +200,10 @@ public class ServeurSite implements Runnable {
             envoyer(client, 200, "text/html; charset=utf-8", page());
             return;
         }
+        if (path.startsWith("/assets/produits-generes/") && !path.contains("..")) {
+            servirImageAsset(client, path.substring("/assets/".length()));
+            return;
+        }
         if (path.startsWith("/assets/") && !path.contains("..")) {
             servirAsset(client, path.substring("/assets/".length()));
             return;
@@ -506,6 +510,18 @@ public class ServeurSite implements Runnable {
         envoyer(client, 200, type, contenu);
     }
 
+    private void servirImageAsset(Socket client, String nom) throws Exception {
+        if (contexte == null || nom == null || !nom.matches("produits-generes/p[0-9]+\\.jpg")) {
+            envoyerJson(client, 404, objetErreur("Image introuvable")); return;
+        }
+        InputStream is = contexte.getAssets().open(nom);
+        try {
+            ByteArrayOutputStream b = new ByteArrayOutputStream(); byte[] buf = new byte[8192]; int n;
+            while ((n = is.read(buf)) >= 0) b.write(buf, 0, n);
+            envoyerOctets(client, 200, "image/jpeg", b.toByteArray());
+        } finally { is.close(); }
+    }
+
     private String assetTexte(String nom) {
         if (contexte == null || nom == null || nom.contains("..") || nom.startsWith("/")) return "";
         try {
@@ -534,16 +550,35 @@ public class ServeurSite implements Runnable {
             }
             String nom = p.optString("nom", "Produit"); String desc = p.optString("desc", p.optString("sous", ""));
             double prix = p.optDouble("pv", 0); String tags = fam + " " + p.optString("cat", "") + " " + p.optString("allergenes", "");
-            String photo = p.optString("photo", ""); boolean adminPhoto = photo.startsWith("data:image/") || photo.startsWith("/");
+            String photo = p.optString("photo", "");
+            boolean adminPhoto = photo.startsWith("data:image/") || photo.startsWith("/");
+            boolean generatedPhoto = false;
+            if (!adminPhoto) {
+                String candidate = generatedPhotoFor(id);
+                if (candidate.length() > 0) { photo = candidate; generatedPhoto = true; }
+            }
             h.append("<article class='plat prod' data-product-id='").append(echAttr(id)).append("' data-tags='").append(echAttr(tags.toLowerCase(Locale.FRENCH))).append("'>");
-            if (adminPhoto) h.append("<div class='lt-plat-photo'><img src='").append(echAttr(photo)).append("' alt='").append(echAttr(nom)).append("' loading='lazy'></div>");
-            else h.append("<div class='lt-plat-photo no-photo'><span class='lt-no-photo'>Illustration de démonstration<br>aucune photo administrée</span></div>");
+            if (adminPhoto || generatedPhoto) {
+                h.append("<div class='lt-plat-photo'><img src='").append(echAttr(photo)).append("' alt='").append(echAttr(nom)).append("' loading='lazy'>");
+                if (generatedPhoto) h.append("<span class='lt-demo-flag'>Visuel généré — à valider par l'administration</span>");
+                h.append("</div>");
+            } else h.append("<div class='lt-plat-photo no-photo'><span class='lt-no-photo'>Aucune photo administrée ni visuel généré disponible</span></div>");
             h.append("<div class='infos'><span class='cat'>").append(ech(p.optString("cat", fam))).append("</span><h3>").append(ech(nom)).append("</h3><p class='d'>").append(ech(desc)).append("</p><div class='ligne-prix'><span class='pv'>").append(eur(prix)).append("</span></div><button type='button' class='ajout btn btn-p' data-ajout='").append(echAttr(id)).append("' data-id='").append(echAttr(id)).append("' data-nom='").append(echAttr(nom)).append("' data-prix='").append(prix).append("'>Ajouter à la commande</button><div class='lt-menu-rating' data-rating-for='").append(echAttr(id)).append("'></div></div></article>");
             visibles++;
         }
         if (famille != null) h.append("</div></section>");
         if (visibles == 0) h.append("<p class='lt-empty'>Aucun produit publié par l'administration.</p>");
         return h.toString();
+    }
+
+    private String generatedPhotoFor(String id) {
+        if (id == null || !id.matches("p[0-9]+")) return "";
+        String name = "produits-generes/" + id + ".jpg";
+        if (contexte == null) return "";
+        try {
+            InputStream is = contexte.getAssets().open(name); is.close();
+            return "/assets/" + name;
+        } catch (Exception ignored) { return ""; }
     }
 
     private String rendreOptions(JSONArray produits) {
@@ -576,9 +611,11 @@ public class ServeurSite implements Runnable {
         if (selection.size() == 0) return "<div class='lt-empty'>Aucun plat du jour n'est actuellement publié.</div>";
         StringBuilder h = new StringBuilder(); int n = Math.min(selection.size(), 12);
         for (int i = 0; i < n; i++) {
-            JSONObject p = selection.get(i); String photo = p.optString("photo", ""); h.append("<article class='lt-slider-card'>");
+            JSONObject p = selection.get(i); String photo = p.optString("photo", "");
+            if (!photo.startsWith("data:image/") && !photo.startsWith("/")) photo = generatedPhotoFor(p.optString("id", ""));
+            h.append("<article class='lt-slider-card'>");
             if (photo.startsWith("data:image/") || photo.startsWith("/")) h.append("<img src='").append(echAttr(photo)).append("' alt='").append(echAttr(p.optString("nom", "Plat du jour"))).append("'>");
-            else h.append("<div class='lt-plat-photo no-photo'><span class='lt-no-photo'>Illustration de démonstration</span></div>");
+            else h.append("<div class='lt-plat-photo no-photo'><span class='lt-no-photo'>Aucune photo publiée pour cette sélection</span></div>");
             h.append("<div class='lt-slider-copy'><strong>").append(ech(p.optString("nom", "Plat du jour"))).append("</strong><p>").append(ech(p.optString("desc", p.optString("sous", "")))).append("</p><b>").append(eur(p.optDouble("pv", p.optDouble("prix", 0)))).append("</b></div></article>");
         }
         return h.toString();
@@ -611,6 +648,17 @@ public class ServeurSite implements Runnable {
         h.append("HTTP/1.1 ").append(code).append(' ').append(statut).append("\r\n").append("Content-Type: ").append(type).append("\r\n").append("Content-Length: ").append(b.length).append("\r\n").append("Cache-Control: no-store\r\n").append("Access-Control-Allow-Origin: *\r\n").append("Access-Control-Allow-Headers: Content-Type, X-Session\r\n");
         if (cookie != null) h.append("Set-Cookie: ").append(cookie).append("\r\n");
         h.append("Connection: close\r\n\r\n"); out.write(h.toString().getBytes(StandardCharsets.UTF_8)); out.write(b); out.flush();
+    }
+
+    private void envoyerOctets(Socket client, int code, String type, byte[] b) throws IOException {
+        BufferedOutputStream out = new BufferedOutputStream(client.getOutputStream());
+        String statut = code == 200 ? "OK" : (code == 204 ? "No Content" : "Error");
+        String h = "HTTP/1.1 " + code + " " + statut + "\r\n" +
+                "Content-Type: " + type + "\r\n" +
+                "Content-Length: " + b.length + "\r\n" +
+                "Cache-Control: public, max-age=86400\r\n" +
+                "Connection: close\r\n\r\n";
+        out.write(h.getBytes(StandardCharsets.UTF_8)); out.write(b); out.flush();
     }
 
     private void chargerDonneesPubliques() {
