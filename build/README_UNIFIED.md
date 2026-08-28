@@ -25,7 +25,8 @@ fusion de tables `R`.
   impression PDF et synchronisation locale ;
 - header natif compilé à deux niveaux avec logo LT, titre courant, recherche
   clavier des écrans/fonctions/produits et navigation tactile horizontale ;
-- site public local : première page responsive avec logo La Trattoria et
+- site public local : première page responsive avec logo La Trattoria, 84
+  visuels générés haute définition (ardoise, angle et lumière homogènes) et
   visuel de recommandation Petit Futé 2026 compact, carte depuis
   l'administration, photos administrées en priorité, fallback clairement
   marqué, plats du jour, slider, réservation, commande, paiement prévu,

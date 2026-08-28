@@ -643,7 +643,7 @@
       "nom": "Cappuccino",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p80.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -651,7 +651,7 @@
       "nom": "Café gourmand",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p81.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -659,7 +659,7 @@
       "nom": "Thé ou infusion",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p82.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -667,7 +667,7 @@
       "nom": "Limoncello 4 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p83.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -675,7 +675,7 @@
       "nom": "Amaretto 4 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p84.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     }
   ]

@@ -7,8 +7,8 @@
 - versionCode : `5`
 - package : `com.trattoria.cartes`
 - activité launcher : `com.trattoria.cartes.MainActivity`
-- taille : `1293989` octets
-- SHA-256 APK : `89b48b2689a9b8136f04c4b362863e4eb522d19470e69ae3258363363b1f4344`
+- taille : `16628503` octets
+- SHA-256 APK : `a3dd31260686f2c6da213c3a19297eb92a6f8dd2197986774385c114ffb98c59`
 - certificat v1/v2 SHA-256 : `46d7c630da555edf45c3edcd1cda4a5c50be9c01ade5fc59f20516c234100090`
 - signature : v1 JAR + v2 APK Signature Scheme ; v3/v4 non présents
 - minSdk : 21 · targetSdk : 33
@@ -23,6 +23,7 @@
   personnel, communication, administration, données, import/export,
   impression/PDF et serveur local ;
 - site public local dans les assets de la même APK : cartes administrées,
+  84 visuels générés haute définition, angle et éclairage homogènes sur ardoise,
   produits et identifiants stables, photos administrées prioritaires,
   fallback explicitement identifié, plats du jour, slider, réservation,
   panier, paiement prévu, pourboire, fidélité, conformité, modes client et

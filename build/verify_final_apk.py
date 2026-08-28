@@ -25,6 +25,9 @@ def assets(apk):
   for x in ('TrattoriaQR','Pourboire numérique','Mode de paiement prévu','Cartes de fidélité','Modes App','APK Premium header'):assert x in js,x
   assert 'overflow-x:auto' in css
   for x in ('/api/public/auth','/api/public/rating','plat_id','note','achat'):assert x in rating,x
+  photos=[x for x in names if x.startswith('assets/produits-generes/p') and x.endswith('.jpg')]
+  assert len(photos)==84, '84 visuels générés attendus'
+  assert {('assets/produits-generes/p%d.jpg'%i) for i in range(1,85)} <= names
   for x in ('COMMUNAUTE_API','inscription','connexion','feed','commentaires','messages','partenaire','fidelite','recompense','realtime'):assert x in community,x
   assert '/assets/community-app.js' in community_html
  print('[ok] assets : shell public, header, recherche, paiement, fidélité, QR et notation')

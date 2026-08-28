@@ -103,6 +103,10 @@ python3 serveur_carte.py        # port 8080 par défaut
   responsive avec logo La Trattoria, visuel Petit Futé 2026 compact, navigation,
   recherche, carte filtrable, plats du jour, réservation, avis et partenaires ;
   les photos administrées sont prioritaires et les absences sont signalées.
+  Le catalogue contient aussi 84 visuels générés haute définition de repli,
+  homogènes (même angle trois-quarts, ardoise sombre, lumière chaude) et
+  explicitement marqués « Visuel généré — à valider » tant que l'équipe ne
+  les a pas validés.
 
 ### Données
 - Préchargé avec les **84 produits** extraits de l'APK (`trato.apk` v11.0) ;
