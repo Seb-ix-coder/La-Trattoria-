@@ -563,7 +563,7 @@
       "nom": "Rosé de Provence — verre",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p70.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -571,7 +571,7 @@
       "nom": "Rosé de Provence — bouteille",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p71.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -579,7 +579,7 @@
       "nom": "Prosecco — coupe",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p72.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -587,7 +587,7 @@
       "nom": "Pression 25 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p73.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -595,7 +595,7 @@
       "nom": "Pression 50 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p74.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -603,7 +603,7 @@
       "nom": "Peroni 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p75.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -611,7 +611,7 @@
       "nom": "Moretti 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p76.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -619,7 +619,7 @@
       "nom": "Bière sans alcool 33 cl",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p77.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -627,7 +627,7 @@
       "nom": "Espresso",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p78.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
@@ -635,7 +635,7 @@
       "nom": "Café allongé",
       "famille": "Boissons",
       "fichier": "carte/img/produits-generes/p79.jpg",
-      "source": "pending",
+      "source": "generated-fallback",
       "validated": false
     },
     {
