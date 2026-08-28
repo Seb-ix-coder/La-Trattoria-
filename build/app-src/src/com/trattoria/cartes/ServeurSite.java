@@ -510,6 +510,7 @@ public class ServeurSite implements Runnable {
         if (nom.endsWith(".js")) type = "application/javascript; charset=utf-8";
         else if (nom.endsWith(".css")) type = "text/css; charset=utf-8";
         else if (nom.endsWith(".html")) type = "text/html; charset=utf-8";
+        else if (nom.endsWith(".svg")) type = "image/svg+xml";
         String contenu = assetTexte(nom);
         if (contenu.length() == 0) { envoyerJson(client, 404, objetErreur("Asset introuvable")); return; }
         envoyer(client, 200, type, contenu);

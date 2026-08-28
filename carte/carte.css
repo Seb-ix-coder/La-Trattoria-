@@ -458,3 +458,7 @@ body.impression-carte-a4 #impression-carte-overlay .sansImpression { display: no
 @media print {
   .carteA4 { box-shadow: none; padding: 10mm 12mm; max-width: none; }
 }
+
+/* Identité officielle : le médaillon joint remplace l'ancien monogramme LT. */
+.logo{overflow:hidden;background:#f7edd7;border:1px solid #c99b4a;color:transparent;padding:0;}
+.logo img{width:100%;height:100%;display:block;object-fit:contain;border-radius:50%;}

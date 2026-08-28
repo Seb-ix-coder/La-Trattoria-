@@ -680,3 +680,35 @@ footer ul{list-style:none;padding:0;margin:0}
 /* --- En mode app : le contenu reste lisible, sans outil de gestion --- */
 .mode-app #btn-outils,
 .mode-app #btn-qr{display:none !important}
+
+/* ============================================================================
+   Correctif visuel du panier — panneau réellement latéral et utilisable.
+   L'ancien HTML utilise .tiroir-tete, alors que les anciennes règles
+   ciblaient .feuille : le contenu se retrouvait sans surface ni largeur.
+   ========================================================================== */
+#tiroir.tiroir{display:none;flex-direction:column;align-items:stretch;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;background:rgba(28,28,26,.58);
+  backdrop-filter:blur(4px);}
+#tiroir.tiroir.on{display:flex;}
+#tiroir .tiroir-tete,#tiroir #panier-corps,#tiroir #panier-pied{
+  width:min(460px,100%);margin-left:auto;margin-right:0;}
+#tiroir .tiroir-tete{position:sticky;top:0;z-index:3;display:flex;align-items:center;
+  justify-content:space-between;gap:12px;padding:14px 18px;
+  background:var(--creme);border-bottom:1px solid var(--trait);}
+#tiroir .tiroir-tete h2{margin:0;color:var(--rougef);font-family:Georgia,serif;font-size:22px;}
+#tiroir .tiroir-tete .fermer{width:44px;height:44px;min-width:44px;border:0;
+  border-radius:50%;background:var(--beige);color:var(--rougef);font-size:28px;line-height:1;}
+#tiroir #panier-corps{min-height:120px;padding:16px 18px;background:var(--fond);}
+#tiroir #panier-pied{padding:16px 18px 28px;background:var(--creme);
+  border-top:1px solid var(--trait);}
+#tiroir #panier-pied .total{color:var(--rougef);}
+#tiroir #panier-pied .btn-bloc{min-height:50px;}
+#tiroir .lg-panier{display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+  gap:9px;align-items:center;padding:13px 0;}
+#tiroir .lg-panier .nm{line-height:1.3;}
+#tiroir .qte{flex:none;}
+@media(max-width:520px){
+  #tiroir .tiroir-tete,#tiroir #panier-corps,#tiroir #panier-pied{width:100%;}
+  #tiroir .tiroir-tete{padding-left:16px;padding-right:16px;}
+  #tiroir #panier-corps,#tiroir #panier-pied{padding-left:16px;padding-right:16px;}
+}

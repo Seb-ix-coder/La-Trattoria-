@@ -446,3 +446,9 @@ h1,h2,h3,.serif{font-family:var(--font-serif)}
   .nav{left:50%;transform:translateX(-50%);width:auto;max-width:480px;
     border-radius:var(--r-l) var(--r-l) 0 0}
 }
+
+/* Identité officielle de La Trattoria dans la communauté. */
+.auth .logo-lg{width:82px;height:82px;padding:4px;border-radius:50%;background:#f7edd7;border:1px solid var(--or);box-shadow:var(--ombre-2);}
+.auth .logo-lg img{width:100%;height:100%;display:block;object-fit:contain;border-radius:50%;}
+.carte-fid .tete .logo{display:block;overflow:hidden;padding:0;background:#f7edd7;border:1px solid var(--or);}
+.carte-fid .tete .logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:50%;}

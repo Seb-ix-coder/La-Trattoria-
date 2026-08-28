@@ -27,8 +27,10 @@ fusion de tables `R`.
   cartes du jour, ardoise, QR, stock, objectifs, comptabilité, invendus,
   personnel, communication, administration, paramètres, import/export,
   impression PDF et synchronisation locale ;
-- header natif compilé à deux niveaux avec logo LT, titre courant, recherche
+- header natif compilé à deux niveaux avec logo officiel, titre courant, recherche
   clavier des écrans/fonctions/produits et navigation tactile horizontale ;
+- identité visuelle : le médaillon La Trattoria fourni est utilisé dans le site, les icônes, la communauté et le header natif ;
+- panier : panneau latéral corrigé avec surface, largeur, défilement et contrôles tactiles cohérents ;
 - site public local : accueil premium avec hero éditorial photo, sélection « À la une »
   en cartes photo généreuses, titres et descriptifs hiérarchisés, boutons
   « Ajouter » et sélection persistante ; carte complète verticale responsive

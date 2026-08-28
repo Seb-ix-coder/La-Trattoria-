@@ -290,10 +290,17 @@ public class MainActivity extends Activity {
         ligne.setOrientation(LinearLayout.HORIZONTAL);
         ligne.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView logo = texte("LT", 18, ROUGE_F, true);
-        logo.setGravity(Gravity.CENTER);
+        android.widget.ImageView logo = new android.widget.ImageView(this);
         logo.setContentDescription("Logo La Trattoria");
+        logo.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
+        logo.setPadding(dp(2), dp(2), dp(2), dp(2));
         logo.setBackground(fondBord("#F3E6D4", "#C99B4A", dp(22), dp(1)));
+        try {
+            InputStream logoStream = getAssets().open("brand/logo-la-trattoria-saintes.png");
+            android.graphics.Bitmap logoBitmap = android.graphics.BitmapFactory.decodeStream(logoStream);
+            logoStream.close();
+            logo.setImageBitmap(logoBitmap);
+        } catch (Exception ignored) { }
         ligne.addView(logo, new LinearLayout.LayoutParams(dp(44), dp(44)));
 
         LinearLayout nom = colonne();

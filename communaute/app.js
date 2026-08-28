@@ -526,7 +526,7 @@
     var emoji = c.niveau === 'Platine' ? '💎' : (c.niveau === 'Or' ? '🥇' : (c.niveau === 'Argent' ? '🥈' : '🥉'));
     var tel = esc((c.tel || '').replace(/(\d{2})(?=\d)/g, '$1 '));
     return '<div class="carte-fid">' +
-      '<div class="tete"><span class="logo">LT</span>' +
+      '<div class="tete"><span class="logo"><img src="icones/icone-192.png" alt=""></span>' +
       '<div><div class="tt">' + esc(titre || 'Carte fidélité') + '</div>' +
       '<div class="nom">' + esc(c.nom || '') + '</div></div></div>' +
       '<span class="niveau">' + emoji + ' ' + esc(c.niveau) + '</span>' +

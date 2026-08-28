@@ -2836,6 +2836,9 @@
   //  Démarrage
   // ==========================================================
   function init() {
+    var logoEntete = document.querySelector('.logo img');
+    if (logoEntete && window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.logo)
+      logoEntete.src = window.ARDOISE_ASSETS.logo;
     charger();
     toutDessiner();
     majInfoDonnees();
