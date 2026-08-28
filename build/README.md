@@ -1,3 +1,10 @@
+# Build et signature des APK La Trattoria
+
+> Le pipeline historique 11.x est conservé pour reproduire les builds
+> précédents. Pour le livrable actuel, utilisez `README_UNIFIED.md` et
+> `build_final_apk.sh` : la base native `com.trattoria.cartes` est recompilée
+> et les assets publics sont ajoutés sans importer le DEX `commande`.
+
 # Build et signature de l'APK durci « La Trattoria » 11.1
 
 Ce dossier contient l'outillage **reproductible** qui produit l'APK durci

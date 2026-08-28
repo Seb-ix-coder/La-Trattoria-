@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#A51822">
+  <title>La Trattoria — Saintes</title>
+  <link rel="stylesheet" href="/assets/site.css">
+  <link rel="stylesheet" href="/assets/unified-client.css">
+</head>
+<body>
+  <a class="evite" href="#principal">Aller au contenu</a>
+  <header id="site-header">
+    <div class="conteneur">
+      <div class="barre">
+        <a class="marque" href="#accueil" aria-label="La Trattoria, accueil">
+          <span class="lt-mark-web" aria-hidden="true">LT</span>
+          <span><span class="n">La Trattoria</span><span class="s">Maison italienne · Saintes</span></span>
+        </a>
+        <a class="tel-btn" href="tel:0627213190" aria-label="Appeler La Trattoria">☎ Appeler</a>
+      </div>
+      <nav class="onglets" aria-label="Navigation principale">
+        <a href="#accueil" class="actif">Accueil</a>
+        <a href="#salle">Salle</a>
+        <a href="#carte">Cartes</a>
+        <a href="#site">Site</a>
+        <a href="#communication">Communication</a>
+        <a href="#administration">Administration</a>
+        <a href="#communaute">Communauté</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="principal">
+    <section id="accueil" class="hero">
+      <div class="in conteneur">
+        <p class="sur-titre">La cuisine italienne faite maison</p>
+        <h1>La Trattoria</h1>
+        <p class="sous">Pâte maturée 48 h · produits frais · Saintes</p>
+        <div class="lt-hero-actions">
+          <a class="btn btn-p" href="#carte">Découvrir la carte</a>
+          <a class="btn btn-s" href="#reserver">Réserver une table</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="salle" class="lt-public-section alt">
+      <div class="conteneur lt-narrow">
+        <div class="titre-sec"><h2>La salle</h2><p>Un moment simple, chaleureux et sur réservation</p></div>
+        <div class="lt-info-grid">
+          <div class="carte-bloc"><strong>Sur place</strong><br>Service à table, menus du moment et conseils de l'équipe.</div>
+          <div class="carte-bloc"><strong>À emporter</strong><br>Commande locale selon les créneaux disponibles.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="carte" class="lt-public-section">
+      <div class="conteneur">
+        <div class="titre-sec"><h2>La carte</h2><p>Les plats publiés par l'administration, avec leurs identifiants stables</p></div>
+        <div class="lt-admin-photo-note" role="note">Les photos affichées sont celles sélectionnées dans la gestion. En l'absence de photo administrée, une illustration de démonstration est explicitement signalée.</div>
+        <div class="barre-filtre lt-search-card" role="group" aria-label="Filtrer la carte">
+          <label for="fd-recherche-public">Rechercher un plat</label>
+          <input id="fd-recherche-public" type="search" placeholder="Nom, catégorie, allergène…" autocomplete="off">
+          <div class="lt-filter-buttons">
+            <button type="button" class="filtre" aria-pressed="true" data-filtre="tout">Tout</button>
+            <button type="button" class="filtre" aria-pressed="false" data-filtre="vegetarien">Végétarien</button>
+            <button type="button" class="filtre" aria-pressed="false" data-filtre="sansgluten">Sans gluten</button>
+          </div>
+          <p id="nb-visibles" class="aide" aria-live="polite"></p>
+        </div>
+        <div id="produits-publics">{{PRODUITS}}</div>
+        <p id="aucun-produit" class="lt-empty" hidden>Aucun résultat dans la carte.</p>
+      </div>
+    </section>
+
+    <section id="moment" class="lt-public-section alt">
+      <div class="conteneur">
+        <div class="titre-sec"><h2>Plats du jour</h2><p>Sélection publiée depuis l'administration</p></div>
+        <div class="lt-slider" aria-label="Sélection du jour">{{MOMENT}}</div>
+      </div>
+    </section>
+
+    <section id="avis" class="lt-public-section">
+      <div class="conteneur lt-narrow">
+        <div class="titre-sec"><h2>Avis clients</h2><p>Des avis vérifiés, liés à un achat identifié</p></div>
+        <div id="avis-liste" class="lt-reviews" aria-live="polite">
+          <div class="lt-empty"><strong>Aucun avis vérifié n'est encore disponible.</strong><br>Après un achat enregistré, connectez-vous pour partager votre expérience.</div>
+        </div>
+        <div id="rating-auth" class="carte-bloc lt-rating-panel">
+          <h3>Noter un plat acheté</h3>
+          <p class="aide">Connexion et achat vérifié obligatoires. Une seule note par plat et par compte, modifiable ensuite.</p>
+          <div class="lt-auth-fields">
+            <label for="rating-nom">Nom</label><input id="rating-nom" autocomplete="name" maxlength="40">
+            <label for="rating-tel">Téléphone</label><input id="rating-tel" inputmode="tel" autocomplete="tel" maxlength="20">
+            <label for="rating-mdp">Code</label><input id="rating-mdp" type="password" autocomplete="current-password" minlength="4">
+          </div>
+          <div class="lt-auth-actions"><button type="button" class="btn btn-p" id="rating-inscription">Créer un compte</button><button type="button" class="btn btn-s" id="rating-connexion">Se connecter</button></div>
+          <p id="rating-auth-msg" class="lt-status" role="status" aria-live="polite"></p>
+          <div id="rating-form" hidden>
+            <label for="rating-plat">Plat à noter</label><select id="rating-plat">{{OPTIONS_PLATS}}</select>
+            <fieldset class="lt-stars"><legend>Note sur 5</legend><div id="rating-stars"><button type="button" data-note="1" aria-label="1 sur 5">★</button><button type="button" data-note="2" aria-label="2 sur 5">★</button><button type="button" data-note="3" aria-label="3 sur 5">★</button><button type="button" data-note="4" aria-label="4 sur 5">★</button><button type="button" data-note="5" aria-label="5 sur 5">★</button></div></fieldset>
+            <label for="rating-commentaire">Commentaire (facultatif)</label><textarea id="rating-commentaire" maxlength="500" rows="3"></textarea>
+            <button type="button" class="btn btn-p" id="rating-envoyer">Publier ou modifier ma note</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="communaute" class="lt-public-section alt">
+      <div class="conteneur lt-narrow">
+        <div class="titre-sec"><h2>Communauté</h2><p>Le journal du restaurant, les partenaires et les échanges locaux</p></div>
+        <div class="lt-community-cards">
+          <div class="carte-bloc"><h3>Posts publics</h3><p>Les publications du restaurant et des partenaires vérifiés apparaissent ici lorsqu'elles sont disponibles.</p><span class="lt-badge-empty">Aucune publication pour le moment</span></div>
+          <div class="carte-bloc"><h3>Discussions & messages</h3><p>Accès réservé aux comptes connectés dans le serveur communauté local.</p><a class="btn btn-s" href="/communaute/">Ouvrir l'espace communauté</a></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="partenaires" class="lt-public-section">
+      <div class="conteneur lt-narrow">
+        <div class="titre-sec"><h2>Partenaires & fournisseurs</h2><p>Bio et local, selon les approvisionnements réellement publiés</p></div>
+        <div class="lt-empty">Aucun partenaire ou fournisseur n'est actuellement publié. Les offres et posts apparaîtront après validation par l'administration.</div>
+      </div>
+    </section>
+
+    <section id="journal" class="lt-public-section alt">
+      <div class="conteneur lt-narrow">
+        <div class="titre-sec"><h2>Journal du restaurant</h2><p>Actualités et coulisses, publiées par l'équipe</p></div>
+        <div id="journal-liste" class="lt-empty">Le journal sera alimenté par les prochaines publications de La Trattoria.</div>
+      </div>
+    </section>
+
+    <section id="reserver" class="lt-public-section">
+      <div class="conteneur lt-narrow">
+        <div class="titre-sec"><h2>Réserver une table</h2><p>Votre demande est enregistrée puis confirmée par le restaurant</p></div>
+        <form id="form-reservation" class="carte-bloc lt-form">
+          <label for="rs-nom">Nom</label><input id="rs-nom" required maxlength="60" autocomplete="name">
+          <span id="err-rs-nom" class="err"></span>
+          <label for="rs-tel">Téléphone</label><input id="rs-tel" required inputmode="tel" maxlength="20" autocomplete="tel">
+          <span id="err-rs-tel" class="err"></span>
+          <div class="lt-two-cols"><div><label for="rs-date">Date</label><input id="rs-date" required type="date"></div><div><label for="rs-heure">Heure</label><input id="rs-heure" required type="time"></div></div>
+          <label for="rs-couverts">Couverts</label><select id="rs-couverts"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option></select>
+          <label for="rs-note">Précision (facultatif)</label><textarea id="rs-note" rows="3" maxlength="500"></textarea>
+          <button class="btn btn-p btn-bloc" type="submit">Envoyer la demande</button>
+          <p id="rs-msg" class="lt-status" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="site" class="lt-public-section alt">
+      <div class="conteneur lt-narrow"><div class="titre-sec"><h2>Site en ligne</h2><p>Cette page est servie localement par la tablette du restaurant.</p></div><div class="carte-bloc"><p>Les données de la carte et les communications sont synchronisées avec l'édition locale. Les paiements en ligne ne sont pas simulés : choisissez le retrait et réglez selon les modalités annoncées par l'équipe.</p><p class="lt-status-ok">● Service local disponible</p></div></div>
+    </section>
+
+    <section id="communication" class="lt-public-section"><div class="conteneur lt-narrow"><div class="titre-sec"><h2>Communication</h2><p>Informations publiées par La Trattoria</p></div><div id="communications-publics">{{COMMUNICATIONS}}</div></div></section>
+    <section id="administration" class="lt-public-section alt"><div class="conteneur lt-narrow"><div class="titre-sec"><h2>Administration</h2><p>Espace réservé au personnel sur la tablette</p></div><div class="carte-bloc"><p>La gestion des cartes, du stock, des ventes, des tickets, de la comptabilité, des objectifs, des invendus, du personnel, de l'import/export, de l'impression PDF et de la synchronisation se trouve dans l'application native.</p><p>Les clients n'ont pas accès aux données sensibles.</p></div></div></section>
+
+    <section id="contact" class="lt-public-section alt"><div class="conteneur lt-narrow"><div class="titre-sec"><h2>Nous trouver</h2><p>15 rue de la Poste · 17100 Saintes</p></div><div class="carte-bloc"><p><strong>La Trattoria</strong><br>15 rue de la Poste, 17100 Saintes<br><a href="tel:0627213190">06 27 21 31 90</a></p><p>Pour une réservation ou une question, l'équipe vous répond directement.</p></div></div></section>
+    <section id="mentions" class="legal" hidden><div class="conteneur lt-narrow"><h2>Mentions légales</h2><p>La Trattoria · SIRET 106 050 263 00016 · 15 rue de la Poste, 17100 Saintes.</p><a href="#accueil" data-fermer-legal>Retour au site</a></div></section>
+    <section id="cgv" class="legal" hidden><div class="conteneur lt-narrow"><h2>Conditions de vente</h2><p>Les commandes sont prises localement et confirmées par le restaurant. Les prix affichés sont ceux de la carte publiée.</p><a href="#accueil" data-fermer-legal>Retour au site</a></div></section>
+    <section id="donnees" class="legal" hidden><div class="conteneur lt-narrow"><h2>Données personnelles</h2><p>Les données nécessaires à une commande, une réservation ou un compte sont conservées localement. Une demande d'accès ou de suppression peut être adressée au restaurant.</p><a href="#accueil" data-fermer-legal>Retour au site</a></div></section>
+  </main>
+
+  <button id="panier-flot" class="panier-flot" type="button" aria-label="Voir ma commande"><span aria-hidden="true">🛒</span> <span id="flot-nb">0</span> · <span id="flot-total">0,00 €</span></button>
+  <aside id="tiroir" class="tiroir" aria-label="Ma commande" aria-hidden="true"><div class="tiroir-tete"><h2>Ma commande</h2><button class="fermer" type="button" aria-label="Fermer">×</button></div><div id="panier-corps"></div><div id="panier-pied"><div class="total">Total <span id="panier-total">0,00 €</span></div><div id="creneaux" class="creneaux"></div><label for="cl-nom">Nom</label><input id="cl-nom" autocomplete="name"><span id="err-cl-nom" class="err"></span><label for="cl-tel">Téléphone</label><input id="cl-tel" inputmode="tel" autocomplete="tel"><span id="err-cl-tel" class="err"></span><label for="cl-note">Note (facultatif)</label><textarea id="cl-note" rows="2"></textarea><label class="case"><input id="cl-cgv" type="checkbox"> J'accepte les conditions de vente</label><span id="err-cgv" class="err"></span><button id="valider" type="button" class="btn btn-p btn-bloc">Confirmer la commande</button></div></aside>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="etat-service" class="lt-service" role="status" aria-live="polite"></div>
+  <footer class="pied">
+    <p>La Trattoria · 15 rue de la Poste · 17100 Saintes · <a href="tel:0627213190">06 27 21 31 90</a></p>
+    <p><a href="#mentions" data-legal="mentions">Mentions légales</a> · <a href="#cgv" data-legal="cgv">Conditions de vente</a> · <a href="#donnees" data-legal="donnees">Données personnelles</a></p>
+  </footer>
+  <script>window.TRATTORIA={mode:'local',api:location.origin,tel:'0627213190'};</script>
+  <script src="/assets/site.js"></script>
+  <script src="/assets/unified-rating.js"></script>
+</body>
+</html>

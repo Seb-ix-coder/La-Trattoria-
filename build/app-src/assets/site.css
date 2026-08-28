@@ -1,0 +1,682 @@
+/* ============================================================
+   La Trattoria — feuille de style du site public
+   Une seule source de style : ce fichier est lu par l'APK qui
+   sert le site en local, et par gen_site.py qui produit la
+   version statique a mettre en ligne.
+   ============================================================ */
+
+:root{
+  --rouge:#A51822; --rougef:#7A1018; --olive:#8A8A55;
+  --creme:#FDFAF3; --fond:#F4F1EA; --beige:#EFE9DA;
+  --trait:#D8CFC0; --texte:#2B2B28; --gris:#6E6A63;
+  --vert:#3E6B2E; --ardoise:#1C1C1A; --craie:#F2EDE2;
+  --ombre:0 2px 10px rgba(43,43,40,.08);
+  --ombre-f:0 8px 30px rgba(43,43,40,.16);
+  --r:14px;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--fond);color:var(--texte);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:16px;line-height:1.55;overflow-wrap:break-word;
+}
+img{max-width:100%;display:block}
+a{color:var(--rouge)}
+h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:700;line-height:1.2;margin:0}
+.conteneur{max-width:1060px;margin:0 auto;padding:0 18px}
+
+/* Accessibilite : lien d'evitement, visible au clavier seulement */
+.evite{position:absolute;left:-9999px;top:0;background:var(--rouge);color:#fff;
+  padding:12px 18px;z-index:200;border-radius:0 0 var(--r) 0}
+.evite:focus{left:0}
+:focus-visible{outline:3px solid var(--olive);outline-offset:2px}
+
+/* ---------------- en-tete ---------------- */
+header{position:sticky;top:0;z-index:100;background:rgba(253,250,243,.97);
+  border-bottom:1px solid var(--trait);backdrop-filter:blur(8px)}
+.barre{display:flex;align-items:center;gap:14px;padding:10px 0;min-height:64px}
+.marque{display:flex;align-items:center;gap:11px;text-decoration:none;
+  color:inherit;flex:1 1 auto;min-width:0;overflow:hidden}
+.marque img{width:46px;height:46px;border-radius:10px;flex:none;object-fit:contain}
+.marque>span{min-width:0;overflow:hidden}
+.marque .n{font-family:Georgia,serif;font-weight:700;font-size:19px;color:var(--rougef);
+  line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.marque .s{font-size:11.5px;color:var(--gris);letter-spacing:.04em;text-transform:uppercase}
+
+nav.onglets{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:6px 0}
+nav.onglets::-webkit-scrollbar{display:none}
+nav.onglets a{
+  display:flex;align-items:center;padding:0 14px;min-height:44px;border-radius:22px;
+  text-decoration:none;color:var(--texte);font-size:14.5px;font-weight:600;white-space:nowrap;
+  transition:background .15s
+}
+nav.onglets a:hover,nav.onglets a.actif{background:var(--beige);color:var(--rougef)}
+
+.tel-btn{display:inline-flex;align-items:center;gap:7px;background:var(--rouge);color:#fff;
+  text-decoration:none;font-weight:700;font-size:14.5px;padding:0 16px;min-height:44px;
+  border-radius:22px;flex:none;box-shadow:var(--ombre)}
+.tel-btn:hover{background:var(--rougef)}
+
+/* ---------------- hero ---------------- */
+.hero{position:relative;background:var(--ardoise);color:var(--craie);overflow:hidden}
+.hero img.fond{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.42}
+.hero .in{position:relative;padding:60px 18px;text-align:center;max-width:760px;margin:0 auto}
+.hero h1{font-size:clamp(30px,6vw,50px);margin-bottom:12px;text-shadow:0 2px 18px rgba(0,0,0,.6)}
+.hero p{font-size:clamp(15px,2.4vw,19px);opacity:.95;margin:0 0 22px;text-shadow:0 1px 10px rgba(0,0,0,.6)}
+.hero .actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:50px;padding:0 24px;border-radius:25px;border:0;cursor:pointer;
+  font-size:16px;font-weight:700;font-family:inherit;text-decoration:none;
+  transition:transform .12s,box-shadow .12s,background .15s}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--rouge);color:#fff;box-shadow:var(--ombre-f)}
+.btn-p:hover{background:var(--rougef)}
+.btn-s{background:var(--creme);color:var(--texte);border:1.5px solid var(--trait)}
+.btn-s:hover{background:var(--beige)}
+.btn-f{background:var(--vert);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-bloc{width:100%}
+
+.bandeau-pate{background:var(--olive);color:#fff;text-align:center;padding:11px 18px;
+  font-size:14.5px;font-weight:600;letter-spacing:.02em}
+
+/* ---------------- sections ---------------- */
+section{padding:46px 0;scroll-margin-top:78px}
+section.alt{background:var(--creme);border-top:1px solid var(--trait);border-bottom:1px solid var(--trait)}
+.titre-sec{text-align:center;margin-bottom:8px}
+.titre-sec h2{font-size:clamp(24px,4vw,33px);color:var(--rougef)}
+.titre-sec p{color:var(--gris);margin:6px 0 0;font-size:15px}
+.sep{width:64px;height:3px;background:var(--rouge);border-radius:2px;margin:14px auto 30px}
+
+/* ---------------- ardoise du jour ---------------- */
+.ardoise{background:var(--ardoise);color:var(--craie);border-radius:var(--r);
+  padding:28px 24px;box-shadow:var(--ombre-f);position:relative}
+.ardoise h3{font-size:24px;margin-bottom:4px;color:var(--craie)}
+.ardoise .accroche{opacity:.75;font-size:14px;font-style:italic;margin-bottom:18px}
+.ardoise ul{list-style:none;padding:0;margin:0}
+.ardoise li{display:flex;gap:12px;align-items:baseline;padding:11px 0;
+  border-bottom:1px dashed rgba(242,237,226,.22)}
+.ardoise li:last-child{border-bottom:0}
+.ardoise .nm{font-weight:700;font-size:17px}
+.ardoise .ds{font-size:13.5px;opacity:.72;display:block;font-weight:400}
+.ardoise .pointille{flex:1;border-bottom:1px dotted rgba(242,237,226,.3);min-width:14px}
+.ardoise .px{font-weight:700;font-size:18px;white-space:nowrap}
+.ardoise .avant{text-decoration:line-through;opacity:.5;font-size:14px;margin-right:6px}
+.grille-jour{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+
+.offre{background:linear-gradient(135deg,var(--vert),#2d5220);color:#fff;
+  border-radius:var(--r);padding:24px;box-shadow:var(--ombre-f)}
+.offre h3{color:#fff;font-size:22px}
+.offre .eco{display:inline-block;background:rgba(255,255,255,.2);padding:4px 12px;
+  border-radius:12px;font-size:13px;font-weight:700;margin-top:10px}
+
+/* ---------------- carte ---------------- */
+.filtres{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:26px}
+.filtre{background:var(--creme);border:1.5px solid var(--trait);border-radius:20px;
+  padding:0 15px;min-height:44px;display:inline-flex;align-items:center;gap:6px;
+  cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;color:var(--texte)}
+.filtre[aria-pressed="true"]{background:var(--rouge);color:#fff;border-color:var(--rouge)}
+
+.famille{margin-bottom:34px}
+.famille h3{font-size:23px;color:var(--rougef);padding-bottom:8px;
+  border-bottom:2px solid var(--trait);margin-bottom:6px;display:flex;
+  justify-content:space-between;align-items:baseline;gap:12px}
+.famille h3 span{font-size:13px;color:var(--gris);font-weight:400;font-family:inherit}
+.rayon{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--olive);
+  font-weight:700;margin:20px 0 8px}
+
+.plats{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.plat{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
+  padding:14px;display:flex;gap:13px;align-items:flex-start;transition:box-shadow .15s,transform .12s}
+.plat:hover{box-shadow:var(--ombre)}
+.plat.masque{display:none}
+.plat .vis{width:74px;height:74px;border-radius:10px;flex:none;
+  background:var(--beige) center/cover no-repeat}
+.plat .corps{flex:1;min-width:0}
+.plat .haut{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.plat .nom{font-weight:700;font-size:16px;line-height:1.25}
+.plat .prix{font-weight:700;font-size:17px;color:var(--rougef);white-space:nowrap}
+.plat .desc{font-size:13.5px;color:var(--gris);margin-top:3px}
+.plat .pied{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:11px;padding:3px 9px;border-radius:10px;background:var(--beige);
+  color:var(--gris);font-weight:600;white-space:nowrap}
+.tag.vege{background:#E4EFDC;color:var(--vert)}
+.tag.epice{background:#FBE3E1;color:var(--rouge)}
+.tag.coeur{background:#F6E9C8;color:#8A6A12}
+.tag.alcool{background:#EDE6F2;color:#5B4A78}
+.tag.epuise{background:var(--rouge);color:#fff}
+
+.ajout{min-width:44px;min-height:44px;border-radius:22px;border:1.5px solid var(--rouge);
+  background:var(--creme);color:var(--rouge);font-size:22px;font-weight:700;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+  font-family:inherit;line-height:1;transition:transform .12s,background .15s}
+.ajout:hover{background:var(--rouge);color:#fff}
+.ajout:active{transform:scale(.88)}
+.ajout.pulse{animation:pulse .4s}
+@keyframes pulse{0%{transform:scale(1)}45%{transform:scale(1.28);background:var(--vert);
+  border-color:var(--vert);color:#fff}100%{transform:scale(1)}}
+
+.avis-alcool{background:var(--beige);border-left:4px solid var(--olive);padding:13px 16px;
+  border-radius:0 10px 10px 0;font-size:13.5px;color:var(--gris);margin:18px 0}
+
+/* ---------------- panier ---------------- */
+.panier-flot{position:fixed;right:16px;bottom:16px;z-index:120;
+  background:var(--rouge);color:#fff;border:0;border-radius:30px;cursor:pointer;
+  min-height:58px;padding:0 22px;display:none;align-items:center;gap:11px;
+  font-size:16px;font-weight:700;font-family:inherit;box-shadow:var(--ombre-f)}
+.panier-flot.on{display:inline-flex}
+.panier-flot .pastille{background:#fff;color:var(--rouge);border-radius:12px;
+  min-width:26px;height:24px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:14px;padding:0 7px}
+
+.tiroir{position:fixed;inset:0;z-index:140;display:none}
+.tiroir.on{display:block}
+.voile{position:absolute;inset:0;background:rgba(28,28,26,.55);animation:fade .2s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.feuille{position:absolute;right:0;top:0;bottom:0;width:min(460px,100%);
+  background:var(--fond);display:flex;flex-direction:column;animation:glisse .26s cubic-bezier(.2,.8,.3,1)}
+@keyframes glisse{from{transform:translateX(100%)}to{transform:translateX(0)}}
+/* Le tiroir defile d'un seul bloc. Avec un en-tete fige et un pied fige,
+   le formulaire de commande se retrouvait coince entre les deux et le
+   bouton d'envoi sortait de l'ecran sur un telephone court : injouable. */
+.feuille{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.feuille header{position:sticky;top:0;z-index:3;display:flex;align-items:center;
+  justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--trait);
+  background:var(--creme)}
+.feuille h2{font-size:20px;color:var(--rougef)}
+.fermer{background:none;border:0;font-size:26px;cursor:pointer;color:var(--gris);
+  min-width:44px;min-height:44px;line-height:1;font-family:inherit}
+.feuille .corps{flex:1 0 auto;padding:16px 18px}
+.feuille .pied{flex:none;padding:16px 18px 26px;border-top:1px solid var(--trait);background:var(--creme)}
+
+.lg-panier{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--trait)}
+.lg-panier .nm{flex:1;min-width:0;font-size:14.5px;font-weight:600}
+.lg-panier .px{font-weight:700;white-space:nowrap;font-size:15px}
+.qte{display:flex;align-items:center;gap:2px;background:var(--beige);border-radius:20px;padding:2px}
+.qte button{width:38px;height:38px;border-radius:19px;border:0;background:transparent;
+  font-size:19px;cursor:pointer;color:var(--rougef);font-family:inherit;font-weight:700}
+.qte button:hover{background:var(--trait)}
+.qte span{min-width:26px;text-align:center;font-weight:700;font-size:15px}
+
+.total{display:flex;justify-content:space-between;font-size:20px;font-weight:700;
+  margin-bottom:6px;font-family:Georgia,serif}
+.mention-tva{font-size:12px;color:var(--gris);margin-bottom:14px}
+
+/* ---------------- formulaires ---------------- */
+label{display:block;font-size:12px;font-weight:700;color:var(--gris);
+  text-transform:uppercase;letter-spacing:.05em;margin:14px 0 5px}
+input,select,textarea{width:100%;min-height:50px;padding:12px 14px;border-radius:11px;
+  border:1.5px solid var(--trait);background:var(--creme);font-size:16px;
+  font-family:inherit;color:var(--texte)}
+textarea{min-height:80px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--olive);outline:none}
+input[aria-invalid="true"]{border-color:var(--rouge);background:#FDF4F4}
+.err{color:var(--rouge);font-size:13px;margin-top:5px;font-weight:600}
+.aide{font-size:12.5px;color:var(--gris);margin-top:5px;text-transform:none;
+  letter-spacing:0;font-weight:400}
+.creneaux{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.creneau{min-height:46px;border-radius:11px;border:1.5px solid var(--trait);
+  background:var(--creme);cursor:pointer;font-size:15px;font-weight:600;font-family:inherit;color:var(--texte)}
+.creneau[aria-pressed="true"]{background:var(--rouge);color:#fff;border-color:var(--rouge)}
+.creneau:disabled{opacity:.4;cursor:not-allowed;text-decoration:line-through}
+.case{display:flex;gap:11px;align-items:flex-start;margin:16px 0;
+  font-size:13.5px;color:var(--texte);text-transform:none;letter-spacing:0;font-weight:400}
+.case input{width:24px;height:24px;min-height:24px;flex:none;margin-top:1px;accent-color:var(--rouge)}
+
+/* ---------------- etats de commande ---------------- */
+.etat{text-align:center;padding:34px 22px}
+.etat .pic{font-size:56px;line-height:1;margin-bottom:14px}
+.etat h3{font-size:24px;margin-bottom:10px}
+.etat p{color:var(--gris);font-size:15px;margin:0 auto 8px;max-width:380px}
+.etat.ok h3{color:var(--vert)}
+.etat.non h3{color:var(--rouge)}
+.sablier{width:52px;height:52px;border:5px solid var(--beige);border-top-color:var(--rouge);
+  border-radius:50%;margin:0 auto 18px;animation:tourne 1s linear infinite}
+@keyframes tourne{to{transform:rotate(360deg)}}
+.recap{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
+  padding:16px;text-align:left;margin-top:18px;font-size:14px}
+.recap .l{display:flex;justify-content:space-between;padding:4px 0}
+.code-retrait{font-family:Georgia,serif;font-size:34px;font-weight:700;color:var(--rougef);
+  letter-spacing:.16em;text-align:center;padding:14px;background:var(--beige);
+  border-radius:12px;margin:14px 0}
+
+/* ---------------- infos & carte ---------------- */
+.grille-infos{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px}
+.carte-bloc{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
+  padding:22px;box-shadow:var(--ombre)}
+.carte-bloc h3{font-size:19px;color:var(--rougef);margin-bottom:12px}
+.horaires{list-style:none;padding:0;margin:0;font-size:14.5px}
+.horaires li{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--trait)}
+.horaires li:last-child{border-bottom:0}
+.horaires .j{font-weight:600}
+.horaires .ferme{color:var(--gris);font-style:italic}
+.horaires li.auj{background:var(--beige);margin:0 -10px;padding:7px 10px;border-radius:8px}
+
+.plan{border-radius:var(--r);overflow:hidden;border:1px solid var(--trait);
+  position:relative;min-height:260px;background:var(--beige)}
+.plan iframe{width:100%;height:300px;border:0;display:block;position:relative;z-index:2}
+.plan .repli{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;color:var(--gris)}
+
+/* ---------------- avis ---------------- */
+.avis-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.plateforme{background:var(--creme);border:1px solid var(--trait);border-radius:var(--r);
+  padding:20px;text-align:center;text-decoration:none;color:inherit;display:block;
+  transition:transform .12s,box-shadow .15s}
+.plateforme:hover{transform:translateY(-3px);box-shadow:var(--ombre-f)}
+.plateforme .ic{font-size:32px;margin-bottom:8px}
+.plateforme .nm{font-weight:700;font-size:16px;color:var(--rougef)}
+.plateforme .ds{font-size:13px;color:var(--gris);margin-top:4px}
+.temoin{background:var(--creme);border:1px solid var(--trait);border-left:4px solid var(--olive);
+  border-radius:0 var(--r) var(--r) 0;padding:18px}
+.temoin .txt{font-style:italic;font-size:14.5px}
+.temoin .sig{font-size:13px;color:var(--gris);margin-top:10px;font-weight:600}
+.etoiles{color:#D9A21B;font-size:15px;letter-spacing:2px}
+
+/* ---------------- pied de page ---------------- */
+footer{background:var(--ardoise);color:var(--craie);padding:42px 0 26px;font-size:14px}
+footer h4{font-family:Georgia,serif;font-size:16px;margin:0 0 12px;color:#fff}
+.grille-pied{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:26px;margin-bottom:26px}
+footer a{color:var(--craie);text-decoration:none;opacity:.85;display:inline-block;padding:5px 0}
+footer a:hover{opacity:1;text-decoration:underline}
+footer ul{list-style:none;padding:0;margin:0}
+.bas-pied{border-top:1px solid rgba(242,237,226,.18);padding-top:18px;
+  display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:12.5px;opacity:.72}
+
+/* ---------------- pages legales ---------------- */
+.legal{display:none}
+.legal.on{display:block}
+.legal h2{font-size:26px;color:var(--rougef);margin-bottom:6px}
+.legal h3{font-size:17px;color:var(--texte);margin:24px 0 8px}
+.legal p,.legal li{font-size:14.5px;color:var(--texte)}
+.legal .maj{font-size:13px;color:var(--gris);margin-bottom:22px}
+.legal .encadre{background:var(--creme);border:1px solid var(--trait);
+  border-radius:var(--r);padding:18px;margin:16px 0}
+.legal table{width:100%;border-collapse:collapse;font-size:14px;margin:14px 0}
+.legal th,.legal td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--trait);vertical-align:top}
+.legal th{background:var(--beige);font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
+.retour{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 16px;
+  background:var(--beige);border-radius:22px;text-decoration:none;font-weight:600;
+  color:var(--texte);margin-bottom:22px}
+
+/* ---------------- notification ---------------- */
+.toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(20px);
+  background:var(--ardoise);color:var(--craie);padding:13px 22px;border-radius:26px;
+  font-size:14.5px;font-weight:600;z-index:160;opacity:0;pointer-events:none;
+  transition:opacity .22s,transform .22s;box-shadow:var(--ombre-f);max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------------- responsive ---------------- */
+@media(max-width:860px){
+  .barre{flex-wrap:wrap;gap:10px}
+  .marque{order:1;flex:1 1 0;min-width:0}
+  .tel-btn{order:2;flex:none;max-width:52%}
+  nav.onglets{order:3;width:100%;border-top:1px solid var(--trait);padding-top:6px}
+  .marque .n{font-size:17px}
+}
+@media(max-width:520px){
+  section{padding:34px 0}
+  .marque img{width:40px;height:40px}
+  .marque .s{display:none}
+  .tel-btn span{display:none}
+  .tel-btn{padding:0 15px;min-width:48px;justify-content:center}
+  .plats{grid-template-columns:1fr}
+  .hero .in{padding:44px 18px}
+  .panier-flot{left:16px;right:16px;justify-content:center}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+  html{scroll-behavior:auto}
+}
+
+@media print{
+  header,nav,.panier-flot,.tiroir,.btn,.ajout,footer,.filtres{display:none !important}
+  body{background:#fff}
+  section{padding:14px 0}
+}
+
+/* ============================================================================
+   Addon « QR code du menu » — ajout durci 11.1 (injecté dans site.css)
+   ============================================================================
+   Interface optimisée pour petits écrans tactiles :
+   * bouton flottant « QR » (58 px, zone sûre iOS, en bas à GAUCHE pour ne
+     pas gêner le bouton panier qui est en bas à droite),
+   * plein écran de lecture : QR très grand (min(78vw, 62vh)), contraste
+     maximal, bord blanc de sécurité, fond sombre,
+   * bouton Fermer ≥ 48 px pleine largeur (cible tactile confortable),
+   * suppression du délai de 300 ms et des surbrillances tactiles par défaut,
+   * respect de prefers-reduced-motion.
+   ========================================================================== */
+
+/* --- Bouton flottant « QR » ------------------------------------------- */
+#btn-qr{
+  position:fixed;left:16px;bottom:16px;z-index:110;
+  width:58px;height:58px;border-radius:50%;border:0;cursor:pointer;
+  background:var(--rouge,#A51822);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:700;font-family:inherit;
+  box-shadow:0 4px 14px rgba(0,0,0,.35);
+  touch-action:manipulation;                 /* pas de double-tap zoom */
+  -webkit-tap-highlight-color:transparent;
+  padding:0;
+}
+#btn-qr svg{width:30px;height:30px;display:block}
+#btn-qr:active{transform:scale(.94)}
+#btn-qr:focus-visible{outline:3px solid var(--olive,#8A8A55);outline-offset:2px}
+
+/* Zone sûre (encoches, barres de navigation iOS/Android) */
+@supports(padding:max(0px)){
+  #btn-qr{left:max(16px,env(safe-area-inset-left));
+          bottom:max(16px,env(safe-area-inset-bottom))}
+}
+
+/* --- Plein écran de lecture ------------------------------------------- */
+#qr-overlay{
+  position:fixed;inset:0;z-index:130;
+  background:rgba(20,18,16,.72);
+  display:none;align-items:center;justify-content:center;
+  padding:18px;
+  touch-action:manipulation;
+}
+#qr-overlay.on{display:flex}
+
+#qr-carte{
+  background:#fff;border-radius:22px;width:100%;max-width:380px;
+  padding:26px 22px 20px;text-align:center;
+  box-shadow:0 18px 50px rgba(0,0,0,.45);
+  max-height:92vh;overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+#qr-carte h2{
+  margin:0 0 6px;color:var(--texte,#2B2B28);
+  font-size:clamp(19px,5vw,23px);line-height:1.25;
+}
+#qr-carte .qr-sous{color:var(--gris,#6E6A63);font-size:14px;margin:0 0 14px}
+
+/* Le QR : la plus grande taille lisible sur petit écran */
+#qr-carte .qr-canvas{
+  width:min(78vw,62vh,320px);margin:0 auto;
+  border:10px solid #fff;border-radius:12px;  /* bord blanc = zone de sécurité */
+  box-shadow:0 0 0 2px rgba(0,0,0,.08);
+}
+#qr-carte canvas{display:block;width:100%;height:auto}
+
+#qr-carte .qr-url{
+  color:var(--gris,#6E6A63);font-size:12.5px;margin:12px 2px 0;
+  word-break:break-all;line-height:1.4;
+}
+#qr-fermer{
+  margin-top:16px;width:100%;min-height:50px;border:0;border-radius:14px;
+  background:var(--rouge,#A51822);color:#fff;
+  font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+#qr-fermer:active{transform:scale(.97)}
+#qr-fermer:focus-visible{outline:3px solid var(--olive,#8A8A55);outline-offset:2px}
+
+/* --- Petits écrans : densité revue -------------------------------- */
+@media(max-width:380px){
+  #qr-carte{padding:20px 14px 16px;border-radius:18px}
+  #qr-carte .qr-canvas{width:min(82vw,54vh)}
+}
+@media(max-height:560px){
+  #qr-carte .qr-sous{display:none}          /* gagne de la hauteur */
+  #qr-carte .qr-canvas{width:min(64vw,58vh)}
+}
+@media(prefers-reduced-motion:reduce){
+  #qr-overlay,#qr-carte{transition:none !important}
+}
+
+/* ============================================================================
+   Addon « Outils de conformité » — styles (injecté dans site.css)
+   ============================================================================
+   Écrans e-reporting et Factur-X : même langage visuel que le site
+   (variables --rouge, --creme…), optimisé pour tablettes tactiles et
+   petits écrans (boutons ≥ 44 px, formulaires pleine largeur).
+   ========================================================================== */
+
+#oc-overlay{
+  position:fixed;inset:0;z-index:140;
+  background:rgba(20,18,16,.72);
+  display:none;align-items:center;justify-content:center;
+  padding:16px;touch-action:manipulation;
+}
+#oc-overlay.on{display:flex}
+
+#oc-carte{
+  background:#fff;border-radius:20px;width:100%;max-width:440px;
+  max-height:92vh;overflow:auto;-webkit-overflow-scrolling:touch;
+  padding:18px 20px 22px;box-shadow:0 18px 50px rgba(0,0,0,.45);
+}
+#oc-entete{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#oc-titre{margin:0;color:var(--texte,#2B2B28);font-size:clamp(18px,4.6vw,22px)}
+#oc-fermer{
+  width:44px;height:44px;border:0;border-radius:50%;cursor:pointer;
+  background:var(--creme,#FDFAF3);color:var(--rouge,#A51822);
+  font-size:24px;line-height:1;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+#oc-sous{color:var(--gris,#6E6A63);font-size:13.5px;margin:4px 0 12px}
+
+/* --- navigation entre outils --- */
+.oc-nav{display:flex;gap:8px;margin-bottom:14px}
+.oc-nav-btn{
+  flex:1;min-height:44px;border:1.5px solid var(--trait,#D8CFC0);
+  border-radius:12px;background:var(--creme,#FDFAF3);color:var(--texte,#2B2B28);
+  font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.oc-nav-btn:active{transform:scale(.97)}
+
+/* --- formulaires --- */
+.oc-form{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.oc-form label{font-size:13.5px;color:var(--texte,#2B2B28);font-weight:600}
+.oc-form input[type="date"]{
+  display:block;width:100%;min-height:46px;margin-top:4px;
+  border:1.5px solid var(--trait,#D8CFC0);border-radius:10px;
+  padding:0 10px;font-size:16px;font-family:inherit;background:#fff;
+}
+.oc-form input[type="file"]{font-size:13.5px;min-height:44px}
+
+.oc-btn{
+  min-height:48px;border:0;border-radius:12px;background:var(--rouge,#A51822);
+  color:#fff;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;
+  padding:0 14px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.oc-btn:active{transform:scale(.97)}
+.oc-btn-sec{background:var(--creme,#FDFAF3);color:var(--texte,#2B2B28);border:1.5px solid var(--trait,#D8CFC0)}
+.oc-btns{display:flex;gap:10px;margin-top:12px}
+.oc-btns .oc-btn{flex:1}
+
+/* --- tableaux / résultats --- */
+.oc-tab{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+.oc-tab th{background:var(--creme,#FDFAF3);color:var(--texte,#2B2B28);
+  text-align:left;padding:8px 6px;border-bottom:2px solid var(--trait,#D8CFC0)}
+.oc-tab td{padding:7px 6px;border-bottom:1px solid var(--trait,#D8CFC0);color:var(--texte,#2B2B28)}
+.oc-tab tr:last-child td{border-bottom:0}
+
+.oc-info{color:var(--gris,#6E6A63);font-size:14px;margin:8px 0}
+.oc-err{color:var(--rouge,#A51822);font-size:14px;margin:8px 0}
+.oc-good{color:var(--vert,#3E6B2E);font-size:14px;margin:8px 0}
+.oc-bad{color:var(--rouge,#A51822);font-size:14px;margin:8px 0;font-weight:700}
+.oc-small{color:var(--gris,#6E6A63);font-size:12px;margin:4px 0}
+.oc-h3{font-size:15px;color:var(--rougef,#7A1018);margin:18px 0 6px}
+
+.oc-carte{border:1.5px solid var(--trait,#D8CFC0);border-radius:12px;
+  padding:12px 14px;margin-top:10px;background:var(--creme,#FDFAF3)}
+.oc-carte p{margin:4px 0;font-size:13.5px;color:var(--texte,#2B2B28)}
+.oc-carte .oc-btn{margin-top:10px;width:100%}
+
+/* petits écrans : densité revue */
+@media(max-width:380px){
+  #oc-carte{padding:14px 12px 18px}
+  .oc-nav{flex-direction:column}
+}
+@media(prefers-reduced-motion:reduce){
+  #oc-overlay,#oc-carte{transition:none !important}
+}
+
+/* --- Bouton flottant « Outils » (au-dessus du bouton QR) --------------- */
+#btn-outils{
+  position:fixed;left:16px;bottom:84px;z-index:110;
+  width:58px;height:58px;border-radius:50%;border:0;cursor:pointer;
+  background:var(--creme,#FDFAF3);color:var(--rouge,#A51822);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;line-height:1;
+  box-shadow:0 4px 14px rgba(0,0,0,.28);
+  border:1.5px solid var(--trait,#D8CFC0);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+#btn-outils:active{transform:scale(.94)}
+#btn-outils:focus-visible{outline:3px solid var(--olive,#8A8A55);outline-offset:2px}
+@supports(padding:max(0px)){
+  #btn-outils{left:max(16px,env(safe-area-inset-left));
+              bottom:calc(max(16px,env(safe-area-inset-bottom)) + 68px)}
+}
+
+/* --- Écran code PIN ---------------------------------------------------- */
+.oc-pin input[type="password"]{
+  display:block;width:100%;min-height:50px;margin-top:4px;
+  border:1.5px solid var(--trait,#D8CFC0);border-radius:10px;
+  padding:0 12px;font-size:20px;letter-spacing:.4em;text-align:center;
+  font-family:inherit;background:#fff;
+}
+.oc-nav-pin{flex:0 0 auto;max-width:86px;font-size:12.5px}
+
+/* ============================================================================
+   Addon « Pourboire numérique » — styles (injecté dans site.css)
+   ============================================================================
+   Bloc pourboire dans le tiroir de commande : gros boutons tactiles,
+   cohérents avec le thème du site.
+   ========================================================================== */
+
+#pourboire-bloc{
+  margin:12px 0 4px;padding:12px 14px;
+  background:var(--creme,#FDFAF3);border:1.5px dashed var(--trait,#D8CFC0);
+  border-radius:12px;
+}
+.pourboire-titre{
+  margin:0 0 8px;font-size:13.5px;font-weight:700;color:var(--texte,#2B2B28);
+}
+.pourboire-titre span{font-weight:400;color:var(--gris,#6E6A63);font-size:12px}
+.pourboire-options{display:flex;gap:7px;flex-wrap:wrap}
+.pb-btn{
+  min-width:52px;min-height:46px;flex:1;max-width:92px;
+  border:1.5px solid var(--trait,#D8CFC0);border-radius:11px;
+  background:#fff;color:var(--texte,#2B2B28);
+  font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.pb-btn:active{transform:scale(.95)}
+.pb-btn.sel,.pb-btn[aria-pressed="true"]{
+  background:var(--rouge,#A51822);border-color:var(--rouge,#A51822);color:#fff;
+}
+.pourboire-libre{margin-top:9px;display:flex;flex-direction:column;gap:5px}
+.pourboire-libre label{font-size:12.5px;color:var(--gris,#6E6A63)}
+.pourboire-libre input{
+  min-height:44px;border:1.5px solid var(--trait,#D8CFC0);border-radius:10px;
+  padding:0 10px;font-size:16px;font-family:inherit;background:#fff;width:100%;
+}
+.pourboire-total{
+  margin:8px 0 0;font-size:12.5px;color:var(--vert,#3E6B2E);font-weight:600;
+}
+.pourboire-dont{
+  margin:2px 0 0;font-size:12.5px;color:var(--gris,#6E6A63);text-align:right;
+}
+
+/* ============================================================================
+   Addon « Mode de paiement & carte de fidélité » — styles (site.css)
+   ========================================================================== */
+
+#paiement-bloc{
+  margin:10px 0 4px;padding:12px 14px;
+  background:var(--creme,#FDFAF3);border:1.5px solid var(--trait,#D8CFC0);
+  border-radius:12px;
+}
+.paiement-titre{
+  margin:0 0 8px;font-size:13.5px;font-weight:700;color:var(--texte,#2B2B28);
+}
+.paiement-titre span{font-weight:400;color:var(--gris,#6E6A63);font-size:12px}
+.paiement-options{display:flex;flex-wrap:wrap;gap:7px}
+.pm-opt{
+  flex:1 1 40%;min-width:120px;position:relative;cursor:pointer;
+}
+.pm-opt input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer}
+.pm-opt span{
+  display:flex;align-items:center;justify-content:center;min-height:46px;
+  border:1.5px solid var(--trait,#D8CFC0);border-radius:11px;background:#fff;
+  color:var(--texte,#2B2B28);font-size:14px;font-weight:600;text-align:center;
+  padding:0 8px;touch-action:manipulation;
+}
+.pm-opt input:checked + span{
+  background:var(--rouge,#A51822);border-color:var(--rouge,#A51822);color:#fff;
+}
+.pm-opt input:focus-visible + span{outline:3px solid var(--olive,#8A8A55);outline-offset:2px}
+
+.paiement-fidelite{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.paiement-fidelite label{font-size:12.5px;color:var(--gris,#6E6A63)}
+.paiement-fidelite input{
+  min-height:44px;border:1.5px solid var(--trait,#D8CFC0);border-radius:10px;
+  padding:0 10px;font-size:15px;font-family:inherit;background:#fff;width:100%;
+}
+.paiement-aide{font-size:12px;color:var(--gris,#6E6A63);margin:2px 0 0}
+.paiement-tip{
+  margin:9px 0 0;font-size:12px;color:var(--olive,#8A8A55);font-weight:600;
+}
+.paiement-recap{
+  margin:2px 0 0;font-size:12.5px;color:var(--texte,#2B2B28);text-align:right;
+  font-weight:600;
+}
+
+/* Section d'information « Carte de fidélité » sur la page */
+#fidelite-info{background:var(--creme,#FDFAF3)}
+#fidelite-info p{font-size:15px;line-height:1.6;margin:10px 0}
+
+/* APK Premium header — accessible sur petits écrans. */
+#lt-premium-header{position:sticky;top:0;z-index:100;background:#fffdf8;color:#18231f;box-shadow:0 3px 18px rgba(24,35,31,.12);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}#lt-premium-header .lt-head-main{min-height:72px;display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid #e7ded0}.lt-brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:#18231f;min-width:145px}.lt-mark{width:42px;height:42px;border:1px solid #c99b4a;border-radius:50%;display:grid;place-items:center;color:#b84232;font-family:Georgia,serif;font-weight:bold}.lt-brand b{font:700 18px Georgia,serif;display:block;color:#7a1018}.lt-brand small{display:block;font-size:10px;color:#72766e;letter-spacing:.08em;text-transform:uppercase}.lt-search{height:42px;flex:1;display:flex;align-items:center;gap:6px;border:1px solid #d8cfc0;border-radius:24px;background:#f4f1ea;padding:0 12px;color:#7a1018}.lt-search span{font-size:24px;line-height:1}.lt-search input{width:100%;border:0;outline:0;background:transparent;font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#18231f}.lt-head-nav{display:flex;gap:2px;overflow-x:auto;white-space:nowrap;background:#24312b;padding:5px 10px;scrollbar-width:none}.lt-head-nav::-webkit-scrollbar{display:none}.lt-head-nav a{color:#f8f4ec;text-decoration:none;padding:11px 14px;border-radius:4px;font-size:13px;font-weight:600}.lt-head-nav a:hover,.lt-head-nav a:focus{background:#b84232;outline:2px solid #f5d67b;outline-offset:-2px}@media(max-width:480px){#lt-premium-header .lt-head-main{padding:8px 10px;gap:9px}.lt-brand{min-width:0}.lt-brand b{font-size:16px}.lt-brand small{font-size:8px}.lt-mark{width:38px;height:38px}.lt-search{min-width:0;height:40px}.lt-search input{font-size:13px}.lt-head-nav a{padding:10px 12px;font-size:12px}}
+
+/* ============================================================================
+   Addon « Modes App : Client & Partenaire » — styles (site.css)
+   ========================================================================== */
+
+/* --- Barre sociale rapide sous le hero --- */
+.barre-sociale{
+  display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px;
+}
+.bs-btn{
+  display:inline-flex;align-items:center;gap:6px;min-height:46px;
+  padding:0 14px;border-radius:23px;border:0;cursor:pointer;
+  background:rgba(255,255,255,.16);color:#fff;text-decoration:none;
+  font-size:14px;font-weight:700;font-family:inherit;backdrop-filter:blur(4px);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.bs-btn:active{transform:scale(.95)}
+.bs-tel{background:var(--rouge,#A51822)}
+
+/* --- Raccourci « réserver par téléphone » sous le menu --- */
+.reserver-tel{
+  margin:18px auto 0;max-width:620px;text-align:center;
+  font-size:15px;color:var(--texte,#2B2B28);
+  background:var(--creme,#FDFAF3);border:1.5px dashed var(--trait,#D8CFC0);
+  border-radius:12px;padding:12px 14px;
+}
+.reserver-tel a{color:var(--rouge,#A51822);font-weight:700;text-decoration:none}
+
+/* --- Espace Partenaires --- */
+#partenaires{background:var(--creme,#FDFAF3)}
+#partenaires .carte-bloc{text-align:left}
+#partenaires input[type="text"],#partenaires textarea{
+  width:100%;min-height:44px;border:1.5px solid var(--trait,#D8CFC0);
+  border-radius:10px;padding:8px 10px;font-size:15px;font-family:inherit;
+  background:#fff;margin:4px 0 10px;
+}
+#partenaires textarea{min-height:90px}
+
+/* --- En mode app : le contenu reste lisible, sans outil de gestion --- */
+.mode-app #btn-outils,
+.mode-app #btn-qr{display:none !important}

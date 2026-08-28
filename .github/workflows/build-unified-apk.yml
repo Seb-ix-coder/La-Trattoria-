@@ -1,0 +1,49 @@
+name: Build APK native unifiée
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/01a046da-la-trattoria
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Dépendances de vérification
+        run: python -m pip install -r build/requirements.txt
+      - name: Compilation native et assemblage sans signature
+        run: bash build/build_final_apk.sh build/out/trato-unifie-1.4-stable-unsigned.apk
+      - name: Vérifier le paquet non signé
+        run: |
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+          p=Path('build/out/trato-unifie-1.4-stable-unsigned.apk')
+          with zipfile.ZipFile(p) as z:
+              assert z.testzip() is None
+              assert 'classes.dex' in z.namelist()
+              assert 'assets/public-shell.html' in z.namelist()
+          print(p, p.stat().st_size)
+          PY
+      - name: Publier l'APK compilée pour signature locale
+        uses: actions/upload-artifact@v4
+        with:
+          name: trato-unifie-1.4-stable-unsigned
+          path: build/out/trato-unifie-1.4-stable-unsigned.apk
+          if-no-files-found: error
+          retention-days: 7

@@ -30,10 +30,25 @@ social, cartes imprimables. **Tout le projet vit dans cette branche.**
 | `INFORMATIONS_LEGALES.md` | **Mentions légales / CGV / RGPD officielles** (SIRET, contact, LWS) — affichées sur le site et l'application |
 | `FIDELITE_PAIEMENT_PRODUITS.md`, `FACTURATION_ELECTRONIQUE.md`, `MENTIONS_LEGALES_2027.md` | Fonctionnalités et conformité |
 
+## Livrable natif unifié
+
+La version recommandée pour la branche de refonte est **`trato-unifie-1.4-stable.apk`**
+(package `com.trattoria.cartes`, versionName `1.4`, versionCode `5`). Elle est
+compilée depuis `build/app-src/src/com/trattoria/cartes/`, avec le header natif
+premium et le site public intégré dans les assets de la base Gestion 1.3.
+La stratégie de fusion et les limites de mise à jour sont décrites dans
+[`docs/APK_FUSION_ANALYSIS.md`](docs/APK_FUSION_ANALYSIS.md).
+
+Les APK `trato-12.6-stable.apk`, `trato-12.7-stable.apk` et
+`trato-12.8-stable.apk` restent des références de la famille
+`com.trattoria.commande` et ne sont pas modifiées. Elles ne sont pas
+interchangeables avec le package natif `com.trattoria.cartes`.
+
 ## L'application unique
 
-Installer **`trato-11.5-stable.apk`** (version stable, voir
-`VERSION_STABLE_11.5.md`) : la
+Installer **`trato-unifie-1.4-stable.apk`** pour la nouvelle base native. La
+version historique **`trato-11.5-stable.apk`** reste documentée dans
+`VERSION_STABLE_11.5.md` : la
 tablette sert **toute** l'offre sur le Wi-Fi local du restaurant (port
 `8720`) :
 
@@ -74,6 +89,8 @@ python3 build/make_qrcode.py "http://<IP>:8720/?client" qr/QR-app-client.png --l
 # Carte A4 des plats du jour : voir les fichiers carte-plats-du-jour.* (prêts à imprimer)
 ```
 
-> ⚠️ Le dépôt ne contient pas le **code source** de l'application Android ;
-> l'intégration s'appuie sur l'outillage `build/` (patch + signature) —
-> voir `build/README.md` et `docs/ANALYSE.md`.
+> Le dépôt contient désormais la source Java native de la base Gestion dans
+> `build/app-src/src/`, le shell public, les assets et le pipeline de
+> recompilation. La compilation exige JDK 17 ; voir `build/README_UNIFIED.md`.
+> L'ancienne famille `com.trattoria.commande` reste analysée mais n'est pas
+> mélangée au DEX final.
