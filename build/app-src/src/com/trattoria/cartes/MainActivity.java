@@ -205,6 +205,11 @@ public class MainActivity extends Activity {
         v.setLayoutParams(new LinearLayout.LayoutParams(1, dp(h)));
         return v;
     }
+    private View espaceLargeur(int w) {
+        View v = new View(this);
+        v.setLayoutParams(new LinearLayout.LayoutParams(dp(w), 1));
+        return v;
+    }
     private EditText champ(String valeur, String hint) {
         EditText e = new EditText(this);
         e.setText(valeur);
@@ -425,44 +430,115 @@ public class MainActivity extends Activity {
     }
 
     private void ecranSalle() {
-        // commandes en ligne reçues
-        JSONArray enLigne = commandesEnLigne();
+        // Commandes en ligne reçues (v1.4 : statuts, types de commande, impression ticket, encaissement direct)
+        final JSONArray enLigne = commandesEnLigne();
         if (enLigne.length() > 0) {
-            contenu.addView(texte("🌐 Commandes du site (" + enLigne.length() + ")",
-                    15, ROUGE_F, true));
+            contenu.addView(texte("🌐 Commandes du site en direct (" + enLigne.length() + ")",
+                    15.5f, ROUGE_F, true));
             contenu.addView(espace(6));
             for (int i = enLigne.length() - 1; i >= 0; i--) {
                 final int idx = i;
                 final JSONObject c = enLigne.optJSONObject(i);
                 if (c == null) continue;
+                String st = s(c, "statut", "nouvelle");
+                String badgeStatut = "🆕 NOUVELLE";
+                String coulBadge = "#C29B38";
+                String fondCarte = "#FFFBF0";
+                if ("preparation".equals(st)) {
+                    badgeStatut = "👨‍🍳 EN PRÉPARATION";
+                    coulBadge = "#1976D2";
+                    fondCarte = "#F0F7FF";
+                } else if ("prete".equals(st)) {
+                    badgeStatut = "📦 PRÊTE";
+                    coulBadge = "#2E7D32";
+                    fondCarte = "#F0FFF4";
+                }
+
                 LinearLayout l = colonne();
-                l.setBackground(fondBord("#FFF7E6", "#E5C55B", 10, 1));
+                l.setBackground(fondBord(fondCarte, coulBadge, 12, 1));
                 l.setPadding(dp(12), dp(10), dp(12), dp(10));
-                l.addView(texte("🧾 " + s(c, "client", "Client") + " — " + s(c, "heure", ""),
-                        14.5f, "#2B2B28", true));
+
+                LinearLayout entete = new LinearLayout(this);
+                entete.setOrientation(LinearLayout.HORIZONTAL);
+                entete.setGravity(Gravity.CENTER_VERTICAL);
+                TextView tit = texte("🧾 " + s(c, "client", "Client") + " (#" + s(c, "ref", s(c, "heure", "")) + ")",
+                        14.5f, "#2B2B28", true);
+                tit.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                entete.addView(tit);
+                TextView bStat = texte(" " + badgeStatut + " ", 11.5f, "#FFFFFF", true);
+                bStat.setBackground(fondBord(coulBadge, coulBadge, 6, 0));
+                bStat.setPadding(dp(6), dp(2), dp(6), dp(2));
+                entete.addView(bStat);
+                l.addView(entete);
+
+                String canal = s(c, "typeCommande", "emporter");
+                String infoCanal = "emporter".equals(canal) ?
+                        ("🥡 À emporter — Retrait : " + s(c, "heureRetrait", "Dès que possible")) :
+                        ("🍽️ Sur place — Table " + s(c, "table", "-"));
+                l.addView(texte(infoCanal + "  ·  📞 " + s(c, "tel", "-") + "  ·  " + s(c, "heure", ""),
+                        12.5f, GRIS, false));
+
+                String note = s(c, "notes", "");
+                if (!note.isEmpty()) {
+                    l.addView(texte("📝 Note : " + note, 12.5f, "#7A1018", false));
+                }
+                l.addView(espace(4));
+
                 JSONArray lignes = jarr(c, "lignes");
                 for (int k = 0; k < lignes.length(); k++) {
                     JSONObject li = lignes.optJSONObject(k);
                     if (li != null)
                         l.addView(texte("  · " + li.optInt("q", 1) + " × " + s(li, "nom", "")
-                                + "  (" + eur(li.optDouble("pv", 0)) + ")", 12.5f, GRIS, false));
+                                + "  (" + eur(li.optDouble("pv", 0)) + ")", 12.5f, "#2B2B28", false));
                 }
-                l.addView(texte("Total : " + eur(c.optDouble("total", 0)), 13.5f, ROUGE_F, true));
+                l.addView(espace(4));
+                l.addView(texte("Total : " + eur(c.optDouble("total", 0)), 14, ROUGE_F, true));
                 l.addView(espace(6));
-                l.addView(bouton("Encaisser (vendre)", ROUGE, "#FFFFFF", new View.OnClickListener() {
+
+                // Actions rapides
+                LinearLayout actions = new LinearLayout(this);
+                actions.setOrientation(LinearLayout.HORIZONTAL);
+
+                if ("nouvelle".equals(st)) {
+                    actions.addView(bouton("👨‍🍳 Préparer", "#1976D2", "#FFFFFF", new View.OnClickListener() {
+                        public void onClick(View v) {
+                            try { c.put("statut", "preparation"); sauver(); afficher("salle"); }
+                            catch (Exception ignored) { }
+                        }
+                    }));
+                    actions.addView(espaceLargeur(6));
+                } else if ("preparation".equals(st)) {
+                    actions.addView(bouton("📦 Prête", "#2E7D32", "#FFFFFF", new View.OnClickListener() {
+                        public void onClick(View v) {
+                            try { c.put("statut", "prete"); sauver(); afficher("salle"); }
+                            catch (Exception ignored) { }
+                        }
+                    }));
+                    actions.addView(espaceLargeur(6));
+                }
+
+                actions.addView(bouton("🖨️ Ticket", BEIGE, "#2B2B28", new View.OnClickListener() {
+                    public void onClick(View v) { imprimerTicketCommande(c); }
+                }));
+                actions.addView(espaceLargeur(6));
+
+                actions.addView(bouton("💳 Encaisser", ROUGE, "#FFFFFF", new View.OnClickListener() {
                     public void onClick(View v) {
                         try {
-                            c.put("table", "Site");
+                            c.put("table", "Site " + s(c, "ref", ""));
                             c.put("canal", "enligne");
+                            c.put("statut", "encaissee");
                             ventes().put(c);
                             JSONArray garde = new JSONArray();
                             for (int k = 0; k < enLigne.length(); k++)
                                 if (k != idx) garde.put(enLigne.opt(k));
                             donnees.put("commandesEnLigne", garde);
-                            sauver(); afficher("salle"); toast("Vente enregistrée");
+                            sauver(); afficher("salle"); toast("Vente enregistrée (" + eur(c.optDouble("total", 0)) + ")");
                         } catch (Exception e) { toast("Erreur : " + e.getMessage()); }
                     }
                 }));
+
+                l.addView(actions);
                 contenu.addView(l);
                 contenu.addView(espace(6));
             }
@@ -790,24 +866,24 @@ public class MainActivity extends Activity {
     }
 
     // ==========================================================
-    //  SITE EN LIGNE (serveur local)
+    //  SITE EN LIGNE (serveur local v2)
     // ==========================================================
     private ServeurSite serveur = null;
 
     private void ecranSite() {
         boolean actif = serveur != null && serveur.estActif();
-        contenu.addView(texte("Le site clients est servi sur le réseau Wi-Fi du restaurant : "
-                + "les clients scannent l'adresse, composent leur panier et envoient leur commande, "
-                + "qui apparaît dans la Salle.", 13.5f, GRIS, false));
+        contenu.addView(texte("Le site clients v2 est servi en direct sur le réseau Wi-Fi du restaurant : "
+                + "les clients scannent le QR / ouvrent l'adresse, choisissent à emporter ou sur place, "
+                + "composent leur panier et transmettent leur commande en cuisine.", 13.5f, GRIS, false));
         contenu.addView(espace(12));
 
-        TextView etat = texte(actif ? "● Serveur ACTIF — port 8721" : "○ Serveur arrêté",
+        TextView etat = texte(actif ? "● Serveur Web v2 ACTIF — port 8721" : "○ Serveur arrêté",
                 16, actif ? "#2E7D32" : GRIS, true);
         contenu.addView(etat);
         contenu.addView(espace(8));
         if (actif) {
-            contenu.addView(texte("Adresse pour les clients (écran du restaurant) :\n"
-                    + adresseLocale() + ":" + 8721 + "/", 13, "#2B2B28", false));
+            contenu.addView(texte("Adresse pour les clients (écran / Wi-Fi du restaurant) :\nhttp://"
+                    + adresseLocale() + ":8721/", 13.5f, "#2B2B28", true));
             contenu.addView(espace(10));
             contenu.addView(bouton("⏹ Arrêter le serveur", "#7A1018", "#FFFFFF",
                     new View.OnClickListener() {
@@ -818,7 +894,7 @@ public class MainActivity extends Activity {
                         }
                     }));
         } else {
-            contenu.addView(bouton("▶ Démarrer le serveur", "#2E7D32", "#FFFFFF",
+            contenu.addView(bouton("▶ Démarrer le serveur Web v2", "#2E7D32", "#FFFFFF",
                     new View.OnClickListener() {
                         public void onClick(View v) {
                             demarrerServeur();
@@ -827,9 +903,14 @@ public class MainActivity extends Activity {
                     }));
         }
         contenu.addView(espace(10));
-        contenu.addView(bouton("👁️ Ouvrir le site (aperçu intégré)", ROUGE, "#FFFFFF",
+        contenu.addView(bouton("👁️ Ouvrir le site v2 (aperçu intégré)", ROUGE, "#FFFFFF",
                 new View.OnClickListener() {
                     public void onClick(View v) { ouvrirSiteApercu(); }
+                }));
+        contenu.addView(espace(6));
+        contenu.addView(bouton("📱 Simuler une commande web test", "#1976D2", "#FFFFFF",
+                new View.OnClickListener() {
+                    public void onClick(View v) { simulerCommandeTest(); }
                 }));
         contenu.addView(espace(6));
         contenu.addView(bouton("🔗 Partager l'adresse aux clients", BEIGE, "#2B2B28",
@@ -844,17 +925,58 @@ public class MainActivity extends Activity {
         contenu.addView(espace(16));
 
         JSONArray enLigne = commandesEnLigne();
-        contenu.addView(texte("Commandes reçues : " + enLigne.length(), 14, ROUGE_F, true));
+        contenu.addView(texte("Commandes en attente : " + enLigne.length(), 14.5f, ROUGE_F, true));
         contenu.addView(espace(6));
         for (int i = enLigne.length() - 1; i >= 0; i--) {
             JSONObject c = enLigne.optJSONObject(i);
             if (c == null) continue;
-            contenu.addView(texte("· " + s(c, "heure", "") + " — " + s(c, "client", "Client")
-                    + " — " + eur(c.optDouble("total", 0)), 13, "#2B2B28", false));
+            String canal = s(c, "typeCommande", "emporter");
+            String canalInfo = "emporter".equals(canal) ? "🥡 À emporter" : "🍽️ Table " + s(c, "table", "-");
+            String st = s(c, "statut", "nouvelle");
+            String badge = "nouvelle".equals(st) ? "🆕" : ("preparation".equals(st) ? "👨‍🍳" : "📦");
+            contenu.addView(texte(badge + " #" + s(c, "ref", s(c, "heure", "")) + " — " + s(c, "client", "Client")
+                    + " (" + canalInfo + ") — " + eur(c.optDouble("total", 0)), 13, "#2B2B28", false));
         }
         if (enLigne.length() > 0) {
             contenu.addView(espace(8));
-            contenu.addView(texte("Encaissez-les depuis l'écran Salle.", 12.5f, GRIS, false));
+            contenu.addView(bouton("🪑 Traiter les commandes dans la Salle", ROUGE, "#FFFFFF",
+                    new View.OnClickListener() {
+                        public void onClick(View v) { afficher("Salle"); }
+                    }));
+        }
+    }
+
+    private void simulerCommandeTest() {
+        try {
+            JSONObject c = new JSONObject();
+            String ref = "TR-" + ((int) (Math.random() * 900) + 100);
+            c.put("ref", ref);
+            c.put("date", aujourdhui());
+            c.put("heure", maintenant());
+            c.put("client", "Alexis Coudret (Test v2)");
+            c.put("tel", "06 27 21 31 90");
+            c.put("typeCommande", "emporter");
+            c.put("heureRetrait", "12h30");
+            c.put("notes", "Commande de test automatique");
+            c.put("canal", "enligne");
+            c.put("statut", "nouvelle");
+
+            JSONArray lignes = new JSONArray();
+            JSONObject l1 = new JSONObject();
+            l1.put("id", "p1"); l1.put("nom", "Pizza Margherita"); l1.put("pv", 12.50); l1.put("q", 2);
+            lignes.put(l1);
+            JSONObject l2 = new JSONObject();
+            l2.put("id", "p2"); l2.put("nom", "Tiramisù maison"); l2.put("pv", 6.50); l2.put("q", 2);
+            lignes.put(l2);
+            c.put("lignes", lignes);
+            c.put("total", 38.00);
+
+            commandesEnLigne().put(c);
+            sauver();
+            toast("✅ Commande test #" + ref + " créée !");
+            afficher("site");
+        } catch (Exception e) {
+            toast("Erreur : " + e.getMessage());
         }
     }
 
@@ -2436,22 +2558,96 @@ public class MainActivity extends Activity {
     }
 
     // ==========================================================
-    //  À propos
+    //  À propos & mentions (Gestion v1.4)
     // ==========================================================
     private void ecranAPropos() {
-        contenu.addView(texte("La Trattoria — Édition des cartes", 20, ROUGE_F, true));
+        contenu.addView(texte("La Trattoria — Gestion v1.4", 21, ROUGE_F, true));
         contenu.addView(espace(8));
-        contenu.addView(texte("Application native d'édition des cartes du restaurant. "
-                + "Les modifications sont enregistrées sur l'appareil et publiées sur le "
-                + "site par le module carte de l'application principale (port 8720).", 14, "#2B2B28", false));
+        contenu.addView(texte("Application native complète de gestion du restaurant La Trattoria (Saintes) :\n\n"
+                + "• 🪑 Salle & Commandes : plan de salle, tables libres/occupées, encaissement, commandes du site en direct avec statuts (Reçue, En préparation, Prête) et impression de tickets\n"
+                + "• 📈 Ventes du jour : CA, nombre de tickets, ticket moyen, meilleures ventes\n"
+                + "• 🧾 Cartes & Impression : 84 produits standard, 6 cartes du moment craie/illustrées, ardoise et impression A4/PDF\n"
+                + "• 🌐 Site Web v2 intégré : serveur HTTP local port 8721, panier interactif, mode à emporter / sur place, confirmation avec n° de commande #TR-xxx\n"
+                + "• 📣 Communication : bannières d'annonces, promotions et nouveautés en direct sur le site\n"
+                + "• 🎯 Objectifs : suivi du CA et couverts du jour en direct\n"
+                + "• 📦 Stock & Fournisseurs : gestion de stock, alertes de seuil, commandes suggérées\n"
+                + "• 💼 Comptabilité : TVA ventilée (10 %, 5,5 %, 20 %), dépenses et résultat estimé\n"
+                + "• ♻️ Invendus : paniers anti-gaspi du jour\n"
+                + "• 👥 Personnel : registre de l'équipe et contrats\n"
+                + "• ⚙️ Administration & 💾 Données : export/import JSON compatible module carte", 13.5f, "#2B2B28", false));
         contenu.addView(espace(14));
         contenu.addView(texte("La Trattoria — 15 rue de la poste, 17100 Saintes\n"
                 + "SIRET 106 050 263 00016\n06 27 21 31 90 — alexis.coudret@outlook.fr", 13.5f, GRIS, false));
         contenu.addView(espace(14));
-        contenu.addView(texte("Mentions : prix affichés en euros. Sur les cartes du moment, "
-                + "les prix sont présentés hors taxes (TVA en sus) par défaut. "
+        contenu.addView(texte("Mentions : prix affichés en euros TTC, service compris. "
                 + "L'abus d'alcool est dangereux pour la santé. Interdiction de vente "
                 + "d'alcool aux mineurs (art. L. 3342-1 CSP).", 12.5f, GRIS, false));
+    }
+
+    // ==========================================================
+    //  Impression (A4, carte du moment ou ticket de commande)
+    // ==========================================================
+    private void imprimerTicketCommande(final JSONObject c) {
+        try {
+            StringBuilder h = new StringBuilder();
+            h.append("<!DOCTYPE html><html><head><meta charset='utf-8'><style>")
+                    .append("body{font-family:monospace;font-size:13px;margin:10px;color:#000}")
+                    .append(".c{text-align:center}.r{text-align:right}.b{font-weight:bold}")
+                    .append(".sep{border-bottom:1px dashed #000;margin:8px 0}")
+                    .append("</style></head><body>")
+                    .append("<div class='c b' style='font-size:16px'>LA TRATTORIA</div>")
+                    .append("<div class='c'>15 rue de la Poste, 17100 Saintes</div>")
+                    .append("<div class='c'>Tél : 06 27 21 31 90</div>")
+                    .append("<div class='sep'></div>")
+                    .append("<div class='b'>COMMANDE DU SITE #").append(ech(s(c, "ref", s(c, "heure", "")))).append("</div>")
+                    .append("<div>Date : ").append(ech(s(c, "date", aujourdhui()))).append(" ").append(ech(s(c, "heure", maintenant()))).append("</div>")
+                    .append("<div>Client : <span class='b'>").append(ech(s(c, "client", "Client"))).append("</span></div>")
+                    .append("<div>Tél : ").append(ech(s(c, "tel", "-"))).append("</div>");
+            String canal = s(c, "typeCommande", "emporter");
+            if ("emporter".equals(canal)) {
+                h.append("<div>Type : <span class='b'>À EMPORTER (").append(ech(s(c, "heureRetrait", "Dès que possible"))).append(")</span></div>");
+            } else {
+                h.append("<div>Type : <span class='b'>SUR PLACE (Table ").append(ech(s(c, "table", "-"))).append(")</span></div>");
+            }
+            String notes = s(c, "notes", "");
+            if (!notes.isEmpty()) h.append("<div>Note : <i>").append(ech(notes)).append("</i></div>");
+            h.append("<div class='sep'></div>");
+            JSONArray lignes = jarr(c, "lignes");
+            double total = c.optDouble("total", 0);
+            for (int i = 0; i < lignes.length(); i++) {
+                JSONObject li = lignes.optJSONObject(i);
+                if (li == null) continue;
+                int q = li.optInt("q", 1);
+                double pv = li.optDouble("pv", 0);
+                h.append("<div style='display:flex;justify-content:space-between'>")
+                        .append("<span>").append(q).append(" × ").append(ech(s(li, "nom", ""))).append("</span>")
+                        .append("<span>").append(eur(q * pv)).append("</span></div>");
+            }
+            h.append("<div class='sep'></div>")
+                    .append("<div class='r b' style='font-size:15px'>TOTAL : ").append(eur(total)).append("</div>")
+                    .append("<div class='sep'></div>")
+                    .append("<div class='c'>Merci de votre commande et à bientôt !</div>")
+                    .append("<div class='c' style='font-size:11px'>SIRET 106 050 263 00016 · TVA 10% incluse</div>")
+                    .append("</body></html>");
+
+            final String html = h.toString();
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    WebView wv = new WebView(MainActivity.this);
+                    wv.setWebViewClient(new WebViewClient() {
+                        @Override public void onPageFinished(WebView v, String url) {
+                            PrintManager pm = (PrintManager) getSystemService(Context.PRINT_SERVICE);
+                            String job = "Ticket-" + s(c, "ref", "site");
+                            pm.print(job, v.createPrintDocumentAdapter(job),
+                                    new android.print.PrintAttributes.Builder().build());
+                        }
+                    });
+                    wv.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
+                }
+            });
+        } catch (Exception e) {
+            toast("Erreur impression : " + e.getMessage());
+        }
     }
 
     // ==========================================================

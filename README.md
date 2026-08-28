@@ -4,6 +4,21 @@ Projet unique du restaurant **La Trattoria** (Saintes, 17100) : application de
 gestion, module de carte du jour, application client/partenaire avec module
 social, cartes imprimables. **Tout le projet vit dans cette branche.**
 
+## 🏪 Application native « La Trattoria — Gestion » v1.4 (Recommandée)
+
+L'application native complète de gestion du restaurant, compilée depuis les sources (`build/app-src/src/`) :
+- **Salle & Commandes** : plan de salle, tables libres/occupées, encaissement, suivi en direct des commandes du site avec statuts (🆕 Reçue, 👨‍🍳 Préparation, 📦 Prête, 💳 Encaissée) et impression de tickets (WebView + PrintManager).
+- **Ventes du jour** : CA, nombre de tickets, ticket moyen, meilleures ventes, réimpression.
+- **Cartes & Cartes du moment** : 84 produits standard éditables CRUD + 6 cartes du moment craie/illustrées (glaces L'Angelys, vins, bières, desserts...), prix HT, mentions et impression A4/craie (PDF).
+- **Site Web Clients v2 intégré** : serveur HTTP local port 8721, interface responsive moderne, recherche instantanée, onglets de catégories, panier interactif flottant, choix à emporter / sur place, confirmation avec n° de commande `#TR-xxx`.
+- **Espace Communication** : bannières visuelles (annonces, promotions, nouveautés) diffusées en direct sur le site clients.
+- **Gestion quotidienne** : Objectifs journaliers (CA et couverts), Stock & commandes fournisseurs, Comptabilité (TVA ventilée 10 %, 5,5 %, 20 %), Invendus anti-gaspi, Personnel & contrats, Administration et Données (export/import JSON).
+
+| Artefact | Description |
+|---|---|
+| `trato-gestion-1.4.apk` | **⭐ Version Gestion v1.4 recommandée** (versionCode 5, 0,26 Mo) : signé v1+v2 avec keystore stable — mise à jour directe |
+| `trato-gestion-1.4.zip` | Archive de distribution de la v1.4 |
+
 ## Contenu du dépôt
 
 | Élément | Description |
