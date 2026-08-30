@@ -37,8 +37,12 @@ sans toucher au bytecode :
     (resign.py).
 
 Usage :
-  python3 build/integrer_carte.py SRC_APK CARTE_DIR KEYSTORE.p12 MOT_DE_PASSE OUT_APK \
+  KEYSTORE_PASSWORD=... python3 build/integrer_carte.py \
+      SRC_APK CARTE_DIR KEYSTORE.p12 OUT_APK \
       [--version-code=18] [--version-name=11.3]
+
+Le mode historique avec le mot de passe en argument reste accepté pour
+compatibilité locale, mais il ne doit plus être utilisé dans un pipeline.
 """
 
 import base64
@@ -573,10 +577,18 @@ def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     opts = {a.split('=', 1)[0]: a.split('=', 1)[1]
             for a in sys.argv[1:] if a.startswith('--') and '=' in a}
-    if len(args) != 5:
+    if len(args) not in (4, 5):
         print(__doc__)
         sys.exit(1)
-    src_apk, carte_dir, keystore, password, dst_apk = args
+    if os.environ.get('KEYSTORE_PASSWORD'):
+        src_apk, carte_dir, keystore, dst_apk = args[:4]
+        password = os.environ['KEYSTORE_PASSWORD']
+        if len(args) == 5:
+            raise SystemExit('Mot de passe en argument interdit avec KEYSTORE_PASSWORD.')
+    else:
+        if len(args) != 5:
+            raise SystemExit('Définir KEYSTORE_PASSWORD dans l\'environnement.')
+        src_apk, carte_dir, keystore, password, dst_apk = args
     version_code = int(opts.get('--version-code', 18))
     version_name = opts.get('--version-name', '11.3')
 
@@ -604,10 +616,10 @@ def main() -> None:
     import subprocess
     r = subprocess.run([
         sys.executable, os.path.join(HERE, 'resign.py'),
-        src_apk, keystore, password, dst_apk,
+        src_apk, keystore, dst_apk,
         '--replace=AndroidManifest.xml=' + m_path,
         '--replace=assets/site.js=' + j_path,
-    ])
+    ], env=dict(os.environ, KEYSTORE_PASSWORD=password))
     if r.returncode != 0:
         sys.exit('resign.py a échoué')
     print('[ok] APK unifié signé      : %s' % dst_apk)

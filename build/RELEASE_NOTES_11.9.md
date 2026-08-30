@@ -1,3 +1,8 @@
+> **Archive historique — non approuvée pour livraison.** Les APK et les
+> identités de signature décrits ici sont historiques ; considérer
+> les anciennes clés comme compromises et consulter
+> `build/KEYSTORE_ROTATION.md` avant toute nouvelle diffusion.
+
 ## ✏️ Panneau « Éditer les cartes » dans le menu Cartes de l'application — `trato-11.9-stable.apk` (versionCode 24)
 
 Dans l'application (menu **« La carte »** de la tablette), un panneau

@@ -1,8 +1,12 @@
-# Guide d'installation — APK durci « La Trattoria » 11.1 (tablettes et smartphones)
+# Archive historique — guide d'installation APK durci « La Trattoria » 11.1
 
-Ce guide détaille l'installation, la configuration et la mise en service de
-l'APK durci `build/out/trato-11.1-durci.apk` (versionCode 16, signé v1+v2,
-clé « La Trattoria » 2048 bits, valable jusqu'en 2056).
+> **Ne pas utiliser cette archive pour une livraison.** Les anciennes clés de
+> signature ont été exposées et retirées ; toute nouvelle version doit être
+> produite avec une nouvelle clé hors dépôt. Voir `build/KEYSTORE_ROTATION.md`.
+
+Ce guide conserve les étapes de diagnostic de l'APK `build/out/trato-11.1-durci.apk`
+(versionCode 16) à titre historique. Il ne constitue pas une approbation de
+cet APK ni de sa clé.
 
 > ⚠️ **À lire en premier — changement de clé de signature.**
 > L'APK 11.1 est signé avec une **nouvelle clé** (l'ancienne clé de la
@@ -23,22 +27,22 @@ clé « La Trattoria » 2048 bits, valable jusqu'en 2056).
 |---|---|
 | APK | `build/out/trato-11.1-durci.apk` (~1,6 Mo) |
 | Appareils | Tablettes/smartphones Android **5.0 → 14+** (minSdk 21, targetSdk 34) |
-| Clé de signature | `~/trattoria-keystore/trattoria-release.p12` + mot de passe (**sauvegarde immédiate !**) |
+| Clé de signature | Nouvelle clé générée hors dépôt ; fournir `KEYSTORE_PATH` + `KEYSTORE_PASSWORD` au build (**ne jamais la copier dans le dépôt**) |
 | Sources d'installation | câble USB + `adb`, ou transfert du fichier APK |
 
 ---
 
-## 2. Sauvegarder le keystore (AVANT TOUT)
+## 2. Sauvegarder la nouvelle identité de signature (avant livraison)
 
-```bash
-# à faire sur l'ordinateur qui a servi au build, immédiatement :
-mkdir -p /chemin/sûr/trattoria-backup
-cp ~/trattoria-keystore/trattoria-release.p12 /chemin/sûr/trattoria-backup/
-cp ~/trattoria-keystore/README-KEYSTORE.txt /chemin/sûr/trattoria-backup/
-```
-Conservez **2 copies** sur des supports différents (coffre, clé USB scellée,
-gestionnaire de secrets). Sans ce fichier, aucune mise à jour future ne
-pourra s'installer sans tout réinstaller.
+Générer la nouvelle clé avec `build/generate_keystore.py` dans un répertoire
+hors dépôt, puis conserver **2 copies chiffrées** sur des supports différents
+(coffre, gestionnaire de secrets). Le mot de passe ne doit pas être écrit dans
+un fichier du projet ni dans les logs : utiliser `KEYSTORE_PASSWORD` depuis le
+coffre. Sans cette identité, aucune mise à jour future ne pourra s'installer
+sans tout réinstaller.
+
+L'ancienne copie `README-KEYSTORE.txt` mentionnée dans les versions historiques
+ne doit pas être restaurée.
 
 ---
 

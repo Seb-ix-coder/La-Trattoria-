@@ -1,6 +1,10 @@
-# Version stable 11.5 — moteur d'origine intact, crash corrigé
+# Archive historique — version 11.5 — moteur d'origine intact, crash corrigé
 
-**`trato-11.5-stable.apk`** (versionCode 20) est la version stable qui corrige
+> **Révoquée pour la livraison.** La clé de signature historique est considérée
+> comme compromise ; ne pas diffuser cet APK ni le suivre comme mise à jour.
+> Voir `build/KEYSTORE_ROTATION.md` pour la prochaine identité.
+
+**`trato-11.5-stable.apk`** (versionCode 20) était la version stable qui corrigeait
 le **crash silencieux au lancement** des builds 11.1 à 11.4.
 
 ## Le crash et sa cause

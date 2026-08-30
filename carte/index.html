@@ -183,6 +183,17 @@
         <button type="button" class="btn btn-s" id="btn-sync">Synchroniser maintenant</button>
         <a class="btn btn-s" href="public.html" target="_blank" rel="noopener">Voir la page publique</a>
       </div>
+      <label class="champ" style="margin-top:14px">
+        <span>Jeton de publication du serveur (conservé sur cet appareil)</span>
+        <input type="password" id="champ-sync-token" autocomplete="off"
+               placeholder="Lire le fichier carte-api-token" spellcheck="false">
+      </label>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-s" id="btn-sync-token">Enregistrer le jeton</button>
+        <button type="button" class="btn btn-danger" id="btn-sync-token-oublier">Oublier le jeton</button>
+      </div>
+      <p class="aide">Le serveur autorise la lecture publique de la carte, mais exige ce
+        jeton pour toute publication. Ne le partagez pas avec les clients.</p>
     </div>
     <div class="carte-bloc danger">
       <h2>Zone sensible</h2>

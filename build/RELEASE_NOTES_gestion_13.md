@@ -1,3 +1,8 @@
+> **Archive historique — non approuvée pour livraison.** Les APK et les
+> identités de signature décrits ici sont historiques ; considérer
+> les anciennes clés comme compromises et consulter
+> `build/KEYSTORE_ROTATION.md` avant toute nouvelle diffusion.
+
 # 📣 App native « La Trattoria — Gestion » v1.3 — communication visuelle + accès au site
 
 ## Nouveautés v1.3

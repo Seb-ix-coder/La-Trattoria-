@@ -28,6 +28,7 @@ hébergement externe, aucune dépendance hors stdlib Python.
 
 import base64
 import hashlib
+import hmac
 import html
 import io
 import json
@@ -38,6 +39,7 @@ import shutil
 import sqlite3
 import struct
 import sys
+import threading
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -49,7 +51,7 @@ DB_PATH = HERE / 'communaute.db'
 PHOTOS = HERE / 'photos'
 AVATARS = HERE / 'avatars'
 LOGOS = HERE / 'logos'
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8721
+PORT = 8721
 HOST = '0.0.0.0'
 
 PHOTO_MAX = 4 * 1024 * 1024          # 4 Mo par photo
@@ -57,6 +59,11 @@ AVATAR_MAX = 1 * 1024 * 1024
 LOGO_MAX = 1 * 1024 * 1024
 SESSION_DAYS = 30
 TEXTE_MAX = 1000
+PBKDF2_ITERATIONS = 600_000
+AUTH_WINDOW_SECONDS = 300
+AUTH_MAX_FAILURES = 8
+_AUTH_FAILURES = {}
+_AUTH_LOCK = threading.Lock()
 
 # Pillow est optionnel : s'il est présent, les photos sont recadrées
 # (max 1000 px) pour rester légers ; sinon elles sont stockées telles quelles.
@@ -231,24 +238,82 @@ def init_db() -> None:
                 c.execute('ALTER TABLE users ADD COLUMN %s %s' % (col, typ))
         except Exception:
             pass
-    # compte staff « La Trattoria » (messagerie pro, enregistrement des achats)
-    sel = secrets.token_hex(16)
-    with db() as c:
-        c.execute('''INSERT OR IGNORE INTO users
-                     (id,type,nom,tel,mdp,sel,pts,verifie,cree_le)
-                     VALUES ('trattoria','staff','La Trattoria','0000000000',
-                             ?,?,0,1,?)''',
-                  (hache('trattoria', sel), sel, time.time()))
+    # Le compte staff est provisionné explicitement par l'environnement.
+    # Aucun identifiant/mot de passe par défaut ne doit exister sur un réseau.
+    configurer_compte_staff()
 
 
 def hache(mdp: str, sel: str) -> str:
-    return hashlib.sha256((sel + mdp).encode('utf-8')).hexdigest()
+    """Hash de mot de passe versionné, lent et comparable sans fuite temporelle."""
+    digest = hashlib.pbkdf2_hmac(
+        'sha256', mdp.encode('utf-8'), sel.encode('utf-8'), PBKDF2_ITERATIONS
+    ).hex()
+    return 'pbkdf2_sha256$%d$%s$%s' % (PBKDF2_ITERATIONS, sel, digest)
+
+
+def verifier_mdp(mdp: str, stocke: str, sel_legacy: str = '') -> bool:
+    """Vérifie PBKDF2 et accepte temporairement l'ancien SHA-256 pour migration."""
+    if stocke.startswith('pbkdf2_sha256$'):
+        try:
+            algo, iterations, sel, attendu = stocke.split('$', 3)
+            calcule = hashlib.pbkdf2_hmac(
+                'sha256', mdp.encode('utf-8'), sel.encode('utf-8'),
+                int(iterations)
+            ).hex()
+            return hmac.compare_digest(calcule, attendu)
+        except (TypeError, ValueError):
+            return False
+    # Compatibilité de migration avec les comptes créés avant le durcissement.
+    ancien = hashlib.sha256((sel_legacy + mdp).encode('utf-8')).hexdigest()
+    return hmac.compare_digest(stocke, ancien)
+
+
+def configurer_compte_staff() -> None:
+    """Crée ou fait tourner le compte staff uniquement via des variables d'env.
+
+    Variables obligatoires pour un premier provisionnement :
+      TRATTORIA_STAFF_PHONE et TRATTORIA_STAFF_PASSWORD
+    Le mot de passe n'est jamais écrit dans le dépôt ni dans les logs.
+    """
+    mot_de_passe = os.environ.get('TRATTORIA_STAFF_PASSWORD', '')
+    telephone = re.sub(r'[\s.\-]', '',
+                       os.environ.get('TRATTORIA_STAFF_PHONE', ''))[:15]
+    with db() as c:
+        staff = c.execute("SELECT id, tel FROM users WHERE id='trattoria'").fetchone()
+        if not mot_de_passe:
+            if staff:
+                # Ne pas laisser survivre un ancien compte staff à secret connu.
+                sel = secrets.token_hex(16)
+                c.execute("UPDATE users SET mdp=?, sel=? WHERE id='trattoria'",
+                          (hache(secrets.token_urlsafe(48), sel), sel))
+                c.execute("DELETE FROM sessions WHERE user_id='trattoria'")
+            sys.stderr.write(
+                'ATTENTION : compte staff désactivé/non provisionné. Définir '
+                'TRATTORIA_STAFF_PHONE et TRATTORIA_STAFF_PASSWORD avant le démarrage.\n'
+            )
+            return
+        if len(mot_de_passe) < 12 or len(telephone) < 6:
+            raise RuntimeError(
+                'TRATTORIA_STAFF_PHONE valide et TRATTORIA_STAFF_PASSWORD de 12 caractères minimum requis'
+            )
+        sel = secrets.token_hex(16)
+        if staff:
+            # La rotation via l'environnement invalide immédiatement les sessions.
+            c.execute('''UPDATE users SET tel=?, mdp=?, sel=?, verifie=1,
+                         type='staff', nom='La Trattoria' WHERE id='trattoria' ''',
+                      (telephone, hache(mot_de_passe, sel), sel))
+            c.execute("DELETE FROM sessions WHERE user_id='trattoria'")
+        else:
+            c.execute('''INSERT INTO users
+                         (id,type,nom,tel,mdp,sel,pts,verifie,cree_le)
+                         VALUES ('trattoria','staff','La Trattoria',?,?,?,?,1,?)''',
+                      (telephone, hache(mot_de_passe, sel), sel, 0, time.time()))
 
 
 # ---------------------------------------------------------------------------
 #  Requêtes métier
 # ---------------------------------------------------------------------------
-def user_row(u: sqlite3.Row) -> dict:
+def user_row(u: sqlite3.Row, public: bool = False) -> dict:
     try:
         consent = json.loads(u['consent'] or '{}') if 'consent' in u.keys() else {}
     except Exception:
@@ -257,15 +322,22 @@ def user_row(u: sqlite3.Row) -> dict:
         badges = json.loads(u['badges'] or '[]') if 'badges' in u.keys() else []
     except Exception:
         badges = []
-    return {
-        'id': u['id'], 'type': u['type'], 'nom': u['nom'], 'tel': u['tel'],
-        'email': u['email'] or '', 'bio': u['bio'] or '',
+    result = {
+        'id': u['id'], 'type': u['type'], 'nom': u['nom'],
+        'bio': u['bio'] or '',
         'avatar': '/avatar/' + u['avatar'] if u['avatar'] else None,
         'logo': '/logo/' + u['logo'] if u['logo'] else None,
-        'pts': u['pts'], 'cree_le': u['cree_le'],
+        'pts': u['pts'],
         'verifie': bool(u['verifie']) if 'verifie' in u.keys() else False,
-        'consent': consent, 'badges': badges,
+        'badges': badges,
     }
+    # Téléphone, e-mail, consentements et date d'inscription sont privés.
+    if not public:
+        result['tel'] = u['tel']
+        result['email'] = u['email'] or ''
+        result['cree_le'] = u['cree_le']
+        result['consent'] = consent
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -432,23 +504,27 @@ def image_ok(data: bytes) -> bool:
 
 
 def stocker_image(data: bytes, dossier: Path, max_size: int) -> str | None:
-    if len(data) > max_size:
+    if len(data) > max_size or not image_ok(data):
         return None
-    if not image_ok(data):
-        return None
+    # Avec Pillow, toutes les images sont normalisées en JPEG. Sans Pillow,
+    # conserver le format réel évite d'envoyer un PNG/WEBP sous Content-Type JPEG.
+    ext = 'jpg' if data[:3] == b'\xff\xd8\xff' else ('png' if data[:8] == b'\x89PNG\r\n\x1a\n' else 'webp')
     nom = uuid.uuid4().hex + '.jpg'
     if HAS_PIL:
         try:
+            im = Image.open(io.BytesIO(data))
+            im.verify()
             im = Image.open(io.BytesIO(data))
             im.draft('RGB', (1000, 1000))
             im = im.convert('RGB')
             if max(im.size) > 1000:
                 ratio = 1000 / max(im.size)
                 im = im.resize((int(im.width * ratio), int(im.height * ratio)))
-            im.save(dossier / nom, 'JPEG', quality=82)
+            im.save(dossier / nom, 'JPEG', quality=82, optimize=True)
             return nom
         except Exception:
-            pass
+            return None
+    nom = uuid.uuid4().hex + '.' + ext
     (dossier / nom).write_bytes(data)
     return nom
 
@@ -461,26 +537,35 @@ class H(BaseHTTPRequestHandler):
     silence_log = True
 
     # -- utilitaires --------------------------------------------------------
+    def _securite_headers(self):
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Referrer-Policy', 'no-referrer')
+        self.send_header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        self.send_header('Content-Security-Policy',
+                         "default-src 'self'; img-src 'self' data:; "
+                         "style-src 'self' 'unsafe-inline'; script-src 'self'; "
+                         "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'")
+
     def _json(self, obj, code=200, cookie=None, expire_cookie=False):
         data = json.dumps(obj, ensure_ascii=False).encode('utf-8')
         self.send_response(code)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self._securite_headers()
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(data)))
         self.send_header('Cache-Control', 'no-store')
         if cookie:
             self.send_header('Set-Cookie',
-                             'communaute=%s; Path=/; Max-Age=%d; SameSite=Lax'
+                             'communaute=%s; Path=/; Max-Age=%d; HttpOnly; SameSite=Strict'
                              % (cookie, SESSION_DAYS * 86400))
         elif expire_cookie:
             self.send_header('Set-Cookie',
-                             'communaute=; Path=/; Max-Age=0; SameSite=Lax')
+                             'communaute=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict')
         self.end_headers()
         self.wfile.write(data)
 
     def _fichier(self, data: bytes, ctype: str):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self._securite_headers()
         self.send_header('Content-Type', ctype)
         self.send_header('Content-Length', str(len(data)))
         self.send_header('Cache-Control', 'public, max-age=86400')
@@ -489,12 +574,45 @@ class H(BaseHTTPRequestHandler):
 
     def _page(self, nom: str, body: bytes):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self._securite_headers()
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
         self.send_header('Cache-Control', 'no-store')
         self.end_headers()
         self.wfile.write(body)
+
+    def _origine_autorisee(self) -> bool:
+        """Bloque les POST cross-site quand l'authentification utilise un cookie."""
+        origine = self.headers.get('Origin')
+        if not origine:
+            return True  # clients non navigateur : le jeton X-Jeton reste requis
+        autorisees = {x.strip().rstrip('/') for x in
+                      os.environ.get('COMMUNAUTE_ALLOWED_ORIGINS', '').split(',') if x.strip()}
+        origine = origine.rstrip('/')
+        if origine in autorisees:
+            return True
+        try:
+            parsed = urlparse(origine)
+            return parsed.scheme in ('http', 'https') and parsed.netloc == (self.headers.get('Host') or '')
+        except Exception:
+            return False
+
+    def _rate_auth(self, cle: str) -> bool:
+        """Retourne False après trop d'échecs d'authentification sur une fenêtre."""
+        maintenant = time.time()
+        with _AUTH_LOCK:
+            dates = [x for x in _AUTH_FAILURES.get(cle, [])
+                     if maintenant - x < AUTH_WINDOW_SECONDS]
+            if len(dates) >= AUTH_MAX_FAILURES:
+                _AUTH_FAILURES[cle] = dates
+                return False
+            dates.append(maintenant)
+            _AUTH_FAILURES[cle] = dates
+            return True
+
+    def _rate_auth_reset(self, cle: str) -> None:
+        with _AUTH_LOCK:
+            _AUTH_FAILURES.pop(cle, None)
 
     def _corps(self) -> bytes:
         n = int(self.headers.get('Content-Length') or 0)
@@ -659,8 +777,11 @@ class H(BaseHTTPRequestHandler):
                                 {'de': auteur_id, 'texte': texte[:120]})
 
     def do_OPTIONS(self):
+        if not self._origine_autorisee():
+            self._json({'ok': False, 'erreur': 'origine refusée'}, 403)
+            return
         self.send_response(204)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self._securite_headers()
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers',
                          'Content-Type, X-Jeton, X-Requested-With')
@@ -693,15 +814,15 @@ class H(BaseHTTPRequestHandler):
         elif p.startswith('/avatar/'):
             nom = p[8:]
             f = AVATARS / nom
-            if re.fullmatch(r'[a-f0-9]{32}\.jpg', nom or '') and f.exists():
-                self._fichier(f.read_bytes(), 'image/jpeg')
+            if re.fullmatch(r'[a-f0-9]{32}\.(jpg|png|webp)', nom or '') and f.exists():
+                self._fichier(f.read_bytes(), self._ctype(nom))
             else:
                 self._json({'ok': False, 'erreur': 'introuvable'}, 404)
         elif p.startswith('/logo/'):
             nom = p[6:]
             f = LOGOS / nom
-            if re.fullmatch(r'[a-f0-9]{32}\.jpg', nom or '') and f.exists():
-                self._fichier(f.read_bytes(), 'image/jpeg')
+            if re.fullmatch(r'[a-f0-9]{32}\.(jpg|png|webp)', nom or '') and f.exists():
+                self._fichier(f.read_bytes(), self._ctype(nom))
             else:
                 self._json({'ok': False, 'erreur': 'introuvable'}, 404)
         elif p == '/api/moi':
@@ -766,11 +887,12 @@ class H(BaseHTTPRequestHandler):
                 if not r:
                     self._json({'ok': False, 'erreur': 'partenaire introuvable'}, 404)
                     return
-                u2 = user_row(r)
+                u2 = user_row(r, public=True)
                 u2['niveau'] = niveau(r['pts'])
                 offres = [o for o in offres_publiques(c, time.time())
                           if o['partenaire']['nom'] == r['nom']]
-                posts = feed(c, self._user()['id'] if self._user() else None, 'tous')
+                demandeur = self._user()
+                posts = feed(c, demandeur['id'] if demandeur else None, 'tous')
                 posts = [p for p in posts
                          if p['auteur']['nom'] == r['nom']][:50]
                 self._json({'ok': True, 'partenaire': u2, 'offres': offres,
@@ -784,6 +906,9 @@ class H(BaseHTTPRequestHandler):
 
     # -- routes POST --------------------------------------------------------
     def do_POST(self):
+        if not self._origine_autorisee():
+            self._json({'ok': False, 'erreur': 'origine refusée'}, 403)
+            return
         p = urlparse(self.path).path
         try:
             if p == '/api/inscription':
@@ -844,9 +969,9 @@ class H(BaseHTTPRequestHandler):
         tel = re.sub(r'[\s.\-]', '', d.get('tel') or '')[:15]
         mdp = d.get('mdp') or ''
         type_compte = 'partenaire' if d.get('partenaire') else 'client'
-        if len(nom) < 2 or len(tel) < 6 or len(mdp) < 4:
+        if len(nom) < 2 or len(tel) < 6 or len(mdp) < 12:
             self._json({'ok': False, 'erreur':
-                        'Nom, téléphone (6 chiffres min) et code (4 caractères min) requis.'})
+                        'Nom, téléphone (6 chiffres min) et code (12 caractères min) requis.'})
             return
         sel = secrets.token_hex(16)
         uid = uuid.uuid4().hex
@@ -868,11 +993,23 @@ class H(BaseHTTPRequestHandler):
         d = self._json_corps()
         tel = re.sub(r'[\s.\-]', '', d.get('tel') or '')[:15]
         mdp = d.get('mdp') or ''
+        ip = self.client_address[0] if self.client_address else '?'
+        cle_rate = ip + ':' + tel
+        if not self._rate_auth(ip) or not self._rate_auth(cle_rate):
+            self._json({'ok': False, 'erreur': 'Trop de tentatives — réessayez dans quelques minutes.'}, 429)
+            return
         with db() as c:
             r = c.execute('SELECT * FROM users WHERE tel=?', (tel,)).fetchone()
-            if not r or r['mdp'] != hache(mdp, r['sel']):
-                self._json({'ok': False, 'erreur': 'Téléphone ou code incorrect.'})
+            if not r or not verifier_mdp(mdp, r['mdp'], r['sel']):
+                self._json({'ok': False, 'erreur': 'Téléphone ou code incorrect.'}, 401)
                 return
+            # Migration transparente du SHA-256 historique vers PBKDF2.
+            if not r['mdp'].startswith('pbkdf2_sha256$'):
+                sel = secrets.token_hex(16)
+                c.execute('UPDATE users SET mdp=?, sel=? WHERE id=?',
+                          (hache(mdp, sel), sel, r['id']))
+            self._rate_auth_reset(ip)
+            self._rate_auth_reset(cle_rate)
             jeton = self._nouv_session(c, r['id'])
         self._json({'ok': True, 'jeton': jeton}, cookie=jeton)
 
@@ -1750,11 +1887,17 @@ class H(BaseHTTPRequestHandler):
 
 
 def main():
+    port = PORT
+    if len(sys.argv) > 1:
+        try:
+            port = int(sys.argv[1])
+        except ValueError:
+            raise SystemExit('Usage : serveur_communaute.py [port]')
     init_db()
-    httpd = ThreadingHTTPServer((HOST, PORT), H)
+    httpd = ThreadingHTTPServer((HOST, port), H)
     ip = 'votre machine'
-    print('Communauté La Trattoria — http://%s:%d/' % (HOST, PORT))
-    print('(sur le Wi-Fi : http://<ip-de-la-machine>:%d/)' % PORT)
+    print('Communauté La Trattoria — http://%s:%d/' % (HOST, port))
+    print('(sur le Wi-Fi : http://<ip-de-la-machine>:%d/)' % port)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

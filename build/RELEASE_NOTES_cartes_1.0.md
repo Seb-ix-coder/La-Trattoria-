@@ -1,4 +1,8 @@
-# 📱 NOUVELLE APPLICATION NATIVE — « La Trattoria — Édition des cartes » (v1.0)
+# ⚠️ Archive historique — application native « La Trattoria — Édition des cartes » (v1.0)
+
+> L'APK et sa clé de signature sont historiques et ne sont pas approuvés pour
+> une nouvelle livraison. Produire une nouvelle version avec un keystore créé
+> hors dépôt ; voir `build/KEYSTORE_ROTATION.md`.
 
 Application **écrite et compilée de zéro** (option A) : le code source est
 dans le dépôt (`build/app-src/src/`). Package **`com.trattoria.cartes`** :
@@ -54,4 +58,5 @@ ZIP intègre · resources.arsc STORE+aligné · classes.dex valide · assets · 
 
 ## Toolchain (code source compilé depuis la sandbox réseau restreint)
 ECJ 3.33 (compilateur) · d8 8.2.2 · aapt2 2.20 x64 · android.jar API 25/33 ·
-apksigner 0.9 · keystore figé — tout récupéré via GitHub API / npm / pypi.
+apksigner 0.9 · nouvelle clé à fournir hors dépôt — les anciennes clés ne sont
+plus utilisables.

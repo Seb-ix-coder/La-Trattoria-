@@ -51,6 +51,8 @@
   var PHOTO_BROUILLON = null; // data-URL en cours dans la fiche (null = aucune)
   var CUEILLETTE = null;      // {cle, choisis:[ids]} pendant la composition d'une carte
   var SYNC = { actif: false, version: 0, minuteur: null };
+  var CLE_SYNC_TOKEN = 'trattoria.sync_token.v1';
+  var SYNC_TOKEN = localStorage.getItem(CLE_SYNC_TOKEN) || '';
 
   // Ardoise (carte principale) : titres/sous-titres de catégories,
   // lignes libres, ordre, en-tête (badges, pâte 48 h), QR du site.
@@ -644,6 +646,7 @@
   function enregistrerTitreFamille(card) {
     var conf = confDeCarte(card);
     if (!conf) return;
+    var fam = card.getAttribute('data-fam') || 'Divers';
     conf.titre = String($('[data-cf-champ="titre"]', card).value || '').trim().slice(0, 60) || fam;
     conf.sous = String($('[data-cf-champ="sous"]', card).value || '').trim().slice(0, 120);
     sauver();
@@ -1748,6 +1751,26 @@
     return typeof fetch === 'function' && /^https?:$/.test(location.protocol);
   }
 
+  function syncHeaders() {
+    var h = {};
+    if (SYNC_TOKEN) h['X-Carte-Token'] = SYNC_TOKEN;
+    return h;
+  }
+
+  function demanderToken() {
+    var champ = $('#champ-sync-token');
+    var token = champ ? String(champ.value || '').trim() : '';
+    if (!token) {
+      token = prompt('Jeton de gestion du serveur de carte (fichier carte-api-token) :') || '';
+      token = token.trim();
+    }
+    if (!token) return false;
+    SYNC_TOKEN = token;
+    localStorage.setItem(CLE_SYNC_TOKEN, token);
+    if (champ) champ.value = token;
+    return true;
+  }
+
   function badgeSync() {
     var b = $('#badge-sync');
     if (!b) return;
@@ -1815,20 +1838,26 @@
   }
 
   function planifierEnvoi(immediat) {
-    if (!SYNC.actif) return;
+    if (!SYNC.actif || !SYNC_TOKEN) return;
     clearTimeout(SYNC.minuteur);
     var envoyer = function () {
+      var headers = syncHeaders();
+      headers['Content-Type'] = 'application/json';
       fetch('api/carte', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify({ carte: CARTE, ardoises: ARDOISES, config: CF })
       }).then(function (r) {
+        if (r.status === 401) throw new Error('token');
         if (!r.ok) throw new Error('ko');
         return r.json();
       }).then(function (r) {
         SYNC.version = Number(r.version) || SYNC.version;
         badgeSync();
-      }).catch(function () { badgeSync(); });
+      }).catch(function (e) {
+        badgeSync();
+        if (e && e.message === 'token') toast('Jeton requis pour publier la carte — onglet Données.');
+      });
     };
     if (immediat) envoyer();
     else SYNC.minuteur = setTimeout(envoyer, 900);
@@ -2722,7 +2751,10 @@
       application: 'la-trattoria-carte',
       version: 4,
       exporte: new Date().toISOString(),
+      // Alias "carte" pour permettre l'import depuis l'application native
+      // com.trattoria.cartes, qui utilise ce nom historique.
       produits: CARTE,
+      carte: CARTE,
       ardoises: ARDOISES,
       config: CF
     };
@@ -2777,8 +2809,9 @@
     lecteur.onload = function () {
       try {
         var paquet = JSON.parse(lecteur.result);
-        var tab = Object.prototype.toString.call(paquet) === '[object Array]' ? paquet : paquet.produits;
-        if (!tab || !tab.length) throw new Error('vide');
+        var tab = Object.prototype.toString.call(paquet) === '[object Array]'
+          ? paquet : (paquet.produits || paquet.carte);
+        if (Object.prototype.toString.call(tab) !== '[object Array]') throw new Error('format');
         if (!confirm('Remplacer la carte actuelle (' + CARTE.length +
           ' produits) par les ' + tab.length + ' produits importés ?')) return;
         CARTE = tab.map(produitNormalise);
@@ -2829,6 +2862,7 @@
     });
     if (ecran === 'ardoise') { dessinerCF(); dessinerQR(); }
     if (ecran === 'carte') dessinerCarte();
+    if (ecran === 'donnees' && $('#champ-sync-token')) $('#champ-sync-token').value = SYNC_TOKEN;
     window.scrollTo(0, 0);
   }
 
@@ -2953,7 +2987,25 @@
       if (t.closest('#btn-export-csv')) { exporterCSV(); return; }
       if (t.closest('#btn-import')) { $('#fichier-import').click(); return; }
       if (t.closest('#btn-reinit')) { restaurer(); return; }
-      if (t.closest('#btn-sync')) { syncTirer(true); planifierEnvoi(true); return; }
+      if (t.closest('#btn-sync-token')) {
+        if (demanderToken()) {
+          toast('Jeton enregistré sur cet appareil');
+          if (SYNC.actif) planifierEnvoi(true);
+        }
+        return;
+      }
+      if (t.closest('#btn-sync-token-oublier')) {
+        SYNC_TOKEN = '';
+        localStorage.removeItem(CLE_SYNC_TOKEN);
+        var champToken = $('#champ-sync-token');
+        if (champToken) champToken.value = '';
+        toast('Jeton oublié');
+        return;
+      }
+      if (t.closest('#btn-sync')) {
+        if (!SYNC_TOKEN && !demanderToken()) return;
+        syncTirer(true); planifierEnvoi(true); return;
+      }
       if (t.closest('#badge-sync')) { syncTirer(true); return; }
 
       // ------- cartes du jour -------

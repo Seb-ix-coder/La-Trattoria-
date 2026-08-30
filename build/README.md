@@ -1,147 +1,84 @@
-# Build et signature de l'APK durci « La Trattoria » 11.1
+# Build et livraison Android — La Trattoria
 
-Ce dossier contient l'outillage **reproductible** qui produit l'APK durci
-`trato-11.1-durci.apk` (versionCode 16) à partir de l'APK d'origine
-`trato.apk` (versionCode 15), en appliquant les correctifs de sécurité du
-rapport `ANALYSE_TRATO.md`, puis en signant avec votre clé.
+Ce dossier contient l'outillage de reconstruction des APK à partir de
+l'artefact Android d'origine `trato.apk`. Le dépôt ne contient pas les sources
+complètes de `com.trattoria.commande` : le pipeline peut remplacer le manifeste
+et les assets web, mais ne remplace pas une vraie reconstruction Gradle du
+moteur natif.
 
-## Correctifs appliqués au build 11.1
+## État de sécurité
 
-| # | Correctif | Référence | Où |
-|---|-----------|-----------|-----|
-| P1 | `allowBackup=false` (fin de l'exfiltration par sauvegarde) | C5 | `patch_axml.py` |
-| P2 | Timeout des sockets du serveur local 8000 → 2000 ms (mitigation du DoS mono-thread) | C3 | `patch_dex.py` |
-| P3 | Prix de revient (`cout`) retiré de la route non authentifiée `/carte` | C2 | `patch_dex.py` |
-| P4 | Commande en ligne réparée (découverte automatique de l'API locale) | B1 | `patch_assets.py` |
-| P5 | versionCode 15→16, versionName 11.0→11.1 (nouvelle clé, nouveau build) | — | `patch_axml.py` |
-| P6 | **Générateur de QR code intégré à l'application** : encodeur QR autonome (ISO/IEC 18004, niveau H, validé contre la référence) + interface tactile (bouton flottant, plein écran, ouverture auto sur `/qr`) | — | `patch_assets.py` + `qr_addon.js` / `qr_addon.css` |
+Les anciens fichiers de signature ont été retirés de Git. L'ancienne clé doit
+être considérée comme compromise : elle ne doit plus signer de version diffusée.
+Voir [`KEYSTORE_ROTATION.md`](KEYSTORE_ROTATION.md) avant tout nouveau build.
+Les scripts refusent un keystore placé dans le dépôt, notamment sous
+`build/keystore/`.
 
-> **Limites assumées de ce build (sans les sources) :** le serveur HTTP reste
-> mono-thread (P2 n'est qu'une mitigation), les données au repos ne sont pas
-> chiffrées (C4) et le trafic local reste en clair (C1) — ces trois points
-> nécessitent une recompilation depuis les sources (voir « Évolution » plus
-> bas). Les correctifs structurels (thread par connexion, chiffrement
-> EncryptedSharedPreferences, HTTPS local) sont documentés dans le rapport.
+## Outils principaux
 
-## Arborescence
+- `patch_axml.py` : manifeste et versions ;
+- `patch_assets.py`, `integrer_carte.py` : assets web et module carte ;
+- `resign.py`, `sign_v1.py`, `sign_v2.py` : reconstruction et signatures ;
+- `verify_apk.py`, `verify_unifie.py` : contrôles indépendants ;
+- `generate_keystore.py` : génération locale d'un nouveau keystore ;
+- `run_build.sh` : build durci ;
+- `run_build_stable.sh` : build durci + intégration carte + vérifications ;
+- `app-src/` : sources de l'application distincte `com.trattoria.cartes`.
 
-```
-build/
-├── patch_axml.py        # manifeste : allowBackup, versionCode, versionName
-├── patch_dex.py         # DEX : timeout, suppression du "cout" de /carte
-├── patch_assets.py      # site.js : API locale + addon QR ; site.css : styles QR
-├── qr_addon.js          # encodeur QR (validé) + interface tactile
-├── qr_addon.css         # styles de l'interface QR (petits écrans)
-├── build_apk.py         # reconstruction ZIP déterministe (tout en DEFLATED)
-├── sign_v1.py           # signature JAR (v1) — CMS sans attributs, comme Android
-├── sign_v2.py           # signature APK Signature Scheme v2
-├── verify_apk.py        # batterie de vérifications indépendantes
-├── surgical_resign.py    # re-signature d'un APK sans toucher aux octets ZIP
-├── resign.py             # reconstruction + signature en préservant le ZIP
-├── outils_conformite.js  # e-reporting + registre Factur-X + bouton Outils + PIN
-├── outils_conformite.css # styles des outils de conformité
-├── pourboire.js          # pourboire numérique au moment de la commande
-├── pourboire.css         # styles du bloc pourboire
-├── export_e_reporting.py # export e-reporting (CSV/XML) depuis l'API tablette
-├── facturx_archivage.py  # contrôle + archivage des factures Factur-X reçues
-├── planifier_export.sh   # export e-reporting quotidien automatique (cron)
-├── generate_keystore.py # génération du keystore PKCS#12 (local uniquement)
-├── run_build.sh         # orchestration complète du build durci
-├── run_build_stable.sh  # pipeline complet de la version stable (durci + carte)
-└── requirements.txt     # dépendances Python (cryptography, asn1crypto, androguard)
-```
+## Build local
 
-## Utilisation locale
+Dépendances :
 
 ```bash
-# 1. dépendances
 pip install -r build/requirements.txt
-
-# 2. build complet de la version stable (keystore généré au premier lancement)
-./build/run_build_stable.sh
-#    → trato-11.5-stable.apk : durci (moteur DEX intact) + module carte + v1/v2 + vérifs
-#    options : --version-name=11.5 --version-code=20
-
-# 3. build durci seul (étape 1 du pipeline, pour diagnostic)
-bash build/run_build.sh
-#    → build/out/trato-11.1-durci.apk
-#    → ~/trattoria-keystore/trattoria-release.p12 (+ mot de passe à côté)
-
-# ou avec un keystore existant :
-bash build/run_build.sh /chemin/trattoria-release.p12 "MOT_DE_PASSE"
 ```
 
-Le script affiche les vérifications finales : manifeste, DEX, site.js,
-signature v1 (vérifiée en interne **et** par `keytool`), signature v2
-(vérifiée en interne **et** par l'outil indépendant `apksigtool`).
+Les secrets doivent venir d'un coffre ou de variables d'environnement :
 
-## Pipeline GitHub Actions (mises à jour automatiques)
+```bash
+export KEYSTORE_PATH="$HOME/.secrets/la-trattoria-keystore/trattoria-release.p12"
+export KEYSTORE_PASSWORD="$(secret-tool lookup service la-trattoria-android)"
+./build/run_build_stable.sh --version-name=13.0 --version-code=32
+```
 
-Le workflow `.github/workflows/build-and-sign.yml` reconstruit et signe
-l'APK à chaque tag `v*`, puis publie une Release avec l'APK en pièce
-jointe.
+Sans `KEYSTORE_PATH`, le script peut générer un keystore dans
+`$HOME/trattoria-keystore`, jamais dans le dépôt ; le mot de passe généré n'est
+pas écrit sur disque. `run_build.sh` accepte éventuellement le chemin du
+keystore comme unique argument, mais le mot de passe doit toujours venir de
+`KEYSTORE_PASSWORD` ou du mot de passe généré à usage unique.
 
-Configuration unique (2 minutes) :
+Le résultat et le SHA-256 sont affichés à la fin du pipeline. Le pipeline a
+produit dans ce dépôt un candidat `trato-13.0-stable.apk` (versionCode 32),
+avec le DEX intact et les vérifications internes v1/v2 passées. Il est signé
+avec une clé de validation générée hors dépôt pour cette exécution : pour une
+production client, le reconstruire avec le keystore sauvegardé du client.
+Empreinte SHA-256 du candidat actuel :
+`869d39adf5d0e025429db15c3fe21384a3c3ad686a4ce25e6f2c3372c2e94834`.
+Une validation Android sur appareil réel reste obligatoire avant diffusion ;
+`apksigner`/`zipalign` ne sont pas disponibles sur cet hôte.
 
-1. Dans GitHub → votre dépôt → **Settings → Secrets and variables →
-   Actions**, créez les secrets :
-   - `KEYSTORE_BASE64` : le keystore encodé en base64 (une seule ligne) :
-     ```bash
-     base64 -w0 ~/trattoria-keystore/trattoria-release.p12
-     ```
-   - `KEYSTORE_PASSWORD` : le mot de passe (cf. `README-KEYSTORE.txt`).
-2. Poussez un tag pour déclencher le build :
-   ```bash
-   git tag v11.1.0 && git push origin v11.1.0
-   ```
-   (ou utilisez le bouton **Run workflow** pour un simple artifact).
+## CI GitHub
 
-## Signer une MISE À JOUR (après modification de l'APK source)
+Aucun workflow GitHub Actions n'est actuellement présent dans ce dépôt. Si un
+mainteneur ajoute un workflow, il doit charger exclusivement
+`KEYSTORE_BASE64` et `KEYSTORE_PASSWORD` depuis les secrets GitHub, écrire le
+keystore dans un fichier temporaire hors du dépôt, puis le supprimer en fin de
+job. Ne pas recréer un fichier de mot de passe versionné.
 
-Le keystore est l'identité de l'application : **toute mise à jour doit être
-signée avec la même clé**, sinon Android refuse l'installation par-dessus
-l'ancienne version.
+## Application native de gestion `com.trattoria.cartes`
 
-1. Remplacez `trato.apk` à la racine du dépôt par le nouvel APK.
-2. Relancez `bash build/run_build.sh` (ou le pipeline) — les correctifs
-   P1-P5 sont ré-appliqués automatiquement.
-3. Vérifiez la sortie de `verify_apk.py` (doit se terminer par
-   « TOUTES LES VÉRIFICATIONS SONT PASSÉES »).
-4. Installez sur une tablette de test, puis diffusez.
+Les sources de cette application sont sous `app-src/src/`. Elle utilise un
+serveur de commandes local sur le port 8721. Les commandes reçues sont
+maintenant limitées, vérifiées contre le catalogue et recalculées côté serveur
+avant leur enregistrement. La compilation/signature dépend toutefois de la
+chaîne Android non fournie par cet hôte.
 
-## Sécurité du keystore — règles impératives
+## Limites à ne pas masquer
 
-* Ne **jamais** committer le keystore ni le mot de passe (le `.gitignore`
-  exclut `build/out/`, `build/work/` et tout fichier `*.p12`/`*.jks`).
-* Conserver au moins 2 sauvegardes chiffrées (coffre, gestionnaire de
-  secrets, clé USB scellée).
-* Ne partager le keystore qu'avec les personnes autorisées à publier des
-  mises à jour.
-* Si le keystore est perdu : les tablettes devront être désinstallées puis
-  réinstallées (perte des données locales de l'application).
-
-## Évolution recommandée (correctifs structurels, nécessitent les sources)
-
-Ces correctifs ne sont PAS réalisables par patch binaire et supposent de
-retrouver/refaire le projet Gradle :
-
-1. **Serveur multi-threads** : remplacer la boucle `accept()` synchrone de
-   `Reseau$2.run()` par un pool de threads (8–16) — élimine le DoS par
-   connexions lentes (C3).
-2. **Chiffrement au repos** : `EncryptedSharedPreferences` (AndroidX
-   Security) pour les données sensibles (NIR, pièces d'identité,
-   signatures, clé Hiboutik) et chiffrement du dossier `justificatifs/`
-   (C4).
-3. **HTTPS local** : servir le site et l'API en HTTPS (certificat auto-signé
-   généré par la tablette, ou proxy) — protège les données clients sur le
-   WiFi (C1).
-4. **Authentification des routes de synchro** : exiger la clé API sur
-   `/carte`, `/tickets`, `/stock`, `/commande` (les satellites la
-   recevraient au couplage) (C2).
-5. **`SecureRandom`** pour la clé API et les codes de retrait (M2).
-6. **Anti-CSRF** sur les POST `/site/*` (vérification `Origin`) (M3).
-
-Le présent outillage de build restera compatible : il suffira de remplacer
-`trato.apk` par l'APK compilé depuis les sources, les correctifs P1-P5
-s'appliquant de la même façon (et les nouveaux correctifs seront ajoutés
-aux scripts au fil de l'eau).
+- l'APK principal `com.trattoria.commande` reste un artefact sans code source ;
+- le réseau local historique est en HTTP : ne pas exposer les ports à Internet ;
+- les données locales de gestion ne sont pas un coffre-fort chiffré ;
+- la première version signée avec une nouvelle clé nécessitera une
+  désinstallation de l'ancienne application Android ;
+- les fichiers APK historiques et leurs tags doivent être retirés ou marqués
+  comme révoqués après rotation.

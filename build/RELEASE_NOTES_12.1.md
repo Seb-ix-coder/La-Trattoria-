@@ -1,3 +1,8 @@
+> **Archive historique — non approuvée pour livraison.** Les APK et les
+> identités de signature décrits ici sont historiques ; considérer
+> les anciennes clés comme compromises et consulter
+> `build/KEYSTORE_ROTATION.md` avant toute nouvelle diffusion.
+
 ## 📱 Icône « Éditer les cartes » sur l'écran d'accueil de la tablette — `trato-12.1-stable.apk` (versionCode 26)
 
 ### Pourquoi ce fonctionnement

@@ -17,14 +17,18 @@ Résultat : un témoin dont le ZIP est STRICTEMENT identique à l'original
 100% la signature — pas l'emballage ZIP ni les correctifs.
 
 Usage :
-  python3 surgical_resign.py trato.apk keystore.p12 PASSWORD out.apk
+  KEYSTORE_PASSWORD=... python3 surgical_resign.py trato.apk keystore.p12 out.apk
+
+L'ancien format avec le mot de passe en argument reste toléré pour
+compatibilité locale uniquement.
 """
 
+import os
 import struct
 import sys
 import zlib
 
-sys.path.insert(0, '/home/user/La-Trattoria-/build')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sign_v1
 import sign_v2
 
@@ -39,7 +43,16 @@ def deflate(b):
 
 
 def main():
-    src_apk, p12, password, dst_apk = sys.argv[1:5]
+    args = sys.argv[1:]
+    if len(args) < 3:
+        raise SystemExit(__doc__)
+    if os.environ.get('KEYSTORE_PASSWORD'):
+        src_apk, p12, dst_apk = args[:3]
+        password = os.environ['KEYSTORE_PASSWORD']
+    elif len(args) >= 4:
+        src_apk, p12, password, dst_apk = args[:4]
+    else:
+        raise SystemExit('Définir KEYSTORE_PASSWORD dans l\'environnement.')
     data = open(src_apk, 'rb').read()
 
     # ---- localisation du bloc v2 et du CD ----

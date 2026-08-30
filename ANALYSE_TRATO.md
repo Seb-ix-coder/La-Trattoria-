@@ -1,4 +1,10 @@
-# Analyse de l'application « La Trattoria » — `trato.apk` (v11.0)
+# Analyse historique de l'application « La Trattoria » — `trato.apk` (v11.0)
+
+> **Rapport de référence.** Certaines actions listées comme à faire ont depuis
+> été appliquées dans les sources du dépôt (`build/app-src/`), mais les limites
+> de l'APK sans sources complètes restent valables. La livraison actuelle et la
+> rotation de signature sont documentées dans `build/README.md` et
+> `build/KEYSTORE_ROTATION.md`.
 
 > Analyse statique complète réalisée le 25/08/2026 sur `trato.apk` (SHA-256 du fichier vérifiable),
 > par décompilation du bytecode DEX (androguard + jadx-compatible), lecture du manifeste,

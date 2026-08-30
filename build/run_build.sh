@@ -20,8 +20,11 @@
 #    (DÉCONSEILLÉ) : PATCH_DEX=1 ./run_build.sh
 #
 # Usage :
-#   ./run_build.sh                 # keystore local (par défaut ~/trattoria-keystore)
-#   ./run_build.sh /chemin/vers/mon-keystore.p12 MON_MOT_DE_PASSE
+#   ./run_build.sh                 # clé locale générée hors dépôt
+#   KEYSTORE_PATH=/chemin/vers/mon-keystore.p12 KEYSTORE_PASSWORD=... ./run_build.sh
+#
+# Le mot de passe n'est volontairement pas accepté en argument : il ne doit
+# jamais apparaître dans la liste des processus.
 #
 # Sortie : build/out/trato-11.1-durci.apk
 # ============================================================================
@@ -34,31 +37,32 @@ OUT="$BUILD/out"
 APK_SRC="${APK_SRC:-$ROOT/trato.apk}"
 PATCH_DEX="${PATCH_DEX:-0}"   # 1 = patchs DEX historiques (CRASH au lancement !)
 
-# --- keystore : soit fourni en argument, soit généré localement -----------
-if [ $# -ge 1 ]; then
-  KEYSTORE="$1"
-  PASSWORD="${2:-}"
-else
-  # PRIORITÉ 1 : keystore officiel FIGÉ dans le dépôt (mises à jour directes)
-  KEYSTORE="$BUILD/keystore/trattoria-release.p12"
-  if [ -f "$KEYSTORE" ]; then
-    PASSWORD="$(sed -n 's/^Mot de passe : //p' "$BUILD/keystore/MOT_DE_PASSE.txt" | head -1 | tr -d '[:space:]')"
-  else
-    # PRIORITÉ 2 : keystore local, sinon génération (nouvelle clé !)
-    KS_DIR="${KEYSTORE_DIR:-$HOME/trattoria-keystore}"
-    KEYSTORE="$KS_DIR/trattoria-release.p12"
-    if [ ! -f "$KEYSTORE" ]; then
-      echo "==> ATTENTION : keystore officiel absent — GÉNÉRATION D'UNE NOUVELLE CLÉ"
-      echo "    (les mises à jour depuis les versions existantes échoueront ;"
-      echo "     restaurer build/keystore/trattoria-release.p12 de préférence)"
-      python3 "$BUILD/generate_keystore.py" "$KS_DIR"
-    fi
-    PASSWORD="$(grep -A1 'MOT DE PASSE' "$KS_DIR/README-KEYSTORE.txt" | tail -1 | tr -d '[:space:]')"
+# --- keystore : uniquement hors dépôt --------------------------------------
+# Les variables d'environnement sont prioritaires (CI : secrets protégés).
+# Un seul argument optionnel, le chemin du keystore, reste accepté ; le mot
+# de passe ne doit jamais apparaître dans la liste des processus.
+if [ $# -gt 1 ]; then
+  echo "Usage : $0 [chemin-keystore]" >&2
+  exit 1
+fi
+KEYSTORE="${KEYSTORE_PATH:-${1:-}}"
+PASSWORD="${KEYSTORE_PASSWORD:-}"
+if [ -z "$KEYSTORE" ]; then
+  KS_DIR="${KEYSTORE_DIR:-$HOME/trattoria-keystore}"
+  KEYSTORE="$KS_DIR/trattoria-release.p12"
+  if [ ! -f "$KEYSTORE" ]; then
+    echo "==> Aucun keystore externe : génération locale dans $KS_DIR"
+    PASSWORD="$(KEYSTORE_PASSWORD="$PASSWORD" python3 "$BUILD/generate_keystore.py" "$KS_DIR")"
   fi
 fi
-
 if [ -z "$PASSWORD" ]; then
-  echo "ERREUR : mot de passe du keystore manquant (2e argument)." >&2
+  echo "ERREUR : définir KEYSTORE_PASSWORD dans l'environnement (coffre externe)." >&2
+  exit 1
+fi
+KEYSTORE_ABS="$(realpath -m "$KEYSTORE")"
+ROOT_ABS="$(realpath -m "$ROOT")"
+if [[ "$KEYSTORE_ABS" == "$ROOT_ABS"/* ]]; then
+  echo "ERREUR : le keystore doit être hors du dépôt ; fournir un coffre externe." >&2
   exit 1
 fi
 
@@ -98,7 +102,7 @@ echo "==> Reconstruction + signature (ZIP original préservé)"
 # préservés : resources.arsc en STORE aligné 4, comme l'original), puis
 # ajoute la signature v1 et le bloc v2. C'est ce qui rend l'APK
 # installable — la recompression complète faisait échouer l'installation.
-python3 "$BUILD/resign.py" "$APK_SRC" "$KEYSTORE" "$PASSWORD" "$OUT/trato-11.1-durci.apk" \
+KEYSTORE_PASSWORD="$PASSWORD" python3 "$BUILD/resign.py" "$APK_SRC" "$KEYSTORE" "$OUT/trato-11.1-durci.apk" \
         "${REPLACE_ARGS[@]}"
 
 echo "==> Vérifications finales"

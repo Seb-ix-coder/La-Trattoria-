@@ -1,6 +1,10 @@
-## 🛠️ Correctif du crash au lancement — version stable recommandée : `trato-11.5-stable.apk` (versionCode 20)
+## ⚠️ Archive historique — ancien correctif du crash — `trato-11.5-stable.apk` (versionCode 20)
 
-**Cette version remplace la 11.4-stable (retirée)** qui s'installait,
+> **Cette version n'est plus une version stable recommandée.** Son identité de
+> signature historique est considérée comme compromise ; ne pas la diffuser ni
+> l'utiliser comme mise à jour. Voir `build/KEYSTORE_ROTATION.md`.
+
+**Cette version remplaçait historiquement la 11.4-stable (retirée)** qui s'installait,
 s'ouvrait puis **ne produisait rien** (crash silencieux).
 
 ### Cause du crash (voir `DIAGNOSTIQUE_CRASH.md`)

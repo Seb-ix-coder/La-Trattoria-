@@ -1,3 +1,8 @@
+> **Archive historique — non approuvée pour livraison.** Les APK et les
+> identités de signature décrits ici sont historiques ; considérer
+> les anciennes clés comme compromises et consulter
+> `build/KEYSTORE_ROTATION.md` avant toute nouvelle diffusion.
+
 ## 🧾🍷🍨🍺 Formules, carte des vins, des glaces et des bières — `trato-11.7-stable.apk` (versionCode 22)
 
 Suite de l'ardoise (v11.6) : **4 cartes additionnelles éditables ligne par ligne**, sur la tablette **et** sur le site.
