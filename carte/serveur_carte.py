@@ -168,7 +168,7 @@ class ServeurCarte(SimpleHTTPRequestHandler):
         # devenir un fichier statique téléchargeable. Les scripts Python et les
         # archives d'APK ne sont pas non plus des ressources de l'application.
         suffixe = Path(chemin).suffix.lower()
-        autorise = (not chemin or suffixe in {
+        autorise = (not chemin or chemin.rstrip('/') == 'impression' or suffixe in {
             '.html', '.js', '.css', '.webmanifest', '.woff2', '.png', '.jpg',
             '.jpeg', '.gif', '.svg', '.ico', '.b64'
         })

@@ -88,6 +88,27 @@ Le format JSON v4 contient `produits` et l'alias historique `carte`, ainsi que
 deux noms de catalogue. Les structures détaillées de cartes du jour ne sont
 pas identiques entre les deux modules : vérifier le rendu après transfert.
 
+## Impression urgente — cartes A4 individuelles
+
+Des fichiers autonomes, prêts pour une imprimante standard, sont disponibles
+dans [`impression/`](impression/) : **une carte = une page A4**.
+
+- [`01-carte-principale.html`](impression/01-carte-principale.html) — pizzas,
+  salades, pâtes fraîches, tiramisus du jour et formules ;
+- [`02-carte-pizzas.html`](impression/02-carte-pizzas.html) — pizzas seules ;
+- [`03-glaces-langelys.html`](impression/03-glaces-langelys.html) — glaces et
+  sorbets L’Angelys ;
+- [`04-bieres-du-moment.html`](impression/04-bieres-du-moment.html) — bières
+  seules.
+
+Ouvrir le fichier puis cliquer sur **Imprimer cette carte**. Choisir A4,
+échelle 100 %/taille réelle et désactiver les en-têtes et pieds de page du
+navigateur. Régénérer après modification du catalogue :
+
+```bash
+python3 build/generer_cartes_a4.py
+```
+
 ## Ardoise & QR
 
 L'onglet **« Ardoise & QR »** édite la carte principale : titres et sous-titres

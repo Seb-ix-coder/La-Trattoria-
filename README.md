@@ -63,6 +63,11 @@ exports JSON acceptent désormais les deux noms de catalogue (`produits` et
 `carte`) ; les structures de cartes du jour restent propres à chaque module et
 doivent être vérifiées après import.
 
+**Urgence impression A4 :** les quatre cartes individuelles sont prêtes dans
+[`carte/impression/`](carte/impression/) : carte principale, pizzas, glaces
+L’Angelys et bières du moment. Chaque fichier HTML est autonome et prévu pour
+une seule page A4.
+
 ### Installer
 
 1. Générer une nouvelle clé puis produire l'APK ; désinstaller l'archive
