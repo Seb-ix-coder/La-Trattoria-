@@ -6,6 +6,11 @@
 > nouvelle identité hors dépôt et réinstaller la première version signée avec
 > celle-ci. Voir `build/KEYSTORE_ROTATION.md`.
 
+Les **liens directs de téléchargement pour vérification**, avec SHA-256 et
+lien immuable du build, sont centralisés dans [`docs/APK_DOWNLOADS.md`](docs/APK_DOWNLOADS.md).
+Le candidat actuel est téléchargeable directement ici :
+[trato-13.0-stable.apk](https://raw.githubusercontent.com/Seb-ix-coder/La-Trattoria-/arena/01a051de-la-trattoria/trato-13.0-stable.apk).
+
 Projet unique du restaurant **La Trattoria** (Saintes, 17100) : application de
 gestion, module de carte du jour, application client/partenaire avec module
 social, cartes imprimables. **Tout le projet vit dans cette branche.**
