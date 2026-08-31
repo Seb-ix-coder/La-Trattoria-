@@ -145,8 +145,10 @@ def main_cards(catalogue):
     desserts.append({"nom": "Tiramisu de saison", "pv": 6.50,
                      "desc": "Selon l’inspiration du jour · demander le parfum en caisse"})
     formulas = [p for p in by_family.get("Formules", []) if p["id"] in {"p41", "p42", "p43", "p44"}]
+    pizza_milieu = (len(pizzas) + 1) // 2
     main = "".join([
-        section("Pizzas — pâte maison maturée 48 h", pizzas, dense=True),
+        section("Pizzas — pâte maison maturée 48 h", pizzas[:pizza_milieu], dense=True),
+        section("Pizzas — suite", pizzas[pizza_milieu:], dense=True),
         section("Salades fraîches", salads, dense=True),
         section("Pâtes fraîches", pastas, dense=True),
         section("Desserts du jour · Tiramisus maison", desserts, dense=True),
