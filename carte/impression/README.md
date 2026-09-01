@@ -1,5 +1,16 @@
 # Cartes A4 — impression urgente
 
+### Preview partageable et modifiable
+
+Ouvrir `preview-modifiable.html` pour présenter les quatre cartes dans une
+interface unique. Le bouton **Modifier cette carte** permet d’ajuster les textes
+et les prix localement avant impression. Le bouton **Télécharger la version
+modifiée** permet ensuite d’envoyer le fichier corrigé à une autre personne.
+
+Les modifications sont locales au navigateur : elles ne changent pas le dépôt
+et ne sont pas visibles par les autres personnes tant que le fichier modifié
+n’a pas été téléchargé puis envoyé.
+
 Chaque fichier HTML est une carte indépendante conçue pour tenir sur **une
 seule page A4** et fonctionner avec une imprimante standard, sans connexion ni
 dépendance externe.

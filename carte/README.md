@@ -93,6 +93,9 @@ pas identiques entre les deux modules : vérifier le rendu après transfert.
 Des fichiers autonomes, prêts pour une imprimante standard, sont disponibles
 dans [`impression/`](impression/) : **une carte = une page A4**.
 
+- [`preview-modifiable.html`](impression/preview-modifiable.html) — preview
+  partageable des quatre cartes, avec édition locale, impression et téléchargement
+  d’une version corrigée ;
 - [`01-carte-principale.html`](impression/01-carte-principale.html) — pizzas,
   salades, pâtes fraîches, tiramisus du jour et formules ;
 - [`02-carte-pizzas.html`](impression/02-carte-pizzas.html) — pizzas seules ;
