@@ -63,10 +63,12 @@ exports JSON acceptent désormais les deux noms de catalogue (`produits` et
 `carte`) ; les structures de cartes du jour restent propres à chaque module et
 doivent être vérifiées après import.
 
-**Urgence impression A4 :** les quatre cartes individuelles sont prêtes dans
+**Urgence impression A4 :** les cartes individuelles sont prêtes dans
 [`carte/impression/`](carte/impression/) : carte principale, pizzas, glaces
-L’Angelys et bières du moment. Chaque fichier HTML est autonome et prévu pour
-une seule page A4.
+L’Angelys, bières du moment et planche de cartes de contact 85 × 55 mm.
+Une [carte mobile -20 %](carte/offre-20.html) permet de demander uniquement un
+moyen de contact et un consentement, puis de transmettre volontairement les
+informations par e-mail.
 
 ### Installer
 

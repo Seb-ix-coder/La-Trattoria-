@@ -11,6 +11,12 @@ Les modifications sont locales au navigateur : elles ne changent pas le dépôt
 et ne sont pas visibles par les autres personnes tant que le fichier modifié
 n’a pas été téléchargé puis envoyé.
 
+`cartes-contact-a4.html` fournit 10 cartes de contact au format portefeuille
+85 × 55 mm sur une feuille A4, à découper. La carte mobile `../offre-20.html`
+affiche le bon spécial **-20 %**, demande seulement un moyen de contact et un
+consentement distinct, puis permet à la personne d’envoyer volontairement ses
+coordonnées à La Trattoria par sa messagerie.
+
 Chaque fichier HTML est une carte indépendante conçue pour tenir sur **une
 seule page A4** et fonctionner avec une imprimante standard, sans connexion ni
 dépendance externe.

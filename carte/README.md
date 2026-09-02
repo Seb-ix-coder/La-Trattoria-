@@ -96,6 +96,10 @@ dans [`impression/`](impression/) : **une carte = une page A4**.
 - [`preview-modifiable.html`](impression/preview-modifiable.html) — preview
   partageable des quatre cartes, avec édition locale, impression et téléchargement
   d’une version corrigée ;
+- [`cartes-contact-a4.html`](impression/cartes-contact-a4.html) — planche A4 de
+  10 cartes de contact au format 85 × 55 mm, à découper ;
+- [`offre-20.html`](offre-20.html) — carte mobile spéciale -20 % avec collecte
+  minimale d’un contact et consentement ;
 - [`01-carte-principale.html`](impression/01-carte-principale.html) — pizzas,
   salades, pâtes fraîches, tiramisus du jour et formules ;
 - [`02-carte-pizzas.html`](impression/02-carte-pizzas.html) — pizzas seules ;

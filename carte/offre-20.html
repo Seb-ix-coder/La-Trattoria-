@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#a51822">
+<title>Bon découverte -20 % — La Trattoria</title>
+<style>
+:root{--red:#a51822;--dark:#7a1018;--cream:#fdfaf3;--ink:#282621;--muted:#6e6a63;--olive:#686f43;--line:#ded6c9}
+*{box-sizing:border-box}html,body{margin:0;background:#f4f1ea;color:var(--ink);font-family:Arial,sans-serif}
+body{min-height:100vh}.wrap{max-width:560px;margin:0 auto;padding:18px 16px 32px}
+header{text-align:center;padding:10px 0 20px}.brand{color:var(--red);font:700 30px Georgia,serif;letter-spacing:.04em}.tag{margin-top:5px;color:var(--olive);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.hero{position:relative;overflow:hidden;text-align:center;border-radius:20px;padding:27px 20px 25px;background:var(--red);color:white;box-shadow:0 9px 25px #a5182240}.hero:after{content:"";position:absolute;width:180px;height:180px;right:-80px;top:-90px;border:2px solid #ffffff38;border-radius:50%}.hero h1{position:relative;z-index:1;margin:0;font:700 52px/1 Georgia,serif}.hero p{position:relative;z-index:1;margin:8px 0 0;font-size:15px;font-weight:700}.card{margin-top:16px;padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--cream);box-shadow:0 3px 12px #453b2712}.card h2{margin:0 0 6px;color:var(--dark);font:700 21px Georgia,serif}.intro{margin:0 0 17px;color:var(--muted);font-size:13px;line-height:1.45}
+label{display:block;margin:13px 0 0;color:var(--dark);font-size:13px;font-weight:700}input[type=text],input[type=email],input[type=tel]{display:block;width:100%;margin-top:6px;border:1px solid #cfc5b6;border-radius:9px;padding:12px;background:#fff;color:var(--ink);font:16px Arial,sans-serif}input:focus{outline:3px solid #a5182230;border-color:var(--red)}.consent{display:flex;gap:10px;align-items:flex-start;margin-top:16px;color:var(--ink);font-weight:400;line-height:1.4}.consent input{flex:none;width:20px;height:20px;accent-color:var(--red);margin-top:0}.small{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.4}.button{display:block;width:100%;margin-top:18px;border:0;border-radius:10px;padding:14px;background:var(--red);color:#fff;cursor:pointer;font-size:15px;font-weight:700}.button:hover{background:var(--dark)}.error{min-height:18px;margin:8px 0 0;color:var(--dark);font-size:12px;font-weight:700}
+#coupon[hidden]{display:none}.coupon{position:relative;text-align:center;border:2px dashed var(--red);background:#fff;padding:22px 16px}.coupon .mini{color:var(--olive);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}.coupon h2{margin:8px 0 2px;font-size:25px}.code{display:inline-block;margin:13px 0 8px;padding:9px 15px;border-radius:7px;background:#f0e7d9;color:var(--dark);font:bold 21px monospace;letter-spacing:.08em}.terms{margin:10px auto 0;max-width:420px;color:var(--muted);font-size:11px;line-height:1.45}.mail{display:inline-block;width:auto;margin-top:15px;text-decoration:none}.notice{margin-top:15px;color:var(--muted);font-size:11px;line-height:1.45;text-align:center}.notice a{color:var(--dark)}footer{padding:20px 5px 0;text-align:center;color:var(--muted);font-size:11px;line-height:1.5}footer a{color:var(--dark)}
+@media (min-width:600px){.wrap{padding-top:30px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<header><div class="brand">LA TRATTORIA</div><div class="tag">Pizzeria artisanale · Saintes</div></header>
+<section class="hero"><h1>-20 %</h1><p>Votre bon découverte sur présentation de cet écran</p></section>
+<section class="card" id="form-card">
+<h2>Recevoir mon bon</h2>
+<p class="intro">Nous demandons uniquement un moyen de contact pour remettre et vérifier votre bon. Aucun compte, aucune donnée de paiement.</p>
+<form id="offer-form" novalidate>
+<label for="name">Prénom ou nom <span class="small">facultatif</span></label>
+<input id="name" name="name" type="text" maxlength="80" autocomplete="name" placeholder="Votre prénom">
+<label for="contact">E-mail ou téléphone</label>
+<input id="contact" name="contact" type="text" maxlength="120" required autocomplete="email tel" placeholder="vous@exemple.fr ou 06 00 00 00 00">
+<label class="consent" for="consent"><input id="consent" name="consent" type="checkbox" required><span>J’accepte que La Trattoria utilise ces coordonnées uniquement pour me remettre et vérifier ce bon de réduction. Je peux retirer cet accord à tout moment.</span></label>
+<label class="consent" for="marketing"><input id="marketing" name="marketing" type="checkbox"><span>Je consens aussi à recevoir les offres et actualités de La Trattoria.</span></label>
+<p class="small">Le second consentement est facultatif. Voir les <a href="legal.html">informations sur les données personnelles</a>.</p>
+<div class="error" id="error" role="alert"></div>
+<button class="button" type="submit">Afficher mon bon de -20 %</button>
+</form>
+</section>
+<section class="card coupon" id="coupon" hidden>
+<div class="mini">Bon découverte La Trattoria</div><h2>-20 %</h2><div>Présentez cet écran en caisse</div><div class="code">TRATTORIA20</div>
+<div class="terms">Valable une fois par personne, non cumulable, sur pizzas et pâtes, hors formules, boissons et desserts. Offre à présenter avant règlement.</div>
+<a class="button mail" id="send" href="#">✉ Envoyer mes coordonnées à La Trattoria</a>
+<p class="notice">L’envoi ouvre votre messagerie : rien n’est transmis automatiquement sans votre confirmation.</p>
+</section>
+<footer>La Trattoria · 15 rue de la Poste · 17100 Saintes<br><a href="tel:+33627213190">06 27 21 31 90</a> · <a href="mailto:alexis.coudret@outlook.fr">alexis.coudret@outlook.fr</a><br>SIRET 106 050 263 00016</footer>
+</main>
+<script>
+(function(){
+  'use strict';
+  var form=document.getElementById('offer-form'), formCard=document.getElementById('form-card'), coupon=document.getElementById('coupon'), error=document.getElementById('error'), send=document.getElementById('send');
+  function validContact(value){return /@/.test(value) || /\d.*\d.*\d.*\d.*\d.*\d/.test(value);}
+  function show(data){
+    formCard.hidden=true; coupon.hidden=false;
+    var subject=encodeURIComponent('Demande de bon découverte -20 % — La Trattoria');
+    var body=encodeURIComponent('Bonjour La Trattoria,\n\nJe souhaite bénéficier du bon découverte TRATTORIA20.\nPrénom ou nom : '+(data.name||'Non renseigné')+'\nContact : '+data.contact+'\nConsentement remise et vérification du bon : oui\nConsentement offres et actualités : '+(data.marketing?'oui':'non')+'\n\nDate : '+new Date().toLocaleString('fr-FR'));
+    send.href='mailto:alexis.coudret@outlook.fr?subject='+subject+'&body='+body;
+    try{sessionStorage.setItem('trattoria-offre-20',JSON.stringify(data));}catch(e){}
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  form.addEventListener('submit',function(e){
+    e.preventDefault(); error.textContent='';
+    var contact=document.getElementById('contact').value.trim(), consent=document.getElementById('consent').checked;
+    if(!validContact(contact)){error.textContent='Indiquez un e-mail ou un numéro de téléphone valide.';return;}
+    if(!consent){error.textContent='Le consentement pour la remise et la vérification du bon est nécessaire.';return;}
+    show({name:document.getElementById('name').value.trim(),contact:contact,marketing:document.getElementById('marketing').checked,at:new Date().toISOString()});
+  });
+  try{var saved=JSON.parse(sessionStorage.getItem('trattoria-offre-20')||'null');if(saved&&saved.contact)show(saved);}catch(e){}
+})();
+</script>
+</body>
+</html>
