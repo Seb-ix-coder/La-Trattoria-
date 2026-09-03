@@ -3,8 +3,8 @@
 """
 La Trattoria — génération du QR code de la carte de visite.
 
-Le QR code pointe vers le lien de téléchargement direct GitHub de
-l'application (mode client, avec inscription sur le site en ligne).
+Le QR code de la carte de visite pointe vers le site public du restaurant
+(menu, cartes du jour et contact).
 
 Modifiez URL_APPLI ci-dessous puis relancez :
     python3 generer-carte.py
@@ -18,7 +18,7 @@ import re
 # ---------------------------------------------------------------
 #  Configuration
 # ---------------------------------------------------------------
-URL_APPLI = "https://github.com/Seb-ix-coder/La-Trattoria-/raw/SEBIX/trato.apk"
+URL_APPLI = "https://latrattoria-saintes.fr/"
 TEL_ALEX = "06 27 21 31 90"                    # Alexandre « Alex » Coudret
 ADRESSE  = "Rue de La Poste, 17100 Saintes"
 
