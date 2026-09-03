@@ -37,7 +37,7 @@ python3 build/make_qrcode.py "http://<IP-DE-LA-TABLETTE>:8720/" \
     --label "La Trattoria — Ouvrir le menu"
 ```
 
-Variantes : site en ligne → `python3 build/make_qrcode.py "https://www.votresite.fr/" qr/QR-site-web.png` ;
+Pour les cartes de visite, `qr/QR-carte-visite.png` est le QR pré-généré vers `https://latrattoria-saintes.fr/` (site public, menu et contact). Variantes : site en ligne → `python3 build/make_qrcode.py "https://www.votresite.fr/" qr/QR-site-web.png` ;
 QR sans légende → `--no-caption` ; plus grande résolution → `--box 20`.
 
 ## Vérification du décodage
