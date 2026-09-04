@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Formules — La Trattoria</title><style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #e9e7e1; }
+body { color: #252521; font-family: Georgia, 'Times New Roman', serif; }
+.screen-actions { max-width: 210mm; margin: 10px auto 0; padding: 8px 12px;
+  display: flex; gap: 8px; align-items: center; font: 14px Arial, sans-serif;
+  background: #fff; border: 1px solid #c9c3b7; border-radius: 5px; }
+.screen-actions button { cursor: pointer; border: 1px solid #7a1018; border-radius: 4px;
+  background: #a51822; color: white; padding: 8px 14px; font-weight: 700; }
+.screen-actions span { color: #605b53; }
+.sheet { width: 210mm; min-height: 297mm; margin: 10px auto; padding: 9mm 11mm 8mm;
+  background: #fff; display: flex; flex-direction: column; }
+.sheet.dense { padding-top: 8mm; padding-bottom: 7mm; }
+.brand { text-align: center; border-bottom: 2px solid #a51822; padding-bottom: 4mm; }
+.brand .name { color: #a51822; font-size: 29px; font-weight: 700; letter-spacing: .03em; }
+.brand .city { margin-top: 1mm; color: #6e6a63; font: 11px Arial, sans-serif; letter-spacing: .04em; }
+.brand h1 { margin: 3mm 0 0; color: #252521; font-size: 22px; line-height: 1.1; }
+.brand .tagline { margin: 1.5mm 0 0; color: #5d663c; font-size: 11px; font-style: italic; }
+.menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 9mm; margin-top: 1mm; }
+.section { break-inside: avoid; page-break-inside: avoid; margin: 3.8mm 0 0; }
+.dense .section { margin-top: 2mm; }
+.section h2 { margin: 0 0 1.2mm; padding-bottom: .8mm; border-bottom: 1px solid #a51822;
+  color: #7a1018; font-size: 15px; line-height: 1.1; }
+.section .section-note { margin: -0.4mm 0 1.2mm; color: #6e6a63; font-size: 9.5px; font-style: italic; }
+.menu-item { break-inside: avoid; page-break-inside: avoid; margin: 1.7mm 0; }
+.dense .menu-item { margin: .8mm 0; }
+.item-top { display: flex; align-items: baseline; gap: 2mm; line-height: 1.05; }
+.item-name { font-size: 11.3px; font-weight: 700; }
+.dense .item-name { font-size: 9.7px; }
+.dots { flex: 1; min-width: 3mm; border-bottom: 1px dotted #b9b3a4; transform: translateY(-1px); }
+.price { white-space: nowrap; font-size: 11.3px; font-weight: 700; }
+.dense .price { font-size: 10.1px; }
+.item-desc { margin-top: .7mm; color: #57534c; font-size: 9.3px; line-height: 1.18; }
+.dense .item-desc { font-size: 7.7px; line-height: 1.08; }
+.item-desc strong { color: #7a1018; }
+.footer { margin-top: auto; padding-top: 3mm; border-top: 1px solid #b9b3a4; text-align: center;
+  color: #5d5a53; font: 8.2px/1.3 Arial, sans-serif; }
+.footer .legal { display: block; margin-top: 1mm; font-size: 7.7px; }
+.callout { border: 1px solid #a51822; padding: 2mm 2.5mm; margin-top: 2mm; break-inside: avoid;
+  font-size: 9px; line-height: 1.2; }
+.callout b { color: #7a1018; }
+@media screen { .sheet { box-shadow: 0 2px 12px #bbb; } }
+@media print {
+  html, body { background: #fff; }
+  .screen-actions { display: none !important; }
+  .sheet { margin: 0; width: 210mm; min-height: 297mm; height: 297mm; box-shadow: none; }
+}
+</style></head><body>
+<div class="screen-actions"><button type="button" onclick="window.print()">🖨 Imprimer cette carte</button>
+<span>Une carte = une page A4 · échelle 100 % · désactiver en-têtes/pieds du navigateur</span></div>
+<main class="sheet"><header class="brand"><div class="name">LA TRATTORIA</div><div class="city">SAINTES · 15 rue de la Poste</div>
+<h1>Formules</h1><p class="tagline">Pause déjeuner, menu enfant et grande faim</p></header><div class="callout"><b>Pause déjeuner :</b> service rapide pour les actifs du quartier, sur place ou à emporter. <b>Grande Faim :</b> minimum 2 personnes.</div>
+<div class="menu-grid"><section class="section"><h2>Formules — côté midi</h2><p class="section-note">Pour une pause rapide et gourmande</p><div class="menu-item"><div class="item-top"><span class="item-name">Menu Enfant</span><span class="dots"></span><span class="price">6,00 €</span></div><div class="item-desc">Moins de 12 ans — pizza tomate, jambon, emmental + 1 boisson 33 cl</div></div><div class="menu-item"><div class="item-top"><span class="item-name">Formule Midi</span><span class="dots"></span><span class="price">15,00 €</span></div><div class="item-desc">Du mardi au vendredi — pizza au choix + dessert du jour</div></div><div class="menu-item"><div class="item-top"><span class="item-name">Formule Complète</span><span class="dots"></span><span class="price">22,00 €</span></div><div class="item-desc">Entrée + pizza ou pâtes + dessert</div></div></section><section class="section"><h2>Formules — à partager</h2><div class="menu-item"><div class="item-top"><span class="item-name">Formule Salade</span><span class="dots"></span><span class="price">15,50 €</span></div><div class="item-desc">Salade au choix + dessert du jour</div></div><div class="menu-item"><div class="item-top"><span class="item-name">Formule Midi Pâtes</span><span class="dots"></span><span class="price">16,00 €</span></div><div class="item-desc">Pâtes fraîches au choix + dessert du jour · service rapide le midi</div></div><div class="menu-item"><div class="item-top"><span class="item-name">Formule Grande Faim</span><span class="dots"></span><span class="price">44,00 €</span></div><div class="item-desc">Minimum 2 personnes · planche à partager + 2 pizzas ou pâtes + 2 desserts du jour</div></div></section></div>
+<footer class="footer">Offres à consommer sur place ou à emporter · Allergènes disponibles sur demande.<span class="legal">Prix TTC, service compris · SIRET 106 050 263 00016 · 06 27 21 31 90</span></footer></main></body></html>
