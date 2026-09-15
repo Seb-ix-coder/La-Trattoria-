@@ -35,6 +35,7 @@ Fichiers :
 - `02-carte-pizzas.html` — carte pizzas seule ;
 - `05-carte-salades.html` — carte salades seule ;
 - `06-carte-formules.html` — formules seules, pour le porte-vue ;
+- `08-carte-boissons.html` — carte boissons illustrée, une page A4 ;
 - `03-glaces-langelys.html` — glaces et sorbets L’Angelys seuls ;
 - `04-bieres-du-moment.html` — bières du moment seule.
 

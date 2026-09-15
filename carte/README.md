@@ -107,6 +107,7 @@ dans [`impression/`](impression/) : **une carte = une page A4**.
 - [`02-carte-pizzas.html`](impression/02-carte-pizzas.html) — pizzas seules ;
 - [`05-carte-salades.html`](impression/05-carte-salades.html) — salades seules ;
 - [`06-carte-formules.html`](impression/06-carte-formules.html) — formules seules, adaptées au porte-vue ;
+- [`08-carte-boissons.html`](impression/08-carte-boissons.html) — carte boissons illustrée ;
 - [`03-glaces-langelys.html`](impression/03-glaces-langelys.html) — glaces et
   sorbets L’Angelys ;
 - [`04-bieres-du-moment.html`](impression/04-bieres-du-moment.html) — bières
