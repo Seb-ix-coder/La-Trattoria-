@@ -100,6 +100,8 @@ dans [`impression/`](impression/) : **une carte = une page A4**.
   10 cartes de contact au format 85 × 55 mm, à découper ;
 - [`offre-20.html`](offre-20.html) — carte mobile spéciale -20 % avec collecte
   minimale d’un contact et consentement ;
+- [`07-carte-restaurant-economique.html`](impression/07-carte-restaurant-economique.html)
+  — menu complet compact sur une seule feuille A4 ;
 - [`01-carte-principale.html`](impression/01-carte-principale.html) — pizzas,
   salades, pâtes fraîches, tiramisus du jour et formules ;
 - [`02-carte-pizzas.html`](impression/02-carte-pizzas.html) — pizzas seules ;
