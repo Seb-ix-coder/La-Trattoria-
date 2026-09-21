@@ -40,14 +40,19 @@ Usage :
   KEYSTORE_PASSWORD=... python3 build/integrer_carte.py \
       SRC_APK CARTE_DIR KEYSTORE.p12 OUT_APK \
       [--version-code=18] [--version-name=11.3]
+      [--src-version=11.2]
 
-Le mode historique avec le mot de passe en argument reste accepté pour
-compatibilité locale, mais il ne doit plus être utilisé dans un pipeline.
+Si SRC_APK est déjà un APK unifié récent, `BUNDLE_B64` est rafraîchi en
+place afin de conserver toutes les fonctions natives/web existantes (caisse,
+commandes, encaissements, tables, modes de l'application). Le mode historique
+avec le mot de passe en argument reste accepté pour compatibilité locale, mais
+il ne doit plus être utilisé dans un pipeline.
 """
 
 import base64
 import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -580,9 +585,22 @@ LEGAL_ADDON = """/* ============================================================
 
 def patcher_site_js(site_js: str, carte_dir: str) -> str:
     module_b64 = base64.b64encode(assembler_module(carte_dir)).decode()
+
+    # Un APK stable peut déjà contenir l'addon carte. Dans ce cas, on ne
+    # réinjecte pas un deuxième bouton/iframe : on rafraîchit uniquement le
+    # bundle HTML embarqué. Cette voie est indispensable pour partir d'un
+    # APK total récent (commandes, encaissements, tables, modes existants)
+    # sans revenir au vieux socle 11.1.
+    motif_bundle = r"(\bBUNDLE_B64\s*=\s*')[A-Za-z0-9+/=]+(')"
+    site_js_rafraichi, occurrences = re.subn(
+        motif_bundle, lambda m: m.group(1) + module_b64 + m.group(2),
+        site_js, count=1)
+    if occurrences:
+        return site_js_rafraichi
+
     addon = ADDON_TEMPLATE.replace('__BUNDLE_B64__', module_b64)
     if 'LT_CARTE' in site_js or 'btn-carte' in site_js:
-        raise SystemExit('site.js déjà patché (btn-carte présent)')
+        raise SystemExit('site.js contient un addon carte sans BUNDLE_B64 rafraîchissable')
     if 'barre-sociale' not in site_js:
         print('[ATTENTION] module social (barre-sociale) introuvable — '
               'vérifier le build source')
@@ -620,13 +638,14 @@ def main() -> None:
         src_apk, carte_dir, keystore, password, dst_apk = args
     version_code = int(opts.get('--version-code', 18))
     version_name = opts.get('--version-name', '11.3')
+    src_version = opts.get('--src-version', '11.2')
 
     import zipfile
     with zipfile.ZipFile(src_apk) as z:
         manifest = z.read('AndroidManifest.xml')
         site_js = z.read('assets/site.js').decode('utf-8')
 
-    manifest_out = patcher_manifest(manifest, version_code, version_name)
+    manifest_out = patcher_manifest(manifest, version_code, version_name, src_version)
     site_js_out = patcher_site_js(site_js, carte_dir)
 
     work = os.path.join(HERE, 'work')
