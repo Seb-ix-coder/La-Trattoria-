@@ -2362,7 +2362,7 @@
   function dessinerStandardStructure() {
     var hote = $('#standard-structure');
     if (!hote || !CF) return;
-    var h = '<div class="standard-admin-intro"><b>La carte publiée</b><span>Chaque ligne ci-dessous est indépendante : modifiez-la, déplacez-la, masquez-la ou ajoutez une nouvelle ligne libre.</span></div>';
+    var h = '<div class="standard-admin-intro"><b>La carte générale publiée</b><span>Cette source unique alimente l’administration, l’aperçu, l’impression A4, le site public et les commandes. Modifiez, déplacez, masquez ou ajoutez chaque ligne directement ici.</span></div>';
     standardAdminDefs().forEach(function (def) {
       var conf = CF.fams[def.fam] || { titre: def.titre, sous: def.texte, ordre: [], libres: [] };
       var items = standardAdminItems(def);
