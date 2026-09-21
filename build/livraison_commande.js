@@ -145,8 +145,9 @@
           // réception/paiement restent visibles dans l'écran restaurant via
           // le libellé client, même avec le DEX conservé intact.
           cmd.client = String(cmd.client || cmd.nom || 'Client').trim();
-          var suffixe = ' · ' + paiementLabel.replace(/\\s+/g, ' ').trim() +
-            ' · ' + labelMode() + (frais() ? ' +' + eur(frais()) : ' gratuit');
+          var suffixe = ' · ' + paiementLabel.replace(/\s+/g, ' ').trim() +
+            ' · ' + labelMode() + (frais() ? ' +' + eur(frais()) : ' gratuit') +
+            ' · Total ' + eur(totalCommande());
           cmd.client = (suffixe + ' · ' + cmd.client).slice(0, 80);
           cmd.lignes = (cmd.lignes || []).map(function (l) {
             return { id: l.id, nom: l.nom, pv: Number(l.prix || l.pv || 0),
