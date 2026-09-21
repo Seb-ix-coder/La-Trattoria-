@@ -399,6 +399,7 @@
         sous: def.sous || '',
         ordre: CARTE.filter(function (p) { return String(p.fam) === f; })
           .map(function (p) { return p.id; }),
+        exclus: [],
         libres: []
       };
     });
@@ -440,10 +441,12 @@
       var src = (c.fams && c.fams[f]) || def.fams[f] || {};
       var presents = CARTE.filter(function (p) { return String(p.fam) === f; })
         .map(function (p) { return p.id; });
+      var exclus = (Object.prototype.toString.call(src.exclus) === '[object Array]')
+        ? src.exclus.map(String).filter(function (id) { return presents.indexOf(id) >= 0; }) : [];
       var ordre = (Object.prototype.toString.call(src.ordre) === '[object Array]')
-        ? src.ordre.filter(function (id) { return presents.indexOf(id) >= 0; })
+        ? src.ordre.filter(function (id) { return presents.indexOf(id) >= 0 && exclus.indexOf(id) < 0; })
         : [];
-      presents.forEach(function (id) { if (ordre.indexOf(id) < 0) ordre.push(id); });
+      presents.forEach(function (id) { if (exclus.indexOf(id) < 0 && ordre.indexOf(id) < 0) ordre.push(id); });
       var libres = (Object.prototype.toString.call(src.libres) === '[object Array]')
         ? src.libres.slice(0, 30).map(function (l, i) {
             if (!l || typeof l !== 'object') return null;
@@ -454,7 +457,8 @@
               nom: nom,
               sous: String(l.sous || '').trim().slice(0, 90),
               desc: String(l.desc || '').trim().slice(0, 200),
-              prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0)
+              prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0),
+              allergenes: allergenesLibres(l.allergenes || l.alg)
             };
           }).filter(Boolean)
         : [];
@@ -462,6 +466,7 @@
         titre: String(src.titre || '').trim().slice(0, 60) || (def.fams[f] ? def.fams[f].titre : f),
         sous: String(src.sous || '').trim().slice(0, 120),
         ordre: ordre,
+        exclus: exclus,
         libres: libres
       };
     });
@@ -756,7 +761,7 @@
     if (conf.libres.length >= 30) { toast('Maximum 30 lignes libres par catégorie'); return; }
     var l = {
       id: 'l' + Date.now().toString(36),
-      nom: 'Nouvelle ligne', sous: '', desc: '', prix: 0
+      nom: 'Nouvelle ligne', sous: '', desc: '', prix: 0, allergenes: []
     };
     conf.libres.push(l);
     conf.ordre.push(l.id);
@@ -776,7 +781,8 @@
       '<div class="cf-libre-form">' +
         '<input type="text" data-cf-l="nom" maxlength="60" value="' + echap(l.nom) + '" placeholder="Nom (ex. : Menu enfant)">' +
         '<input type="text" data-cf-l="sous" maxlength="90" value="' + echap(l.sous) + '" placeholder="Sous-titre (facultatif)">' +
-        '<input type="text" data-cf-l="desc" maxlength="200" value="' + echap(l.desc) + '" placeholder="Descriptif (facultatif)">' +
+        '<input type="text" data-cf-l="desc" maxlength="200" value="' + echap(l.desc) + '" placeholder="Descriptif vendeur (facultatif)">' +
+        '<input type="text" data-cf-l="allergenes" maxlength="180" value="' + echap((l.allergenes || []).join(', ')) + '" placeholder="Allergènes : gluten, lactose…">' +
         '<input type="text" data-cf-l="prix" inputmode="decimal" value="' +
           (l.prix > 0 ? String(l.prix).replace('.', ',') : '') + '" placeholder="Prix €">' +
         '<button type="button" class="btn btn-p btn-mini" data-cf="libre-ok">OK</button>' +
@@ -795,6 +801,7 @@
     l.nom = nom.slice(0, 60);
     l.sous = String($('[data-cf-l="sous"]', li).value || '').trim().slice(0, 90);
     l.desc = String($('[data-cf-l="desc"]', li).value || '').trim().slice(0, 200);
+    l.allergenes = allergenesLibres($('[data-cf-l="allergenes"]', li).value || '');
     l.prix = Math.max(0, Math.round((parseFloat(String($('[data-cf-l="prix"]', li).value).replace(',', '.')) || 0) * 100) / 100);
     sauver();
     dessinerCF();
@@ -846,7 +853,13 @@
     if (ECRAN !== 'carte') return false;
     var saut = t.closest('[data-cv-saut]');
     if (saut) { montrer(saut.getAttribute('data-cv-saut')); return true; }
-    if (t.closest('[data-cv-imprimer]')) { ouvrirImpressionCarte(); return true; }
+    if (t.closest('[data-cv-imprimer]') || t.closest('[data-standard-preview]')) { ouvrirImpressionCarte(); return true; }
+    if (t.closest('[data-standard-formules]')) {
+      CARTE_VIEW = 'formules';
+      $$('.cv').forEach(function (b) { var on = b.dataset.cv === CARTE_VIEW; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+      dessinerCarte();
+      return true;
+    }
     var cv = t.closest('.cv[data-cv]');
     if (cv) {
       CARTE_VIEW = cv.dataset.cv;
@@ -889,6 +902,30 @@
       sauver(); dessinerCF(); dessinerCarte();
       return true;
     }
+    var reintegrer = t.closest('[data-standard-reintegrer]');
+    if (reintegrer) {
+      var reinSection = reintegrer.closest('.famille[data-fam]');
+      var reinConf = reinSection && CF.fams[reinSection.dataset.fam];
+      var reinSelect = reinSection && $('[data-standard-reintegrer-select]', reinSection);
+      var reinId = reinSelect && reinSelect.value;
+      if (reinConf && reinId) {
+        reinConf.exclus = (reinConf.exclus || []).filter(function (id) { return id !== reinId; });
+        if (reinConf.ordre.indexOf(reinId) < 0) reinConf.ordre.push(reinId);
+        sauver(); dessinerStandardStructure(); dessinerCarte();
+        toast('Ligne réintégrée dans la carte standard');
+      }
+      return true;
+    }
+    var removeStandard = t.closest('[data-standard-remove]');
+    if (removeStandard) {
+      var removeId = removeStandard.getAttribute('data-standard-remove');
+      if (confF.ordre.indexOf(removeId) >= 0) confF.ordre = confF.ordre.filter(function (id) { return id !== removeId; });
+      confF.exclus = confF.exclus || [];
+      if (confF.exclus.indexOf(removeId) < 0) confF.exclus.push(removeId);
+      sauver(); dessinerStandardStructure(); dessinerCarte();
+      toast('Ligne retirée de la carte standard');
+      return true;
+    }
     var orderButton = t.closest('[data-standard-order]');
     if (orderButton) {
       var moveId = orderButton.getAttribute('data-standard-id');
@@ -918,6 +955,8 @@
         if (!nomOk) { toast('Le nom de la ligne est obligatoire'); return true; }
         lOk.nom = nomOk.slice(0, 60);
         lOk.sous = String($('[data-lf-champ="sous"]', section).value || '').trim().slice(0, 90);
+        lOk.desc = String($('[data-lf-champ="desc"]', section).value || '').trim().slice(0, 200);
+        lOk.allergenes = allergenesLibres($('[data-lf-champ="allergenes"]', section).value || '');
         lOk.prix = Math.max(0, Math.round(
           (parseFloat(String($('[data-lf-champ="prix"]', section).value).replace(',', '.')) || 0) * 100) / 100);
         LF_A_EDITER = null;
@@ -949,7 +988,7 @@
     { id: 'entrees', fam: 'Entrées', titre: 'À partager', texte: 'Focaccia, bruschettas et bouchées italiennes préparées maison.' },
     { id: 'salades', fam: 'Salades', titre: 'Salades fraîches', texte: 'Des assiettes colorées, préparées minute avec les produits de saison.' },
     { id: 'pizzas', fam: 'Pizzas', titre: 'Pizzas au feu de bois', texte: 'Pâte maison maturée 48 heures, garnitures choisies chaque matin.' },
-    { id: 'plats', fam: 'Pâtes', titre: 'Plats & pâtes fraîches', texte: 'Recettes généreuses, sauces mijotées et pâtes préparées chaque matin.' },
+    { id: 'plats', fam: 'Pâtes', titre: 'Plats', texte: 'Pâtes fraîches, recettes généreuses et sauces mijotées chaque matin.' },
     { id: 'desserts', fam: 'Desserts', titre: 'Desserts maison', texte: 'Tiramisus et douceurs italiennes préparés dans notre cuisine.' },
     { id: 'glaces', fam: 'Desserts', titre: 'Glaces artisanales', texte: 'Une fin fraîche et gourmande, avec nos glaces et sorbets.' }
   ];
@@ -974,6 +1013,19 @@
   function standardSections() {
     var sections = [];
     var famillesUtilisees = {};
+    // Les formules sont volontairement la première rubrique de la première
+    // page : elles sont une offre commerciale, pas une carte annexe oubliée.
+    if (CF && CF.extras && CF.extras.formules) {
+      var formules = itemsExtra('formules').filter(function (it) {
+        return it.kind === 'l' || it.p.actif;
+      });
+      sections.push({
+        id: 'formules',
+        titre: CF.extras.formules.titre || 'Nos formules',
+        sous: CF.extras.formules.sous || 'Menus et formules du moment',
+        items: formules
+      });
+    }
     STANDARD_SECTIONS.forEach(function (def) {
       var conf = CF && CF.fams[def.fam];
       var items = standardSectionItems(def);
@@ -996,6 +1048,7 @@
       if (famillesUtilisees[fam]) return;
       var conf = CF && CF.fams[fam];
       var items = itemsFamille(fam).filter(function (it) {
+        if (fam === 'Apéritif' && it.kind === 'p' && it.p.type === 'formule') return false;
         return it.kind === 'l' || it.p.actif;
       });
       if (!items.length) return;
@@ -1007,6 +1060,15 @@
       });
     });
     return sections.filter(function (s) { return s.items.length || ['entrees', 'salades', 'pizzas', 'plats', 'desserts', 'glaces'].indexOf(s.id) >= 0; });
+  }
+
+  function htmlAllergenes(liste) {
+    return (liste || []).map(function (id) {
+      for (var i = 0; i < ALLERGENES.length; i++) {
+        if (ALLERGENES[i][0] === id) return ALLERGENES[i][2];
+      }
+      return '';
+    }).join('');
   }
 
   function htmlStandardSection(section) {
@@ -1027,7 +1089,8 @@
     section.items.forEach(function (it) {
       if (it.kind === 'l') {
         h += '<li><span class="a4-nom">' + echap(it.l.nom) + '</span>' +
-          (it.l.sous ? '<small class="a4-desc-inline">' + echap(it.l.sous) + '</small>' : '') +
+          ((it.l.sous || it.l.desc) ? '<small class="a4-desc-inline">' + echap(it.l.sous || it.l.desc) + '</small>' : '') +
+          (it.l.allergenes && it.l.allergenes.length ? '<small class="a4-allergenes" title="Allergènes">' + htmlAllergenes(it.l.allergenes) + '</small>' : '') +
           '<span class="a4-pts"></span><span class="a4-prix">' +
           (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></li>';
       } else {
@@ -1038,11 +1101,19 @@
             }).join(' · ') + '</small>' : '';
         h += '<li><span class="a4-nom">' + echap(p.nom) + '</span>' +
           (p.desc ? '<small class="a4-desc-inline">' + echap(p.desc) + '</small>' : '') +
+          (p.allergenes && p.allergenes.length ? '<small class="a4-allergenes" title="Allergènes">' + htmlAllergenes(p.allergenes) + '</small>' : '') +
           '<span class="a4-pts"></span><span class="a4-prix">' + prixAffiche(p) +
           '</span>' + formats + '</li>';
       }
     });
     return h + '</ul></section>';
+  }
+
+  function htmlA4Page(nom, sections) {
+    return '<div class="a4-page a4-page-' + nom + '">' +
+      '<div class="a4-colonne">' + sections.filter(function (_, i) { return i % 2 === 0; }).join('') + '</div>' +
+      '<div class="a4-colonne">' + sections.filter(function (_, i) { return i % 2 === 1; }).join('') + '</div>' +
+      '</div>';
   }
 
   // ---------- aperçu / impression A4 de la carte standard ----------
@@ -1055,7 +1126,12 @@
 
   function ouvrirImpressionCarte() {
     fermerImpressionCarte();
-    var sections = standardSections().map(htmlStandardSection).join('');
+    var toutes = standardSections();
+    var idsPage1 = ['formules', 'entrees', 'salades', 'pizzas'];
+    var page1 = toutes.filter(function (s) { return idsPage1.indexOf(s.id) >= 0; });
+    var page2 = toutes.filter(function (s) { return idsPage1.indexOf(s.id) < 0; });
+    var sections = htmlA4Page('1', page1.map(htmlStandardSection)) +
+      htmlA4Page('2', page2.map(htmlStandardSection));
     var ov = document.createElement('div');
     ov.id = 'impression-carte-overlay';
     ov.setAttribute('role', 'dialog');
@@ -1174,6 +1250,18 @@
     }).map(function (p) { return p.id; });
   }
 
+  function allergenesLibres(v) {
+    var valeurs = Object.prototype.toString.call(v) === '[object Array]'
+      ? v : String(v || '').split(',');
+    return valeurs.map(function (token) {
+      var t = norm(token).trim();
+      for (var i = 0; i < ALLERGENES.length; i++) {
+        if (t === ALLERGENES[i][0] || t === norm(ALLERGENES[i][1])) return ALLERGENES[i][0];
+      }
+      return null;
+    }).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+  }
+
   function ligneLibreNormalisee(l, i) {
     if (!l || typeof l !== 'object') return null;
     var nom = String(l.nom || '').trim().slice(0, 60);
@@ -1183,7 +1271,8 @@
       nom: nom,
       sous: String(l.sous || '').trim().slice(0, 90),
       desc: String(l.desc || '').trim().slice(0, 200),
-      prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0)
+      prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0),
+      allergenes: allergenesLibres(l.allergenes || l.alg)
     };
   }
 
@@ -2248,10 +2337,69 @@
       '</article>';
   }
 
+  function standardAdminDefs() {
+    return STANDARD_SECTIONS.concat([
+      { id: 'boissons', fam: 'Boissons', titre: 'Boissons', texte: 'Alcools, vins, bières, softs, eaux, cafés et digestifs.' }
+    ]);
+  }
+
+  function standardAdminItems(def) {
+    return standardSectionItems(def);
+  }
+
+  function dessinerStandardStructure() {
+    var hote = $('#standard-structure');
+    if (!hote || !CF) return;
+    var h = '<div class="standard-admin-intro"><b>La carte publiée</b><span>Chaque ligne ci-dessous est indépendante : modifiez-la, déplacez-la, masquez-la ou ajoutez une nouvelle ligne libre.</span></div>';
+    standardAdminDefs().forEach(function (def) {
+      var conf = CF.fams[def.fam] || { titre: def.titre, sous: def.texte, ordre: [], libres: [] };
+      var items = standardAdminItems(def);
+      h += '<section class="famille standard-rubrique" data-fam="' + echap(def.fam) + '">' +
+        '<div class="standard-rubrique-head"><div><span class="standard-kicker">' + echap(def.id === 'plats' ? 'RUBRIQUE OBLIGATOIRE' : 'RUBRIQUE') + '</span>' +
+        '<h3>' + echap(conf.titre || def.titre) + '</h3><p>' + echap(conf.sous || def.texte) + '</p></div>' +
+        '<div class="fam-actions"><button type="button" class="btn btn-s btn-mini" data-fam-edit="1">Modifier titre</button><button type="button" class="btn btn-p btn-mini" data-fam-ligne="1">+ Ajouter une ligne</button></div></div>' +
+        '<div class="fam-edit" hidden>' +
+          '<label class="champ"><span>Titre de la rubrique</span><input type="text" data-fe="titre" maxlength="60" value="' + echap(conf.titre || def.titre) + '"></label>' +
+          '<label class="champ"><span>Sous-titre vendeur</span><input type="text" data-fe="sous" maxlength="120" value="' + echap(conf.sous || def.texte) + '"></label>' +
+          '<div class="cf-rangee"><button type="button" class="btn btn-p btn-mini" data-fam-ok="1">Enregistrer</button><button type="button" class="btn btn-s btn-mini" data-fam-annule="1">Annuler</button></div>' +
+        '</div><ol class="standard-lignes">';
+      items.forEach(function (it, i) {
+        var id = it.kind === 'p' ? it.p.id : it.l.id;
+        var nom = it.kind === 'p' ? it.p.nom : it.l.nom;
+        var prix = it.kind === 'p' ? prixAffiche(it.p) : (it.l.prix ? eur(it.l.prix) : '—');
+        var desc = it.kind === 'p' ? it.p.desc : (it.l.desc || it.l.sous || '');
+        var allergens = it.kind === 'p' ? it.p.allergenes : it.l.allergenes;
+        if (it.kind === 'l' && LF_A_EDITER && LF_A_EDITER.fam === def.fam && LF_A_EDITER.id === id) {
+          h += '<li class="standard-ligne standard-ligne-edit" data-standard-id="' + echap(id) + '">' +
+            '<div class="standard-inline-form"><input type="text" data-lf-champ="nom" maxlength="60" value="' + echap(it.l.nom) + '" placeholder="Nom de la ligne">' +
+            '<input type="text" data-lf-champ="sous" maxlength="90" value="' + echap(it.l.sous || '') + '" placeholder="Sous-titre vendeur">' +
+            '<input type="text" data-lf-champ="desc" maxlength="200" value="' + echap(it.l.desc || '') + '" placeholder="Description vendeur">' +
+            '<input type="text" data-lf-champ="allergenes" maxlength="180" value="' + echap((it.l.allergenes || []).join(', ')) + '" placeholder="Allergènes : gluten, lactose…">' +
+            '<input type="text" data-lf-champ="prix" inputmode="decimal" value="' + (it.l.prix || '') + '" placeholder="Prix €">' +
+            '<button type="button" class="btn btn-p btn-mini" data-lf-ok="' + echap(id) + '">Enregistrer</button><button type="button" class="btn btn-s btn-mini" data-lf-annule="1">Annuler</button></div></li>';
+          return;
+        }
+        h += '<li class="standard-ligne' + (it.kind === 'p' && !it.p.actif ? ' inactif' : '') + '" data-standard-id="' + echap(id) + '">' +
+          '<span class="standard-ligne-order"><button type="button" class="btn btn-mini" data-standard-order="up" data-standard-id="' + echap(id) + '" title="Monter">▲</button><button type="button" class="btn btn-mini" data-standard-order="down" data-standard-id="' + echap(id) + '" title="Descendre">▼</button></span>' +
+          '<span class="standard-ligne-info"><b>' + echap(nom) + '</b>' + (desc ? '<small>' + echap(desc) + '</small>' : '') + (allergens && allergens.length ? '<em title="Allergènes">Allergènes : ' + htmlAllergenes(allergens) + '</em>' : '') + '</span>' +
+          '<strong class="standard-ligne-prix">' + prix + '</strong>' +
+          '<span class="standard-ligne-actions">' + (it.kind === 'p' ? '<button type="button" class="btn btn-s btn-mini" data-editer="' + echap(id) + '">Modifier</button><button type="button" class="btn btn-danger btn-mini" data-standard-remove="' + echap(id) + '">Retirer</button>' : '<button type="button" class="btn btn-s btn-mini" data-lf-edit="' + echap(id) + '">Modifier</button><button type="button" class="btn btn-danger btn-mini" data-lf-del="' + echap(id) + '">Supprimer</button>') + '</span>' +
+          '</li>';
+      });
+      var exclus = conf.exclus || [];
+      var retirable = CARTE.filter(function (p) { return String(p.fam) === def.fam && exclus.indexOf(p.id) >= 0; });
+      h += '</ol>' + (!items.length ? '<p class="standard-vide">Aucune ligne. Utilisez « Ajouter une ligne ».</p>' : '') +
+        (retirable.length ? '<div class="standard-reintegrer"><select data-standard-reintegrer-select>' + retirable.map(function (p) { return '<option value="' + echap(p.id) + '">' + echap(p.nom) + '</option>'; }).join('') + '</select><button type="button" class="btn btn-s btn-mini" data-standard-reintegrer>Réintégrer une ligne</button></div>' : '') +
+        '</section>';
+    });
+    hote.innerHTML = h;
+  }
+
   function dessinerCarte() {
     if (CARTE_VIEW === 'moment') { dessinerVueMoment(); return; }
     if (CARTE_VIEW !== 'standard') { dessinerVueExtra(CARTE_VIEW); return; }
     $('#outils-standard').hidden = false;
+    dessinerStandardStructure();
     var liste = produitsFiltres();
     $('#nb-visibles').textContent = liste.length + (liste.length > 1 ? ' produits' : ' produit');
 
@@ -2307,7 +2455,9 @@
               ' <button type="button" class="btn btn-mini" data-lf-del="' + echap(l.id) + '" title="Supprimer">✕</button>' +
               (edit ? '</span><div class="lf-form">' +
                 '<input type="text" data-lf-champ="nom" maxlength="60" value="' + echap(l.nom) + '" placeholder="Nom (ex. : Menu enfant)">' +
-                '<input type="text" data-lf-champ="sous" maxlength="90" value="' + echap(l.sous) + '" placeholder="Sous-titre (facultatif)">' +
+                '<input type="text" data-lf-champ="sous" maxlength="90" value="' + echap(l.sous) + '" placeholder="Sous-titre vendeur (facultatif)">' +
+                '<input type="text" data-lf-champ="desc" maxlength="200" value="' + echap(l.desc || '') + '" placeholder="Description vendeur (facultatif)">' +
+                '<input type="text" data-lf-champ="allergenes" maxlength="180" value="' + echap((l.allergenes || []).join(', ')) + '" placeholder="Allergènes : gluten, lactose…">' +
                 '<input type="text" data-lf-champ="prix" inputmode="decimal" value="' +
                   (l.prix > 0 ? String(l.prix).replace('.', ',') : '') + '" placeholder="Prix €">' +
                 '<div class="cf-rangee">' +

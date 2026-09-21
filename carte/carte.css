@@ -490,3 +490,31 @@ body.impression-carte-a4 #impression-carte-overlay .sansImpression { display: no
 @media print {
   .carteA4 { box-shadow: none; padding: 10mm 12mm; max-width: none; }
 }
+
+/* Éditeur professionnel de la carte standard */
+.standard-admin-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 18px;margin-bottom:14px;border:1px solid #d8cfc0;border-left:5px solid #a51822;border-radius:14px;background:linear-gradient(135deg,#fffdf8,#f3ecdf);box-shadow:0 4px 18px rgba(43,43,40,.07)}
+.standard-admin-head strong{display:block;font-family:Georgia,serif;color:#7a1018;font-size:18px}
+.standard-admin-head span{display:block;color:#6e6a63;font-size:12px;margin-top:4px}.standard-admin-actions{display:flex;gap:7px;flex-wrap:wrap}
+#standard-structure{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:22px}
+.standard-admin-intro{grid-column:1/-1;display:flex;gap:10px;align-items:baseline;color:#6e6a63;font-size:12px;padding:0 3px 3px}
+.standard-admin-intro b{color:#2b2b28;font-size:13px}
+.standard-rubrique{margin:0!important;border:1px solid #d8cfc0!important;border-radius:14px!important;background:#fffdfa!important;box-shadow:0 5px 18px rgba(43,43,40,.07)!important;padding:0!important;overflow:hidden}
+.standard-rubrique-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding:13px 14px 10px;background:linear-gradient(120deg,#fff8ed,#fffdfa);border-bottom:1px solid #ece3d5}
+.standard-rubrique-head h3{margin:3px 0 2px;color:#7a1018;font-family:Georgia,serif;font-size:18px}
+.standard-rubrique-head p{margin:0;color:#6e6a63;font-size:11px;line-height:1.35}
+.standard-kicker{font-size:9px;letter-spacing:.12em;color:#8a6a12;font-weight:800}
+.standard-rubrique .fam-edit{padding:10px 14px;background:#fff8ed}
+.standard-lignes{list-style:none;margin:0;padding:2px 10px 8px}
+.standard-ligne{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:8px 4px;border-bottom:1px solid #eee8de}
+.standard-ligne:last-child{border-bottom:0}
+.standard-ligne.inactif{opacity:.52}
+.standard-ligne-order{display:flex;gap:3px}.standard-ligne-order .btn{min-width:25px;padding:2px 5px;font-size:11px}
+.standard-ligne-info{min-width:0}.standard-ligne-info b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.standard-ligne-info small{display:block;color:#6e6a63;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.standard-ligne-info em{display:block;color:#8a6a12;font-size:10px;font-style:normal}
+.standard-ligne-prix{font-size:12px;white-space:nowrap;color:#7a1018}.standard-ligne-actions{display:flex;gap:4px}.standard-inline-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%;grid-column:1/-1}.standard-inline-form input{min-height:34px;border:1px solid #d8cfc0;border-radius:7px;padding:4px 7px;font:inherit;font-size:12px}.standard-vide{padding:12px;margin:0;color:#8a6a12;font-size:12px;background:#fff8ed}.standard-reintegrer{display:flex;gap:7px;padding:8px 10px;background:#f7f1e6;border-top:1px dashed #d8cfc0}.standard-reintegrer select{flex:1;min-height:32px;border:1px solid #d8cfc0;border-radius:7px;background:#fff;padding:3px 6px;font:inherit;font-size:12px}
+.a4-allergenes{font-size:8px;color:#8a6a12;white-space:nowrap}
+.carteA4 .a4-page{display:grid;grid-template-columns:1fr 1fr;gap:18px;break-after:page;page-break-after:always;min-height:240mm}
+.carteA4 .a4-page:last-of-type{break-after:auto;page-break-after:auto}
+.carteA4 .a4-colonne{min-width:0}
+.carteA4 .a4-page-1{padding-top:11px}.carteA4 .a4-page-2{padding-top:4px}
+@media(max-width:760px){#standard-structure{grid-template-columns:1fr}.standard-admin-head{align-items:flex-start;flex-direction:column}.standard-ligne{grid-template-columns:auto minmax(0,1fr) auto}.standard-ligne-actions{grid-column:2/-1}.standard-ligne-prix{grid-column:3;grid-row:1}.standard-inline-form{grid-template-columns:1fr}}
+@media print{.carteA4 .a4-page{min-height:250mm}.carteA4 .a4-page-1{padding-top:0}.carteA4 .a4-page-2{padding-top:0}}
