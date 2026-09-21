@@ -59,6 +59,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from patch_axml import AXML  # noqa: E402
+from patch_assets import _ajouter_livraison, _remplacer_addon_paiement  # noqa: E402
 
 
 def read(path: str) -> str:
@@ -596,7 +597,9 @@ def patcher_site_js(site_js: str, carte_dir: str) -> str:
         motif_bundle, lambda m: m.group(1) + module_b64 + m.group(2),
         site_js, count=1)
     if occurrences:
-        return site_js_rafraichi
+        site_js_rafraichi = _remplacer_addon_paiement(site_js_rafraichi)
+        site_js_rafraichi = site_js_rafraichi.replace("API + '/site/commande'", "API + '/api/commande'")
+        return _ajouter_livraison(site_js_rafraichi)
 
     addon = ADDON_TEMPLATE.replace('__BUNDLE_B64__', module_b64)
     if 'LT_CARTE' in site_js or 'btn-carte' in site_js:
@@ -604,7 +607,10 @@ def patcher_site_js(site_js: str, carte_dir: str) -> str:
     if 'barre-sociale' not in site_js:
         print('[ATTENTION] module social (barre-sociale) introuvable — '
               'vérifier le build source')
-    return site_js + '\n' + addon + '\n' + LEGAL_ADDON
+    site_js = site_js + '\n' + addon + '\n' + LEGAL_ADDON
+    site_js = _remplacer_addon_paiement(site_js)
+    site_js = site_js.replace("API + '/site/commande'", "API + '/api/commande'")
+    return _ajouter_livraison(site_js)
 
 
 # ---------------------------------------------------------------------------

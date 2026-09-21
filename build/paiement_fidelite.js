@@ -1,9 +1,8 @@
 /* ============================================================================
    Addon « Mode de paiement & carte de fidélité » — client (site.js)
    ============================================================================
-   1. Choix du MODE DE PAIEMENT prévu par le client, au moment de sa
-      commande en ligne :
-        Espèces · Carte · Tickets restaurant · Chèque · Bon de fidélité
+   1. Choix du MODE DE PAIEMENT par le client, au moment de sa
+      commande en ligne : Espèces ou Carte
       Le choix est rappelé dans le récapitulatif, envoyé dans la commande
       et ajouté à la NOTE de la commande (« Paiement : … ») pour que le
       personnel le voie à l'écran et l'encaisse au retrait.

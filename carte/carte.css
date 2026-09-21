@@ -15,6 +15,13 @@
   --r:14px;
 }
 
+/* Tarifs de réception du site de commande */
+.livraison-grille{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.livraison-admin .champ input{font-variant-numeric:tabular-nums}
+.standard-ordre{display:flex;gap:5px;justify-content:flex-end;margin-top:7px}
+.standard-ordre .btn{min-width:32px;padding:3px 7px}
+@media(max-width:680px){.livraison-grille{grid-template-columns:1fr}.standard-ordre{justify-content:flex-start}}
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{
   margin:0;background:var(--fond);color:var(--texte);
@@ -445,6 +452,16 @@ body.impression-carte-a4 #impression-carte-overlay .sansImpression { display: no
 .carteA4 .a4-lieu { font-size: 13.5px; color: #55554f; margin: 4px 0 0; }
 .carteA4 .a4-promesse { font-size: 13px; color: #8A8A55; font-style: italic; margin: 6px 0 0; }
 .carteA4 .a4-cat { margin: 24px 0 4px; break-inside: avoid; }
+.carteA4 .a4-cat-compact{margin:14px 0 2px}
+.carteA4 .a4-cat-tete{display:flex;align-items:center;gap:8px;border-bottom:1px solid #d8cfc0;padding-bottom:3px}
+.carteA4 .a4-cat-tete .a4-illustration{width:34px;height:34px;object-fit:cover;border-radius:50%;opacity:.86}
+.carteA4 .a4-cat-compact h2{margin:0;border:0;font-size:17px}
+.carteA4 .a4-cat-compact h2::after{display:none}
+.carteA4 .a4-cat-compact .a4-sous{margin:1px 0 0;font-size:9.5px}
+.carteA4 .a4-cat-compact li{padding:2px 0;line-height:1.12}
+.carteA4 .a4-cat-compact .a4-nom{font-weight:600}
+.carteA4 .a4-cat-compact .a4-desc-inline{font-size:8.5px;color:#6e6a63;margin-left:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%}
+.carteA4 .a4-cat-compact .a4-formats{display:block;flex-basis:100%;margin-left:8px;font-size:8.5px;color:#6e6a63}
 .carteA4 .a4-cat h2 {
   font-size: 22px; color: #7A1018; text-align: center; margin: 0;
 }

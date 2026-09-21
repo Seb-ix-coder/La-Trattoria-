@@ -54,6 +54,8 @@
   var CLE_SYNC_TOKEN = 'trattoria.sync_token.v1';
   var SYNC_TOKEN = localStorage.getItem(CLE_SYNC_TOKEN) || '';
   var CLE_HIBOUTIK = 'trattoria.hiboutik_catalogue.v1';
+  var CLE_LIVRAISON = 'trattoria.delivery.v1';
+  var LIVRAISON = { sur_place: 0, uber: 4.5, livraison_urbaine: 3.0 };
   var HIBOUTIK = { configure: false, creation: false, produits: [], maj: null, chargement: false };
 
   // Ardoise (carte principale) : titres/sous-titres de catégories,
@@ -63,7 +65,7 @@
   var PHOTO_ARDOISE_BROUILLON = null; // data-URL « photo d'ardoise » de la fiche
   var LIGNE_A_EDITER = null;  // id de ligne libre à éditer après le prochain rendu
   var CPT_CRAIE = 0;          // alternance des couleurs de craie
-  var CARTE_VIEW = 'standard'; // vue de l'onglet « La carte » : standard | formules | vins | glaces | bieres
+  var CARTE_VIEW = 'standard'; // vue de l'onglet « La carte » : standard | formules | vins | glaces | bieres | boissons
   var LF_A_EDITER = null;     // {fam, id} : ligne libre (catégorie) à éditer après rendu
 
   // ==========================================================
@@ -96,6 +98,38 @@
       return new Date().toLocaleDateString('fr-FR',
         { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     } catch (e) { return ''; }
+  }
+
+  function livraisonCharger() {
+    var src = null;
+    try { src = JSON.parse(localStorage.getItem(CLE_LIVRAISON) || 'null'); } catch (e) { }
+    if (!src || typeof src !== 'object') return;
+    ['sur_place', 'uber', 'livraison_urbaine'].forEach(function (id) {
+      var n = Number(src[id]);
+      if (isFinite(n) && n >= 0 && n <= 100) LIVRAISON[id] = Math.round(n * 100) / 100;
+    });
+  }
+
+  function livraisonAfficher() {
+    var ids = { sur_place: 'tarif-sur-place', uber: 'tarif-uber', livraison_urbaine: 'tarif-livraison-urbaine' };
+    Object.keys(ids).forEach(function (id) {
+      var input = $('#' + ids[id]);
+      if (input) input.value = LIVRAISON[id].toFixed(2);
+    });
+  }
+
+  function livraisonSauver() {
+    var ids = { sur_place: 'tarif-sur-place', uber: 'tarif-uber', livraison_urbaine: 'tarif-livraison-urbaine' };
+    Object.keys(ids).forEach(function (id) {
+      var input = $('#' + ids[id]);
+      var n = input ? Number(String(input.value).replace(',', '.')) : LIVRAISON[id];
+      if (!isFinite(n) || n < 0) n = 0;
+      LIVRAISON[id] = Math.round(Math.min(100, n) * 100) / 100;
+    });
+    try { localStorage.setItem(CLE_LIVRAISON, JSON.stringify(LIVRAISON)); } catch (e) { }
+    var info = $('#info-livraison');
+    if (info) info.textContent = 'Tarifs enregistrés sur cette tablette.';
+    toast('Tarifs de livraison enregistrés');
   }
 
   var minuteurToast;
@@ -855,6 +889,19 @@
       sauver(); dessinerCF(); dessinerCarte();
       return true;
     }
+    var orderButton = t.closest('[data-standard-order]');
+    if (orderButton) {
+      var moveId = orderButton.getAttribute('data-standard-id');
+      var order = confF.ordre || [];
+      var pos = order.indexOf(moveId);
+      if (pos < 0) { order.push(moveId); pos = order.length - 1; }
+      var target = orderButton.getAttribute('data-standard-order') === 'up' ? pos - 1 : pos + 1;
+      if (target >= 0 && target < order.length) {
+        var tmp = order[pos]; order[pos] = order[target]; order[target] = tmp;
+        confF.ordre = order; sauver(); dessinerCarte();
+      }
+      return true;
+    }
     var lfEdit = t.closest('[data-lf-edit]');
     if (lfEdit) {
       LF_A_EDITER = { fam: fam, id: lfEdit.getAttribute('data-lf-edit') };
@@ -894,6 +941,110 @@
     return false;
   }
 
+  // ---------- carte standard imprimable : sections éditées + compactes ----------
+  // La carte imprimée est toujours recalculée depuis le catalogue et CF :
+  // aucune fiche HTML statique ne peut donc écraser les prix ou les titres
+  // modifiés par l'administrateur.
+  var STANDARD_SECTIONS = [
+    { id: 'entrees', fam: 'Entrées', titre: 'À partager', texte: 'Focaccia, bruschettas et bouchées italiennes préparées maison.' },
+    { id: 'salades', fam: 'Salades', titre: 'Salades fraîches', texte: 'Des assiettes colorées, préparées minute avec les produits de saison.' },
+    { id: 'pizzas', fam: 'Pizzas', titre: 'Pizzas au feu de bois', texte: 'Pâte maison maturée 48 heures, garnitures choisies chaque matin.' },
+    { id: 'plats', fam: 'Pâtes', titre: 'Plats & pâtes fraîches', texte: 'Recettes généreuses, sauces mijotées et pâtes préparées chaque matin.' },
+    { id: 'desserts', fam: 'Desserts', titre: 'Desserts maison', texte: 'Tiramisus et douceurs italiennes préparés dans notre cuisine.' },
+    { id: 'glaces', fam: 'Desserts', titre: 'Glaces artisanales', texte: 'Une fin fraîche et gourmande, avec nos glaces et sorbets.' }
+  ];
+
+  function standardSectionItems(def) {
+    var items = itemsFamille(def.fam).filter(function (it) {
+      if (def.id === 'glaces' || def.id === 'desserts') {
+        if (it.kind !== 'p') return def.id === 'desserts';
+        var glace = norm((it.p.cat || '') + ' ' + (it.p.nom || '')).indexOf('glace') >= 0 ||
+          norm(it.p.cat || '').indexOf('sorbet') >= 0;
+        return def.id === 'glaces' ? glace : !glace;
+      }
+      return true;
+    });
+    // Les lignes libres de la carte des glaces sont également imprimables.
+    if (def.id === 'glaces' && CF && CF.extras && CF.extras.glaces) {
+      items = items.concat(itemsExtra('glaces').filter(function (it) { return it.kind === 'l'; }));
+    }
+    return items.filter(function (it) { return it.kind === 'l' || it.p.actif; });
+  }
+
+  function standardSections() {
+    var sections = [];
+    var famillesUtilisees = {};
+    STANDARD_SECTIONS.forEach(function (def) {
+      var conf = CF && CF.fams[def.fam];
+      var items = standardSectionItems(def);
+      // Les catégories et sous-titres restent modifiables depuis
+      // « Ardoise & QR » ; ils sont repris ici dans la carte standard.
+      sections.push({
+        id: def.id,
+        titre: def.id === 'glaces' ? (CF.extras.glaces.titre || def.titre) :
+          (conf && conf.titre ? conf.titre : def.titre),
+        sous: def.id === 'glaces' ? (CF.extras.glaces.sous || def.texte) :
+          (conf && conf.sous ? conf.sous : def.texte),
+        items: items
+      });
+      famillesUtilisees[def.fam] = true;
+    });
+    // Boissons, formules et apéritifs restent dans la carte standard :
+    // le client retrouve ainsi toute l'offre sans devoir ouvrir une autre
+    // fiche imprimable.
+    famsCatalogue().forEach(function (fam) {
+      if (famillesUtilisees[fam]) return;
+      var conf = CF && CF.fams[fam];
+      var items = itemsFamille(fam).filter(function (it) {
+        return it.kind === 'l' || it.p.actif;
+      });
+      if (!items.length) return;
+      sections.push({
+        id: 'fam-' + norm(fam).replace(/[^a-z0-9]+/g, '-'),
+        titre: conf && conf.titre ? conf.titre : fam,
+        sous: conf && conf.sous ? conf.sous : 'À découvrir à la Trattoria.',
+        items: items
+      });
+    });
+    return sections.filter(function (s) { return s.items.length || ['entrees', 'salades', 'pizzas', 'plats', 'desserts', 'glaces'].indexOf(s.id) >= 0; });
+  }
+
+  function htmlStandardSection(section) {
+    var firstProduct = null;
+    section.items.some(function (it) {
+      if (it.kind === 'p') { firstProduct = it.p; return true; }
+      return false;
+    });
+    var illustration = illustrationProduit(firstProduct) ||
+      ((window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.moment &&
+        window.ARDOISE_ASSETS.moment[section.id === 'glaces' ? 'glaces' : section.id === 'plats' ? 'plats' : section.id]) || '');
+    var h = '<section class="a4-cat a4-cat-compact">' +
+      '<div class="a4-cat-tete">' +
+      (illustration ? '<img class="a4-illustration" alt="" src="' + illustration + '">' : '') +
+      '<div><h2>' + echap(section.titre) + '</h2>' +
+      '<p class="a4-sous">' + echap(section.sous) + '</p></div></div>' +
+      '<ul>';
+    section.items.forEach(function (it) {
+      if (it.kind === 'l') {
+        h += '<li><span class="a4-nom">' + echap(it.l.nom) + '</span>' +
+          (it.l.sous ? '<small class="a4-desc-inline">' + echap(it.l.sous) + '</small>' : '') +
+          '<span class="a4-pts"></span><span class="a4-prix">' +
+          (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></li>';
+      } else {
+        var p = it.p;
+        var formats = p.formats && p.formats.length
+          ? '<small class="a4-formats">' + p.formats.map(function (f) {
+              return echap(f.nom) + ' ' + eur(f.pv);
+            }).join(' · ') + '</small>' : '';
+        h += '<li><span class="a4-nom">' + echap(p.nom) + '</span>' +
+          (p.desc ? '<small class="a4-desc-inline">' + echap(p.desc) + '</small>' : '') +
+          '<span class="a4-pts"></span><span class="a4-prix">' + prixAffiche(p) +
+          '</span>' + formats + '</li>';
+      }
+    });
+    return h + '</ul></section>';
+  }
+
   // ---------- aperçu / impression A4 de la carte standard ----------
   function fermerImpressionCarte() {
     var ov = document.getElementById('impression-carte-overlay');
@@ -904,41 +1055,7 @@
 
   function ouvrirImpressionCarte() {
     fermerImpressionCarte();
-    var dansExtras = idsDansExtras();
-    var fams = famsCatalogue();
-    var sections = '';
-    fams.forEach(function (fam) {
-      var conf = CF.fams[fam];
-      if (!conf) return;
-      var items = itemsFamille(fam).filter(function (it) {
-        if (it.kind === 'p') {
-          if (!it.p.actif) return false;
-          if (dansExtras[it.p.id]) return false;
-        }
-        return true;
-      });
-      if (!items.length) return;
-      sections += '<section class="a4-cat">' +
-        '<h2>' + echap(conf.titre) + '</h2>' +
-        (conf.sous ? '<p class="a4-sous">' + echap(conf.sous) + '</p>' : '') +
-        '<ul>';
-      items.forEach(function (it) {
-        if (it.kind === 'l') {
-          sections += '<li><span class="a4-nom">' + echap(it.l.nom) + '</span>' +
-            '<span class="a4-pts"></span><span class="a4-prix">' +
-            (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></li>' +
-            (it.l.sous ? '<li class="a4-desc"><span>' + echap(it.l.sous) + '</span></li>' : '');
-        } else {
-          var q = it.p;
-          var sous = q.sous || q.desc || '';
-          sections += '<li><span class="a4-nom">' + echap(q.nom) + '</span>' +
-            '<span class="a4-pts"></span><span class="a4-prix">' + prixAffiche(q) +
-            '</span></li>' +
-            (sous ? '<li class="a4-desc"><span>' + echap(sous) + '</span></li>' : '');
-        }
-      });
-      sections += '</ul></section>';
-    });
+    var sections = standardSections().map(htmlStandardSection).join('');
     var ov = document.createElement('div');
     ov.id = 'impression-carte-overlay';
     ov.setAttribute('role', 'dialog');
@@ -1039,9 +1156,10 @@
     formules: { titre: 'Nos formules',        sous: 'Menus et formules du moment' },
     vins:     { titre: 'La carte des vins',   sous: 'Au pichet et à la bouteille' },
     glaces:   { titre: 'La carte des glaces', sous: 'Glaces et sorbets maison' },
-    bieres:   { titre: 'La carte des bières', sous: 'Pression et bouteilles' }
+    bieres:   { titre: 'La carte des bières', sous: 'Pression et bouteilles' },
+    boissons: { titre: 'La carte des boissons', sous: 'Alcools, vins, bières, softs, eaux, cafés et digestifs' }
   };
-  var EXTRA_ORDRE = ['formules', 'vins', 'glaces', 'bieres'];
+  var EXTRA_ORDRE = ['formules', 'vins', 'glaces', 'bieres', 'boissons'];
 
   // Produits du catalogue placés automatiquement dans une carte.
   function extrasSeed(cle) {
@@ -2149,12 +2267,20 @@
       var ps = parFam[fam];
       if (!ps.length) return;
       var confF = CF ? CF.fams[fam] : null;
+      if (confF && confF.ordre && confF.ordre.length) {
+        var rang = {};
+        confF.ordre.forEach(function (id, i) { rang[id] = i; });
+        ps.sort(function (a, b) {
+          return (rang[a.id] == null ? 999999 : rang[a.id]) -
+            (rang[b.id] == null ? 999999 : rang[b.id]);
+        });
+      }
       var libres = confF ? confF.libres : [];
       h += '<section class="famille" data-fam="' + echap(fam) + '">' +
         '<div class="fam-tete"><h2>' + echap(fam) +
         ' <span class="nb">' + ps.length + '</span></h2>' +
         '<span class="fam-actions">' +
-          '<button type="button" class="btn btn-s btn-mini" data-fam-edit="1">✏️ Titre ardoise</button>' +
+          '<button type="button" class="btn btn-s btn-mini" data-fam-edit="1">✏️ Titre & sous-titre</button>' +
           '<button type="button" class="btn btn-s btn-mini" data-fam-ligne="1">+ Ligne libre</button>' +
         '</span></div>' +
         (confF && (confF.titre !== fam || confF.sous)
@@ -2192,7 +2318,13 @@
               '</span>';
           }).join('') + '</div>';
       }
-      h += '<div class="grille">' + ps.map(carteProduitHTML).join('') + '</div></section>';
+      h += '<div class="grille">' + ps.map(function (p, i) {
+        var actions = '<div class="standard-ordre" aria-label="Ordre de la ligne">' +
+          '<button type="button" class="btn btn-s btn-mini" data-standard-order="up" data-standard-id="' + echap(p.id) + '" title="Monter">▲</button>' +
+          '<button type="button" class="btn btn-s btn-mini" data-standard-order="down" data-standard-id="' + echap(p.id) + '" title="Descendre">▼</button>' +
+          '</div>';
+        return carteProduitHTML(p).replace('</article>', actions + '</article>');
+      }).join('') + '</div></section>';
     });
     $('#liste-produits').innerHTML = h ||
       '<p class="aide" style="text-align:center;padding:40px 0">Aucun produit ne correspond. ' +
@@ -3112,7 +3244,9 @@
   //  Démarrage
   // ==========================================================
   function init() {
+    livraisonCharger();
     charger();
+    livraisonAfficher();
     toutDessiner();
     majInfoDonnees();
     badgeSync();
@@ -3133,6 +3267,8 @@
 
     document.addEventListener('click', function (e) {
       var t = e.target;
+
+      if (t.closest('#btn-enregistrer-livraison')) { livraisonSauver(); return; }
 
       var onglet = t.closest('.onglet');
       if (onglet) { montrer(onglet.dataset.ecran); return; }
@@ -3247,6 +3383,10 @@
         SYNC_TOKEN = '';
         localStorage.removeItem(CLE_SYNC_TOKEN);
         var champToken = $('#champ-sync-token');
+        if (champToken) champToken.value = '';
+        toast('Jeton oublié');
+        return;
+     n = $('#champ-sync-token');
         if (champToken) champToken.value = '';
         toast('Jeton oublié');
         return;

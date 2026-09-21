@@ -32,13 +32,13 @@ window.TRATTORIA_CONFIG_DEFAUT = {
      Complété automatiquement à l'ouverture : toute nouvelle
      catégorie reçoit titre = son nom et sous-titre vide. */
   fams: {
-    'Pizzas':   { titre: 'Nos pizzas',        sous: 'Pâte maturée 48 h, cuisson au feu de bois' },
-    'Salades':  { titre: 'Nos salades',       sous: 'Servies avec pain maison' },
-    'Entrées':  { titre: 'À partager',        sous: 'Pour commencer en douceur' },
-    'Pâtes':    { titre: 'Nos pâtes fraîches', sous: 'Préparées chaque matin' },
-    'Desserts': { titre: 'Nos desserts maison', sous: 'Tiramisus et douceurs du jour' },
-    'Apéritif': { titre: 'Apéritifs & cocktails', sous: 'À siroter entre amis' },
-    'Boissons': { titre: 'Boissons & cafés',  sous: 'Avec ou sans alcool' }
+    'Pizzas':   { titre: 'Nos pizzas',        sous: 'Pâte maison maturée 48 h · cuisson au feu de bois · garnitures choisies chaque matin' },
+    'Salades':  { titre: 'Nos salades',       sous: 'Fraîches, colorées et préparées minute avec nos produits de saison' },
+    'Entrées':  { titre: 'À partager',        sous: 'Pour ouvrir l’appétit : focaccia, bruschettas et bouchées italiennes maison' },
+    'Pâtes':    { titre: 'Plats',          sous: 'Pâtes fraîches, recettes généreuses et sauces mijotées chaque matin' },
+    'Desserts': { titre: 'Desserts maison', sous: 'Tiramisus, douceurs italiennes et desserts préparés dans notre cuisine' },
+    'Apéritif': { titre: 'Apéritifs & cocktails', sous: 'Le moment de partager, avec des recettes italiennes et des produits soigneusement choisis' },
+    'Boissons': { titre: 'Boissons & cafés',  sous: 'Vins, bières, cafés et boissons fraîches pour accompagner chaque assiette' }
   },
 
   /* Cartes additionnelles de l'ardoise (rendues après les
@@ -62,8 +62,8 @@ window.TRATTORIA_CONFIG_DEFAUT = {
       sous: 'Au pichet et à la bouteille'
     },
     glaces: {
-      titre: 'La carte des glaces',
-      sous: 'Glaces et sorbets maison',
+      titre: 'Glaces artisanales',
+      sous: 'L’Angelys · glaces et sorbets pour finir sur une note fraîche',
       libres: [
         { nom: 'Une boule', prix: 2 },
         { nom: 'Deux boules', prix: 3.5 },

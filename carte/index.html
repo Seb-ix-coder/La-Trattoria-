@@ -58,11 +58,11 @@
         synchronisation avec Hiboutik avant impression. Imprimer une carte ne crée
         aucune vente et ne modifie pas Hiboutik.</p>
       <div class="rangee-boutons cartes-imprimables" aria-label="Cartes imprimables">
-        <a class="btn btn-p" href="#impression" data-print-card="01-carte-principale.html">🖨️ Imprimer la principale</a>
+        <a class="btn btn-p" href="#impression" data-cv-imprimer="1">🖨️ Imprimer la carte standard éditée</a>
         <a class="btn btn-s" href="#impression" data-print-card="02-carte-pizzas.html">🖨️ Imprimer les pizzas</a>
         <a class="btn btn-s" href="#impression" data-print-card="05-carte-salades.html">🖨️ Imprimer les salades</a>
         <a class="btn btn-s" href="#impression" data-print-card="06-carte-formules.html">🖨️ Imprimer les formules</a>
-        <a class="btn btn-s" href="#impression" data-print-card="08-carte-boissons.html">🖨️ Imprimer les boissons</a>
+        <a class="btn btn-s" href="#impression" data-cv-imprimer="1">🖨️ Imprimer boissons & carte standard</a>
         <a class="btn btn-s" href="#impression" data-print-card="03-glaces-langelys.html">🖨️ Imprimer les glaces</a>
         <a class="btn btn-s" href="#impression" data-print-card="04-bieres-du-moment.html">🖨️ Imprimer les bières</a>
         <a class="btn btn-s" href="#impression" data-print-card="07-carte-restaurant-economique.html">🖨️ Imprimer la version économique</a>
@@ -76,6 +76,7 @@
       <button type="button" class="cv" data-cv="vins" aria-pressed="false">🍷 Vins</button>
       <button type="button" class="cv" data-cv="glaces" aria-pressed="false">🍨 Glaces</button>
       <button type="button" class="cv" data-cv="bieres" aria-pressed="false">🍺 Bières</button>
+      <button type="button" class="cv" data-cv="boissons" aria-pressed="false">🥂 Boissons</button>
       <button type="button" class="cv" data-cv="moment" aria-pressed="false">✨ Du moment</button>
       <button type="button" class="cva" data-cv-saut="ardoises" title="Éditer les ardoises du jour">🗓️ Ardoises du jour</button>
       <button type="button" class="cva cva-action" data-cv-imprimer="1" title="Aperçu et impression A4 de la carte standard">🖨️ Carte A4</button>
@@ -193,6 +194,19 @@
         <input type="file" id="fichier-import" accept="application/json,.json" hidden>
       </div>
       <p class="aide" id="info-donnees"></p>
+    </div>
+    <div class="carte-bloc livraison-admin" id="bloc-livraison">
+      <h2>Commande en ligne — réception et frais</h2>
+      <p class="aide">Ces tarifs sont ajoutés séparément au total des produits. Le prix des pizzas et des autres lignes ne change jamais selon le mode choisi. La configuration est conservée localement et utilisée par le site de commande de la tablette.</p>
+      <div class="livraison-grille">
+        <label class="champ"><span>Sur place — frais €</span><input id="tarif-sur-place" type="number" min="0" max="100" step="0.10" value="0"></label>
+        <label class="champ"><span>Uber — frais €</span><input id="tarif-uber" type="number" min="0" max="100" step="0.10" value="4.50"></label>
+        <label class="champ"><span>Livraison urbaine — frais €</span><input id="tarif-livraison-urbaine" type="number" min="0" max="100" step="0.10" value="3.00"></label>
+      </div>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-p" id="btn-enregistrer-livraison">Enregistrer les tarifs</button>
+        <span class="aide" id="info-livraison" role="status"></span>
+      </div>
     </div>
     <div class="carte-bloc">
       <h2>Entre tablettes et avec les clients</h2>
