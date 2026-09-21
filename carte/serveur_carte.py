@@ -8,7 +8,9 @@ Rôle :
      GET  /api/etat   -> {"version": n}
      GET  /api/carte  -> {"version": n, "maj": "...", "carte": [...], "ardoises": {...}}
      POST /api/carte  <- {"carte": [...], "ardoises": {...}}  (jeton requis ; dernière écriture fait foi)
-  3. sert la page publique des clients (public.html) sur le Wi-Fi.
+  3. sert la page publique des clients (public.html) sur le Wi-Fi ;
+  4. relaie, avec un jeton de gestion, la lecture du catalogue et la création
+     explicite de produits dans Hiboutik ; les identifiants restent côté serveur.
 
 Lancement :  python3 serveur_carte.py [port]   (8080 par défaut)
 L'état est conservé dans donnees-serveur.json, qui n'est pas servi comme fichier statique.
@@ -24,6 +26,13 @@ from datetime import datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
+
+try:
+    from .hiboutik_client import (HiboutikClient, HiboutikErreur,
+                                  configuration_hiboutik)
+except ImportError:  # lancement direct : python3 serveur_carte.py
+    from hiboutik_client import (HiboutikClient, HiboutikErreur,
+                                 configuration_hiboutik)
 
 DOSSIER = os.path.dirname(os.path.abspath(__file__))
 FICHIER_ETAT = os.path.join(DOSSIER, 'donnees-serveur.json')
@@ -96,6 +105,49 @@ def sauver_etat():
         os.replace(tmp, FICHIER_ETAT)
 
 
+def _hiboutik_payload(produit, configuration):
+    """Transforme une fiche locale en payload API sans transmettre les photos."""
+    if not isinstance(produit, dict):
+        raise HiboutikErreur('Produit invalide', 400)
+    nom = str(produit.get('nom', '')).strip()
+    if not nom or len(nom) > 120:
+        raise HiboutikErreur('Le nom du produit est obligatoire', 400)
+    try:
+        pv = float(produit.get('pv', 0))
+        cout = float(produit.get('cout', 0) or 0)
+        tva = float(produit.get('tva', 0.1))
+    except (TypeError, ValueError):
+        raise HiboutikErreur('Prix ou TVA invalide', 400)
+    if not (0 < pv <= 100000) or cout < 0 or tva not in (0.055, 0.1, 0.2):
+        raise HiboutikErreur('Prix ou TVA hors limites', 400)
+    barcode = str(produit.get('hiboutikBarcode', produit.get('barcode', '')) or '').strip()
+    if len(barcode) > 80:
+        raise HiboutikErreur('Code-barres trop long', 400)
+    tax_key = '0.055' if tva == 0.055 else ('0.20' if tva == 0.2 else '0.10')
+    tax_id = configuration['taxes'].get(tax_key, '0')
+    category_id = str(produit.get('hiboutikCategoryId') or configuration['categorie'] or '0')
+    if not tax_id or tax_id == '0':
+        raise HiboutikErreur('Configurez l\'ID de taxe Hiboutik correspondant à la TVA.', 400)
+    if not category_id or category_id == '0':
+        raise HiboutikErreur('Configurez HIBOUTIK_DEFAULT_CATEGORY_ID avant une création.', 400)
+    payload = {
+        'product_model': nom,
+        'product_barcode': barcode,
+        'product_brand': configuration['marque'] or '0',
+        'product_supplier': configuration['fournisseur'] or '0',
+        'product_price': '{:.2f}'.format(pv),
+        'product_discount_price': '{:.2f}'.format(pv),
+        'product_category': category_id,
+        'product_size_type': '0',
+        'product_stock_management': '1' if produit.get('suiviStock') else '0',
+        'product_supplier_reference': str(produit.get('referenceFournisseur', '') or '')[:80],
+        'product_vat': tax_id or '0',
+    }
+    if cout > 0:
+        payload['product_supply_price'] = '{:.2f}'.format(cout)
+    return payload
+
+
 class ServeurCarte(SimpleHTTPRequestHandler):
     server_version = 'LaTrattoriaCarte/1.0'
 
@@ -126,7 +178,11 @@ class ServeurCarte(SimpleHTTPRequestHandler):
 
     def _chemin_api(self):
         chemin = urlparse(self.path).path.rstrip('/')
-        return chemin if chemin in ('/api/etat', '/api/carte') else None
+        routes = {
+            '/api/etat', '/api/carte', '/api/hiboutik/statut',
+            '/api/hiboutik/catalogue', '/api/hiboutik/produits'
+        }
+        return chemin if chemin in routes else None
 
     def _origine_autorisee(self):
         origine = self.headers.get('Origin')
@@ -150,6 +206,44 @@ class ServeurCarte(SimpleHTTPRequestHandler):
     # ---------- routes ----------
     def do_GET(self):
         api = self._chemin_api()
+        if api == '/api/hiboutik/statut':
+            try:
+                configuration = configuration_hiboutik()
+                configure = configuration is not None
+                manquants = []
+                if configure:
+                    if not configuration['categorie'] or configuration['categorie'] == '0':
+                        manquants.append('HIBOUTIK_DEFAULT_CATEGORY_ID')
+                    if any(not configuration['taxes'].get(cle) or configuration['taxes'].get(cle) == '0'
+                           for cle in ('0.055', '0.10', '0.20')):
+                        manquants.append('HIBOUTIK_TAX_ID_055/10/20')
+                pret = configure and not manquants
+                self._envoyer_json({'configure': configure, 'creation': pret,
+                                    'ecriture': configure,
+                                    'manquants': manquants,
+                                    'message': ('Connexion Hiboutik prête à créer des produits.'
+                                                if pret else
+                                                ('Connexion Hiboutik OK ; configuration manquante : ' +
+                                                 ', '.join(manquants) if configure else
+                                                 'Configurer HIBOUTIK_ACCOUNT, HIBOUTIK_API_USER et HIBOUTIK_API_KEY.'))})
+            except HiboutikErreur as exc:
+                self._envoyer_json({'configure': False, 'ecriture': False,
+                                    'message': str(exc)}, exc.code)
+            return
+        if api == '/api/hiboutik/catalogue':
+            if not self._origine_autorisee():
+                self._envoyer_json({'ok': False, 'erreur': 'origine refusée'}, 403)
+                return
+            if not self._ecriture_autorisee():
+                self._envoyer_json({'ok': False, 'erreur': 'jeton de gestion requis'}, 401)
+                return
+            try:
+                produits = HiboutikClient().produits()
+                self._envoyer_json({'ok': True, 'produits': produits,
+                                    'maj': datetime.now(timezone.utc).isoformat()})
+            except HiboutikErreur as exc:
+                self._envoyer_json({'ok': False, 'erreur': str(exc)}, exc.code)
+            return
         if api == '/api/etat':
             with ETAT_LOCK:
                 version = etat['version']
@@ -179,14 +273,44 @@ class ServeurCarte(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         api = self._chemin_api()
-        if api != '/api/carte':
+        if api not in ('/api/carte', '/api/hiboutik/produits'):
             self._envoyer_json({'ok': False, 'erreur': 'route inconnue'}, 404)
             return
         if not self._origine_autorisee():
             self._envoyer_json({'ok': False, 'erreur': 'origine refusée'}, 403)
             return
         if not self._ecriture_autorisee():
-            self._envoyer_json({'ok': False, 'erreur': 'jeton de synchronisation requis'}, 401)
+            self._envoyer_json({'ok': False, 'erreur': 'jeton de gestion requis'}, 401)
+            return
+        if api == '/api/hiboutik/produits':
+            try:
+                longueur = int(self.headers.get('Content-Length', '0'))
+                if longueur <= 0 or longueur > 256 * 1024:
+                    raise ValueError('corps trop gros ou absent')
+                brut = self.rfile.read(longueur)
+                recu = json.loads(brut.decode('utf-8'))
+                produit = recu.get('produit') if isinstance(recu, dict) else None
+                configuration = configuration_hiboutik()
+                payload = _hiboutik_payload(produit, configuration)
+                client = HiboutikClient(configuration)
+                # Une deuxième création avec le même code-barres ou le même
+                # nom est refusée pour éviter les doublons en cas de double clic.
+                existants = client.produits()
+                nom = payload['product_model'].casefold()
+                code = payload['product_barcode']
+                for existant in existants:
+                    if (code and existant.get('barcode') == code) or \
+                            existant.get('nom', '').casefold() == nom:
+                        self._envoyer_json({'ok': False, 'doublon': existant,
+                                            'erreur': 'Produit déjà présent dans Hiboutik'}, 409)
+                        return
+                cree = client.creer_produit(payload)
+                self._envoyer_json({'ok': True, 'produit': cree,
+                                    'avertissements': []}, 201)
+            except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                self._envoyer_json({'ok': False, 'erreur': str(exc)}, 400)
+            except HiboutikErreur as exc:
+                self._envoyer_json({'ok': False, 'erreur': str(exc)}, exc.code)
             return
         try:
             longueur = int(self.headers.get('Content-Length', '0'))

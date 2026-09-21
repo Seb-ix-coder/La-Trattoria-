@@ -403,6 +403,16 @@ table .type-mini{display:inline}
 .impression-restaurant .aide { margin: 0 0 10px; }
 .cartes-imprimables { display: flex; flex-wrap: wrap; gap: 7px; }
 .cartes-imprimables .btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.hiboutik-bloc { border-color: #8b9d72; }
+.hiboutik-bloc h2, .hiboutik-fiche legend { color: var(--vert, #5d663c); }
+.hiboutik-fiche { border-color: #b7c49d; }
+.hiboutik-fiche .case { margin-top: 8px; }
+.hiboutik-fiche[aria-disabled="true"] { opacity: .62; }
+.badge-stock { position: absolute; left: 7px; bottom: 7px; padding: 3px 6px; border-radius: 999px; color: #fff; font-size: 11px; font-weight: 700; background: #657044; }
+.badge-stock.ko { background: #8b1e2d; }
+.inventaire-champs { margin-top: 8px; }
+.cueillette-dispo { background: var(--beige); border: 1px solid var(--trait); border-radius: 8px; padding: 9px 10px; margin: 0 0 8px; }
+.cueillette-dispo input { accent-color: var(--rougef); }
 .carte-vues .cva {
   border: 1.5px solid var(--trait); background: var(--creme);
   border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 14px;

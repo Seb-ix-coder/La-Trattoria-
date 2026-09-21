@@ -77,6 +77,38 @@ utiliser `CARTE_API_TOKEN` ou `CARTE_TOKEN_FILE` hors du dossier servi.
 Le protocole reste du HTTP local : ne pas exposer ce serveur à Internet sans
 reverse-proxy HTTPS et contrôle réseau adapté.
 
+### Inventaire et création dans Hiboutik
+
+Depuis l'onglet **Données**, l'application peut lire le catalogue Hiboutik,
+mettre à jour les quantités disponibles et proposer la commande **Depuis
+l'inventaire** lors de la composition d'une carte du jour. La commande
+**Composer manuellement** reste toujours disponible, ainsi que l'ajout de
+lignes libres.
+
+La fiche **Ajouter** conserve aussi la création locale d'un produit. En cochant
+**Créer aussi ce nouveau produit dans Hiboutik**, une confirmation explicite
+est demandée puis le serveur de carte crée le produit dans Hiboutik. Le
+navigateur ne reçoit jamais la clé API : elle doit rester dans l'environnement
+du serveur :
+
+```bash
+export HIBOUTIK_ACCOUNT="mon-compte"
+export HIBOUTIK_API_USER="utilisateur-api"
+export HIBOUTIK_API_KEY="cle-api"
+# IDs des taxes et de catégorie Hiboutik — à renseigner selon le compte
+export HIBOUTIK_TAX_ID_055="3"
+export HIBOUTIK_TAX_ID_10="2"
+export HIBOUTIK_TAX_ID_20="1"
+export HIBOUTIK_DEFAULT_CATEGORY_ID="5"
+python3 serveur_carte.py 8080
+```
+
+Les IDs de catégorie, marque et fournisseur par défaut peuvent être fournis
+avec `HIBOUTIK_DEFAULT_CATEGORY_ID`, `HIBOUTIK_DEFAULT_BRAND_ID` et
+`HIBOUTIK_DEFAULT_SUPPLIER_ID`. Une création est protégée par le jeton de
+gestion de la carte et un garde-fou refuse les doublons de nom ou de code-
+barres. Une erreur Hiboutik ne supprime jamais le produit local.
+
 ### Allergènes
 Les 14 allergènes déclarables sont suivis produit par produit, pré-remplis
 d'après les ingrédients de la carte d'origine et affichés sur la page clients.

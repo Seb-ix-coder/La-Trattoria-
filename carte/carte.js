@@ -53,6 +53,8 @@
   var SYNC = { actif: false, version: 0, minuteur: null };
   var CLE_SYNC_TOKEN = 'trattoria.sync_token.v1';
   var SYNC_TOKEN = localStorage.getItem(CLE_SYNC_TOKEN) || '';
+  var CLE_HIBOUTIK = 'trattoria.hiboutik_catalogue.v1';
+  var HIBOUTIK = { configure: false, creation: false, produits: [], maj: null, chargement: false };
 
   // Ardoise (carte principale) : titres/sous-titres de catégories,
   // lignes libres, ordre, en-tête (badges, pâte 48 h), QR du site.
@@ -172,6 +174,13 @@
       tvaEmporter: (p.tvaEmporter != null && [0.2, 0.1, 0.055].indexOf(Number(p.tvaEmporter)) >= 0)
         ? Number(p.tvaEmporter) : null,
       actif: p.actif !== false,
+      suiviStock: p.suiviStock === true || p.suiviStock === 1 || p.suiviStock === '1',
+      stock: Math.max(0, Number(p.stock) || 0),
+      stockMini: Math.max(0, Number(p.stockMini) || 0),
+      hiboutikId: p.hiboutikId != null ? String(p.hiboutikId).slice(0, 80) : '',
+      hiboutikBarcode: typeof p.hiboutikBarcode === 'string' ? p.hiboutikBarcode.slice(0, 80) : '',
+      hiboutikStock: p.hiboutikStock != null && isFinite(Number(p.hiboutikStock))
+        ? Number(p.hiboutikStock) : null,
       allergenes: (Object.prototype.toString.call(p.allergenes) === '[object Array]')
         ? p.allergenes.filter(function (c) {
             return ALLERGENES.some(function (a) { return a[0] === c; });
@@ -255,11 +264,29 @@
     return null;
   }
 
+  function stockProduit(p) {
+    if (p.hiboutikStock != null) return Number(p.hiboutikStock);
+    return p.suiviStock ? Number(p.stock) || 0 : null;
+  }
+
+  function produitDisponible(p) {
+    var qte = stockProduit(p);
+    return qte == null || qte > 0;
+  }
+
+  function libelleStock(p) {
+    var qte = stockProduit(p);
+    if (qte == null) return 'stock non suivi';
+    return (qte > 0 ? 'disponible' : 'épuisé') + ' · ' + qte.toLocaleString('fr-FR') +
+      (p.hiboutikStock != null ? ' Hiboutik' : ' local');
+  }
+
   /** Sélection automatique proposée à la création d'une carte du jour. */
   function semencesPour(cle) {
     var ids = [];
     CARTE.forEach(function (p) {
-      if (!p.actif) return;
+      if (!p.actif || !produitDisponible(p)) return;
+      if (cle === 'plats' && (p.type === 'plat' || p.type === 'formule')) ids.push(p.id);
       if (cle === 'bieres' && p.type === 'boisson' && norm(p.cat).indexOf('biere') >= 0) ids.push(p.id);
       if (cle === 'desserts' && norm(p.fam).indexOf('dessert') >= 0) ids.push(p.id);
     });
@@ -1319,7 +1346,7 @@
   // Produits du catalogue proposés automatiquement pour une carte du moment.
   function momentSeed(cle) {
     return CARTE.filter(function (p) {
-      if (!p.actif) return false;
+      if (!p.actif || !produitDisponible(p)) return false;
       if (cle === 'plats') return p.type === 'plat';
       if (cle === 'boissons') return p.type === 'boisson';
       if (cle === 'vins') return norm(p.cat).indexOf('cave') >= 0 || /limoncello|amaretto/i.test(p.nom);
@@ -1619,8 +1646,10 @@
     if (!conf) return;
     CUEILLETTE = {
       cle: 'moment:' + cle,
-      choisis: conf.ordre.filter(function (id) { return !!parId(id); })
+      choisis: conf.ordre.filter(function (id) { return !!parId(id); }),
+      disponibles: false
     };
+    $('#cueillette-disponibles').checked = false;
     $('#cueillette-titre').textContent = conf.titre + ' — produits du catalogue';
     $('#cueillette-recherche').value = '';
     dessinerCueillette();
@@ -1727,6 +1756,15 @@
 
 
   function charger() {
+    try {
+      var hib = JSON.parse(localStorage.getItem(CLE_HIBOUTIK) || 'null');
+      if (hib && Object.prototype.toString.call(hib.produits) === '[object Array]') {
+        HIBOUTIK.produits = hib.produits;
+        HIBOUTIK.maj = hib.maj || null;
+        HIBOUTIK.configure = !!hib.configure;
+        HIBOUTIK.creation = !!hib.creation;
+      }
+    } catch (e) { }
     var brut = null;
     try { brut = JSON.parse(localStorage.getItem(CLE_STOCK) || 'null'); } catch (e) { }
     if (brut && Object.prototype.toString.call(brut) === '[object Array]') {
@@ -1863,6 +1901,144 @@
     else SYNC.minuteur = setTimeout(envoyer, 900);
   }
 
+  function afficherStatutHiboutik(message, ok) {
+    var cible = $('#hiboutik-statut');
+    if (!cible) return;
+    cible.textContent = message;
+    cible.className = 'aide ' + (ok ? 'hiboutik-ok' : 'hiboutik-ko');
+    var bouton = $('#btn-hiboutik-importer');
+    if (bouton) bouton.disabled = !ok || !HIBOUTIK.produits.length;
+  }
+
+  function hiboutikEtat() {
+    if (!syncDispo()) {
+      afficherStatutHiboutik('Serveur requis pour protéger les identifiants Hiboutik.', false);
+      return;
+    }
+    fetch('api/hiboutik/statut', { cache: 'no-store' }).then(function (r) {
+      return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+    }).then(function (r) {
+      HIBOUTIK.configure = !!r.data.configure;
+      HIBOUTIK.creation = !!r.data.creation;
+      afficherStatutHiboutik(r.data.message || (HIBOUTIK.configure ? 'Connecté' : 'Non configuré'),
+        HIBOUTIK.configure);
+    }).catch(function () {
+      HIBOUTIK.configure = false;
+      afficherStatutHiboutik('Serveur Hiboutik indisponible.', false);
+    });
+  }
+
+  function associerInventaireHiboutik(produits) {
+    var parHid = {}, parCode = {}, parNom = {};
+    produits.forEach(function (p) {
+      parHid[p.hiboutikId] = p;
+      if (p.barcode) parCode[p.barcode] = p;
+      parNom[norm(p.nom)] = parNom[norm(p.nom)] || p;
+    });
+    CARTE.forEach(function (local) {
+      var distant = (local.hiboutikId && parHid[local.hiboutikId]) ||
+        (local.hiboutikBarcode && parCode[local.hiboutikBarcode]) ||
+        parNom[norm(local.nom)];
+      if (!distant) return;
+      local.hiboutikId = distant.hiboutikId;
+      if (distant.barcode) local.hiboutikBarcode = distant.barcode;
+      local.hiboutikStock = distant.stock;
+      if (distant.stockSuivi) local.suiviStock = true;
+    });
+  }
+
+  function actualiserInventaireHiboutik() {
+    if (!SYNC_TOKEN && !demanderToken()) return;
+    if (!syncDispo()) { toast('Lancez serveur_carte.py pour joindre Hiboutik'); return; }
+    HIBOUTIK.chargement = true;
+    afficherStatutHiboutik('Lecture de l’inventaire Hiboutik…', false);
+    fetch('api/hiboutik/catalogue', { headers: syncHeaders(), cache: 'no-store' }).then(function (r) {
+      return r.json().then(function (d) { if (!r.ok) throw new Error(d.erreur || 'Hiboutik'); return d; });
+    }).then(function (d) {
+      HIBOUTIK.produits = Array.isArray(d.produits) ? d.produits : [];
+      HIBOUTIK.maj = d.maj || new Date().toISOString();
+      associerInventaireHiboutik(HIBOUTIK.produits);
+      localStorage.setItem(CLE_HIBOUTIK, JSON.stringify(HIBOUTIK));
+      HIBOUTIK.chargement = false;
+      afficherStatutHiboutik(HIBOUTIK.produits.length + ' produit(s) Hiboutik synchronisé(s).', true);
+      $('#hiboutik-dernier').textContent = 'Dernière lecture : ' + new Date(HIBOUTIK.maj).toLocaleString('fr-FR') +
+        '. Les cartes automatiques excluent les produits épuisés suivis.';
+      sauver();
+      toutDessiner();
+      toast('Inventaire Hiboutik actualisé');
+    }).catch(function (e) {
+      HIBOUTIK.chargement = false;
+      afficherStatutHiboutik(e.message || 'Lecture Hiboutik impossible.', false);
+      toast(e.message || 'Lecture Hiboutik impossible');
+    });
+  }
+
+  function produitLocalDepuisHiboutik(distant) {
+    var tva = distant.pv != null ? 0.1 : 0.1;
+    return produitNormalise({
+      id: 'hib' + distant.hiboutikId,
+      nom: distant.nom,
+      desc: 'Importé depuis Hiboutik',
+      type: 'plat',
+      fam: 'Hiboutik',
+      cat: '',
+      pv: distant.pv || 0,
+      cout: distant.cout || 0,
+      tva: tva,
+      actif: true,
+      suiviStock: distant.stockSuivi || distant.stock != null,
+      stock: distant.stock || 0,
+      hiboutikId: distant.hiboutikId,
+      hiboutikBarcode: distant.barcode || '',
+      hiboutikStock: distant.stock
+    }, CARTE.length);
+  }
+
+  function importerNouveauxProduitsHiboutik() {
+    var nouveaux = HIBOUTIK.produits.filter(function (distant) {
+      return !CARTE.some(function (local) {
+        return (local.hiboutikId && local.hiboutikId === distant.hiboutikId) ||
+          (distant.barcode && local.hiboutikBarcode === distant.barcode) ||
+          norm(local.nom) === norm(distant.nom);
+      });
+    });
+    if (!nouveaux.length) { toast('Aucun nouveau produit à importer'); return; }
+    if (!confirm('Ajouter ' + nouveaux.length + ' produit(s) Hiboutik dans la carte locale ?')) return;
+    nouveaux.forEach(function (distant) { CARTE.push(produitLocalDepuisHiboutik(distant)); });
+    sauver();
+    toutDessiner();
+    toast(nouveaux.length + ' produit(s) importé(s) dans la carte');
+  }
+
+  function creerProduitHiboutik(produit) {
+    if (!SYNC_TOKEN || !HIBOUTIK.configure || !syncDispo()) {
+      toast('Produit local créé ; Hiboutik n’est pas configuré sur le serveur');
+      return;
+    }
+    var headers = syncHeaders();
+    headers['Content-Type'] = 'application/json';
+    fetch('api/hiboutik/produits', {
+      method: 'POST', headers: headers,
+      body: JSON.stringify({ produit: produit })
+    }).then(function (r) {
+      return r.json().then(function (d) { if (!r.ok) throw new Error(d.erreur || 'Création Hiboutik refusée'); return d; });
+    }).then(function (d) {
+      var distant = d.produit || {};
+      if (distant.hiboutikId) produit.hiboutikId = String(distant.hiboutikId);
+      produit.hiboutikStock = 0;
+      produit.suiviStock = produit.suiviStock || false;
+      HIBOUTIK.produits.push({ hiboutikId: produit.hiboutikId, nom: produit.nom,
+        barcode: produit.hiboutikBarcode, pv: produit.pv, stock: 0,
+        stockSuivi: produit.suiviStock });
+      localStorage.setItem(CLE_HIBOUTIK, JSON.stringify(HIBOUTIK));
+      sauver();
+      toast(produit.nom + ' créé dans Hiboutik');
+      if (d.avertissements && d.avertissements.length) alert(d.avertissements.join('\n'));
+    }).catch(function (e) {
+      toast('Produit local conservé ; Hiboutik : ' + e.message);
+    });
+  }
+
   function toutDessiner() {
     dessinerCarte();
     dessinerMarges();
@@ -1894,10 +2070,15 @@
     var manuel = p.margeManuelle
       ? ' <span class="badge-manuel" title="Marge cible fixée à la main">marge : ' +
         echap(libelleCible(p)) + '</span>' : '';
+    var qteStock = stockProduit(p);
+    var badgeStock = qteStock == null ? '' : '<span class="badge-stock ' +
+      (qteStock > 0 ? 'ok' : 'ko') + '">' + (qteStock > 0 ? 'Disponible' : 'Épuisé') +
+      ' · ' + qteStock.toLocaleString('fr-FR') + '</span>';
     return '<article class="carte-prod' + (p.actif ? '' : ' inactif') + '" data-id="' + echap(p.id) + '">' +
       '<div class="visu">' + photo +
       '<span class="badge-type ' + p.type + '">' + TYPES[p.type] + '</span>' +
       (p.actif ? '' : '<span class="badge-epuise">Masqué</span>') +
+      badgeStock +
       '</div>' +
       '<div class="infos">' +
       '<span class="cat">' + echap(p.cat || p.fam) + '</span>' +
@@ -2190,9 +2371,9 @@
             }).join('') + '</div>'
           : '<p class="aide">Composez cette carte depuis vos produits, ou ajoutez des lignes libres.</p>') +
         '<div class="ab-actions">' +
-        '<button type="button" class="btn btn-s btn-mini" data-composer="' + cle + '">Composer depuis la carte…</button>' +
+        '<button type="button" class="btn btn-s btn-mini" data-composer="' + cle + '">Composer manuellement…</button>' +
         '<button type="button" class="btn btn-s btn-mini" data-libre="' + cle + '">+ Ligne libre</button>' +
-        (cle !== 'plats' ? '<button type="button" class="btn btn-s btn-mini" data-auto="' + cle + '">Sélection auto</button>' : '') +
+        '<button type="button" class="btn btn-s btn-mini" data-auto="' + cle + '">Depuis l’inventaire</button>' +
         '<button type="button" class="btn btn-s btn-mini" data-apercu="' + cle + '">Aperçu</button>' +
         '<button type="button" class="btn btn-s btn-mini" data-imprimer="' + cle + '">Imprimer</button>' +
         '</div>' +
@@ -2214,8 +2395,10 @@
     if (!conf) return;
     CUEILLETTE = {
       cle: 'extras:' + cle,
-      choisis: conf.ordre.filter(function (id) { return !!parId(id); })
+      choisis: conf.ordre.filter(function (id) { return !!parId(id); }),
+      disponibles: false
     };
+    $('#cueillette-disponibles').checked = false;
     $('#cueillette-titre').textContent = conf.titre + ' — produits du catalogue';
     $('#cueillette-recherche').value = '';
     dessinerCueillette();
@@ -2224,7 +2407,8 @@
   }
 
   function ouvrirCueillette(cle) {
-    CUEILLETTE = { cle: cle, choisis: ARDOISES[cle].selection.slice() };
+    CUEILLETTE = { cle: cle, choisis: ARDOISES[cle].selection.slice(), disponibles: false };
+    $('#cueillette-disponibles').checked = false;
     $('#cueillette-titre').textContent = ARDOISES[cle].titre;
     $('#cueillette-recherche').value = '';
     dessinerCueillette();
@@ -2245,16 +2429,25 @@
     var candidats = ((modeExtra || modeMoment)
       ? CARTE.filter(function (p) { return p.actif; })
       : candidatsArdoise(CUEILLETTE.cle)).filter(function (p) {
+      if (CUEILLETTE.disponibles && !produitDisponible(p)) return false;
       return !q || norm(p.nom + ' ' + p.fam + ' ' + p.cat).indexOf(q) >= 0;
     });
+    var info = $('#cueillette-stock-info');
+    if (info) {
+      info.textContent = HIBOUTIK.produits.length
+        ? 'Inventaire Hiboutik synchronisé le ' + new Date(HIBOUTIK.maj).toLocaleString('fr-FR') + '.'
+        : 'Aucun inventaire Hiboutik synchronisé : les produits non suivis restent disponibles.';
+    }
     $('#cueillette-liste').innerHTML = candidats.map(function (p) {
       var ok = CUEILLETTE.choisis.indexOf(p.id) >= 0;
+      var stock = libelleStock(p);
       return '<label class="cueillette-ligne' + (ok ? ' on' : '') + '">' +
         '<input type="checkbox" data-cueillette="' + echap(p.id) + '"' + (ok ? ' checked' : '') + '>' +
         '<span class="cl-nom">' + echap(p.nom) +
-        '<span class="cl-meta">' + echap(p.fam) + (p.cat ? ' · ' + echap(p.cat) : '') + '</span></span>' +
+        '<span class="cl-meta">' + echap(p.fam) + (p.cat ? ' · ' + echap(p.cat) : '') +
+        ' · ' + echap(stock) + '</span></span>' +
         '<span class="cl-prix">' + eur(p.pv) + '</span></label>';
-    }).join('') || '<p class="aide" style="padding:20px">Aucun produit ne correspond.</p>';
+    }).join('') || '<p class="aide" style="padding:20px">Aucun produit disponible ne correspond.</p>';
   }
 
   function validerCueillette() {
@@ -2508,6 +2701,20 @@
     $('#f-tva').value = p ? String(p.tva) : '0.10';
     $('#f-tva-emporter').value = p && p.tvaEmporter != null ? String(p.tvaEmporter) : '';
     $('#f-actif').checked = p ? p.actif : true;
+    $('#f-suivi-stock').checked = p ? p.suiviStock : false;
+    $('#f-stock').value = p ? p.stock : 0;
+    $('#f-stock-mini').value = p ? p.stockMini : 0;
+    $('#f-hiboutik-barcode').value = p ? p.hiboutikBarcode : '';
+    $('#f-hiboutik-creer').checked = false;
+    $('#f-hiboutik-creer').disabled = !!p || !HIBOUTIK.creation || !SYNC_TOKEN;
+    $('#f-hiboutik-aide').textContent = HIBOUTIK.creation
+      ? (p ? 'Produit local' + (p.hiboutikId ? ' lié à Hiboutik (' + p.hiboutikId + ')' : ' non lié') + '.'
+        : 'Cette action crée le produit dans Hiboutik après votre confirmation.')
+      : (HIBOUTIK.configure
+        ? 'Connexion Hiboutik OK, mais les IDs de catégorie et de taxe doivent être configurés sur le serveur.'
+        : 'Hiboutik n’est pas configuré sur le serveur de gestion. Le produit sera créé localement.');
+    $('#f-hiboutik-lie').textContent = p && p.hiboutikId
+      ? 'ID Hiboutik : ' + p.hiboutikId + (p.hiboutikStock != null ? ' · ' + libelleStock(p) : '') : '';
     remplirFormats(p ? p.formats : []);
     dessinerAllergenes(p ? p.allergenes : []);
 
@@ -2683,12 +2890,17 @@
       $('#f-pv').focus();
       return;
     }
+    if (!EN_EDITION && $('#f-hiboutik-creer').checked &&
+        !confirm('Créer ce produit dans Hiboutik après son enregistrement local ?\n\nCette action écrit dans la caisse officielle et ne sera pas annulée automatiquement.')) {
+      return;
+    }
 
     var famSel = $('#f-fam').value;
     if (famSel === '__nouvelle') famSel = '';
 
     var type = $('#f-type').value;
     var margeVal = parseFloat(String($('#f-marge-valeur').value).replace(',', '.')) || 0;
+    var demanderCreationHiboutik = !EN_EDITION && $('#f-hiboutik-creer').checked;
 
     var donnees = {
       type: type,
@@ -2703,6 +2915,10 @@
       allergenes: lireAllergenes(),
       formats: formats,
       actif: $('#f-actif').checked,
+      suiviStock: $('#f-suivi-stock').checked,
+      stock: Math.max(0, lireNombre('#f-stock')),
+      stockMini: Math.max(0, lireNombre('#f-stock-mini')),
+      hiboutikBarcode: String($('#f-hiboutik-barcode').value || '').trim().slice(0, 80),
       photo: PHOTO_BROUILLON,
       sous: String($('#f-sous').value || '').trim().slice(0, 90),
       photoArdoise: PHOTO_ARDOISE_BROUILLON,
@@ -2720,9 +2936,11 @@
       CARTE.push(produitNormalise(donnees, 0));
       toast(donnees.nom + ' ajouté à la carte');
     }
+    var produitNouveau = EN_EDITION ? null : parId(donnees.id);
     sauver();
     fermerFiche();
     toutDessiner();
+    if (demanderCreationHiboutik && produitNouveau) creerProduitHiboutik(produitNouveau);
   }
 
   function supprimerProduit() {
@@ -2767,7 +2985,8 @@
     var lignes = [['Produit', 'Type', 'Famille', 'Catégorie', 'Prix TTC', 'Coût matière',
       'TVA %', 'Prix HT', 'Marge €', 'Taux marge %', 'Coefficient',
       'Marge cible (manuelle)', 'Prix TTC pour la cible',
-      'TVA emporté %', 'Marge emporté €', 'Formats (nom=prix)', 'Allergènes',
+      'TVA emporté %', 'Marge emporté €', 'Stock suivi', 'Stock local',
+      'Stock Hiboutik', 'Hiboutik ID', 'Formats (nom=prix)', 'Allergènes',
       'À la carte'].join(';')];
     CARTE.forEach(function (p) {
       var sugg = prixPourMargeCible(p);
@@ -2781,6 +3000,8 @@
         sugg ? dec(sugg) : '',
         p.tvaEmporter != null ? dec(p.tvaEmporter * 100) : '',
         p.tvaEmporter != null ? dec(margeEmporter(p)) : '',
+        p.suiviStock ? 'oui' : 'non', dec(p.stock),
+        p.hiboutikStock != null ? dec(p.hiboutikStock) : '', p.hiboutikId || '',
         (p.formats || []).map(function (f) {
           return (f.nom || '—') + '=' + dec(f.pv) +
             (f.cout > 0 ? ' (marge ' + dec(f.pv / (1 + p.tva) - f.cout) + ')' : '');
@@ -2875,6 +3096,13 @@
     majInfoDonnees();
     badgeSync();
     syncDetecter();
+    hiboutikEtat();
+    if (HIBOUTIK.maj) {
+      $('#hiboutik-dernier').textContent = 'Dernière lecture locale : ' +
+        new Date(HIBOUTIK.maj).toLocaleString('fr-FR');
+      afficherStatutHiboutik(HIBOUTIK.produits.length + ' produit(s) Hiboutik en cache.',
+        HIBOUTIK.configure);
+    }
 
     // Application installable : hors ligne complet après premier chargement
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
@@ -3006,6 +3234,8 @@
         if (!SYNC_TOKEN && !demanderToken()) return;
         syncTirer(true); planifierEnvoi(true); return;
       }
+      if (t.closest('#btn-hiboutik-refresh')) { actualiserInventaireHiboutik(); return; }
+      if (t.closest('#btn-hiboutik-importer')) { importerNouveauxProduitsHiboutik(); return; }
       if (t.closest('#badge-sync')) { syncTirer(true); return; }
 
       // ------- cartes du jour -------
@@ -3112,6 +3342,10 @@
       if (e.target.id === 'f-tva-emporter') majChiffresMarge();
       if (e.target.hasAttribute('data-alg')) {
         e.target.closest('.alg-case').classList.toggle('on', e.target.checked);
+      }
+      if (e.target.id === 'cueillette-disponibles' && CUEILLETTE) {
+        CUEILLETTE.disponibles = e.target.checked;
+        dessinerCueillette();
       }
       if (e.target.hasAttribute('data-cueillette')) {
         var id = e.target.getAttribute('data-cueillette');

@@ -100,7 +100,8 @@
     <div class="ardoise-intro carte-bloc">
       <h2>Les cartes du jour</h2>
       <p class="aide">Composez les ardoises du service — bières du jour, plats du jour,
-        carte des desserts — à partir de vos produits ou de lignes libres, puis
+        carte des desserts — automatiquement depuis les produits disponibles de
+        l'inventaire, ou manuellement avec le catalogue et des lignes libres, puis
         imprimez-les ou affichez-les. Vides, elles ne sont ni affichées ni imprimées.</p>
       <button type="button" class="btn btn-p" id="btn-imprimer-tout">🖨 Imprimer les trois cartes</button>
     </div>
@@ -215,6 +216,19 @@
       </div>
       <p class="aide">Le serveur autorise la lecture publique de la carte, mais exige ce
         jeton pour toute publication. Ne le partagez pas avec les clients.</p>
+    </div>
+    <div class="carte-bloc hiboutik-bloc" id="bloc-hiboutik">
+      <h2>Hiboutik — inventaire et catalogue</h2>
+      <p class="aide">La connexion est configurée sur le serveur de gestion, jamais dans le
+        navigateur. Actualisez l'inventaire pour proposer automatiquement les produits
+        disponibles dans les cartes, ou créez un produit manuellement puis demandez sa
+        création dans Hiboutik.</p>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-p" id="btn-hiboutik-refresh">Actualiser l'inventaire Hiboutik</button>
+        <button type="button" class="btn btn-s" id="btn-hiboutik-importer" disabled>Importer les nouveaux produits</button>
+        <span id="hiboutik-statut" class="aide" role="status">Vérification de la connexion…</span>
+      </div>
+      <p class="aide" id="hiboutik-dernier"></p>
     </div>
     <div class="carte-bloc danger">
       <h2>Zone sensible</h2>
@@ -383,10 +397,43 @@
         </div>
       </fieldset>
 
+      <fieldset class="pave">
+        <legend>Inventaire et disponibilité</legend>
+        <label class="case">
+          <input type="checkbox" id="f-suivi-stock">
+          <span>Suivre ce produit dans l'inventaire</span>
+        </label>
+        <div class="deux-cols inventaire-champs">
+          <label class="champ">
+            <span>Quantité disponible</span>
+            <input type="number" id="f-stock" min="0" step="0.1" inputmode="decimal" value="0">
+          </label>
+          <label class="champ">
+            <span>Seuil d'alerte</span>
+            <input type="number" id="f-stock-mini" min="0" step="0.1" inputmode="decimal" value="0">
+          </label>
+        </div>
+        <p class="aide" id="f-stock-hiboutik"></p>
+      </fieldset>
+
       <label class="case">
         <input type="checkbox" id="f-actif" checked>
         <span>Produit à la carte (décocher pour le masquer temporairement)</span>
       </label>
+
+      <fieldset class="pave hiboutik-fiche" id="bloc-hiboutik-fiche">
+        <legend>Hiboutik</legend>
+        <p class="aide" id="f-hiboutik-aide">Pour une nouvelle fiche, cette action crée le produit dans Hiboutik après votre confirmation. Les identifiants restent côté serveur.</p>
+        <label class="champ">
+          <span>Code-barres / référence Hiboutik (facultatif)</span>
+          <input type="text" id="f-hiboutik-barcode" maxlength="80" autocomplete="off">
+        </label>
+        <label class="case">
+          <input type="checkbox" id="f-hiboutik-creer">
+          <span>Créer aussi ce nouveau produit dans Hiboutik</span>
+        </label>
+        <p class="aide" id="f-hiboutik-lie"></p>
+      </fieldset>
 
       <p class="err" id="f-erreur" role="alert" hidden></p>
     </div>
@@ -408,6 +455,11 @@
     <button type="button" class="fermer" aria-label="Fermer">×</button>
   </header>
   <div class="fiche-corps">
+    <label class="case cueillette-dispo">
+      <input type="checkbox" id="cueillette-disponibles">
+      <span>Afficher seulement les produits disponibles dans l'inventaire</span>
+    </label>
+    <p class="aide" id="cueillette-stock-info"></p>
     <input type="search" id="cueillette-recherche" placeholder="Rechercher un produit…"
            aria-label="Rechercher un produit">
     <div id="cueillette-liste" class="cueillette-liste"></div>
