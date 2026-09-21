@@ -2292,8 +2292,9 @@
   }
 
   function carteProduitHTML(p) {
-    var photo = p.photo
-      ? '<img src="' + p.photo + '" alt="Photo — ' + echap(p.nom) + '" loading="lazy">'
+    var visuel = p.photo || illustrationProduit(p);
+    var photo = visuel
+      ? '<img src="' + visuel + '" alt="Illustration — ' + echap(p.nom) + '" loading="lazy">'
       : '<span class="motif" aria-hidden="true">' + echap((TYPES[p.type] || '?')[0]) + '</span>';
     var manuel = p.margeManuelle
       ? ' <span class="badge-manuel" title="Marge cible fixée à la main">marge : ' +
@@ -3393,7 +3394,16 @@
   // ==========================================================
   //  Démarrage
   // ==========================================================
+  function appliquerLogoAdmin() {
+    var cible = $('#admin-logo');
+    var logo = window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.logo;
+    if (!cible || !logo) return;
+    cible.innerHTML = '<img src="' + logo + '" alt="La Trattoria">';
+    cible.classList.add('logo-image');
+  }
+
   function init() {
+    appliquerLogoAdmin();
     livraisonCharger();
     charger();
     livraisonAfficher();
