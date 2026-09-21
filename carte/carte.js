@@ -883,6 +883,13 @@
     var section = t.closest('.famille[data-fam]');
     if (!section) return false;
     var fam = section.dataset.fam;
+    // Ouvrir directement la fiche depuis chaque ligne de la carte générale.
+    // Ce traitement prioritaire évite toute dépendance à un autre écran.
+    var productEdit = t.closest('[data-editer]');
+    if (productEdit) {
+      ouvrirFiche(productEdit.getAttribute('data-editer'));
+      return true;
+    }
     var confF = CF && CF.fams[fam];
     if (!confF) return false;
     if (t.closest('[data-fam-edit]')) {
