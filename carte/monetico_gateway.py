@@ -38,6 +38,8 @@ import os
 import re
 import secrets
 import threading
+import urllib.error
+import urllib.request
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -174,6 +176,9 @@ class Config:
         self.secret = env("MONETICO_KEY_HEX")
         self.public_url = env("MONETICO_PUBLIC_URL").rstrip("/")
         self.catalogue_file = env("MONETICO_CATALOGUE_FILE")
+        # API de la tablette ou du serveur de commandes. Après confirmation
+        # Monetico, le relais y transmet la commande avec le statut payé.
+        self.order_target = env("MONETICO_ORDER_TARGET")
         self.store_file = env("MONETICO_ORDER_STORE", "./monetico-orders.json")
         self.allowed_origins = {x.rstrip("/") for x in env("MONETICO_ALLOWED_ORIGINS").split(",") if x.strip()}
 
@@ -190,6 +195,8 @@ class Config:
             missing.append("MONETICO_CATALOGUE_FILE")
         elif not os.path.isfile(self.catalogue_file):
             missing.append("MONETICO_CATALOGUE_FILE_readable")
+        if self.env == "production" and not self.order_target:
+            missing.append("MONETICO_ORDER_TARGET")
         return (not missing, missing)
 
     @property
@@ -336,11 +343,53 @@ class Gateway(BaseHTTPRequestHandler):
             form["MAC"] = sign_form(self.config.secret, form)
             self.store.put(ref, {"status": "pending", "reference": ref, "amount": str(total),
                                  "email": email, "name": name, "phone": phone,
-                                 "slot": slot, "lines": clean_lines,
+                                 "slot": slot, "note": str(payload.get("note", ""))[:400],
+                                 "lines": clean_lines,
                                  "created": dt.datetime.now(dt.timezone.utc).isoformat()})
             self.send_json({"ok": True, "action": self.config.action, "form": form})
         except (ValueError, RuntimeError, OSError) as exc:
             self.send_json({"ok": False, "error": str(exc)}, 400)
+
+    def forward_order(self, order: dict) -> tuple[bool, str]:
+        """Transmet une commande payée au serveur de prise de commande."""
+        target = self.config.order_target
+        if not target:
+            return False, "MONETICO_ORDER_TARGET non configuré"
+        lines = []
+        for line in order.get("lines", []):
+            lines.append({
+                "id": str(line.get("id", "")),
+                "q": int(line.get("q", 0)),
+                # Le serveur de la tablette recalcule encore le catalogue.
+                "nom": "",
+                "pv": float(line.get("unit", 0)),
+            })
+        note = str(order.get("note", "")).strip()
+        payment_note = "Paiement Monetico confirmé — référence " + str(order.get("reference", ""))
+        payload = {
+            "client": str(order.get("name", "")),
+            "tel": str(order.get("phone", "")),
+            "email": str(order.get("email", "")),
+            "creneau": str(order.get("slot", "")),
+            "note": (note + " | " if note else "") + payment_note,
+            "lignes": lines,
+            "total": float(order.get("amount", 0)),
+            "paiement": "monetico",
+            "referencePaiement": str(order.get("reference", "")),
+        }
+        request = urllib.request.Request(
+            target, data=json_bytes(payload),
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=8) as response:
+                raw = response.read(50_000).decode("utf-8", "replace")
+                result = json.loads(raw) if raw else {}
+                if response.status < 200 or response.status >= 300 or not result.get("ok"):
+                    return False, "serveur de commandes a refusé la commande"
+                return True, "transmise"
+        except (OSError, urllib.error.URLError, json.JSONDecodeError):
+            return False, "serveur de commandes injoignable"
 
     def notify(self) -> None:
         try:
@@ -361,6 +410,10 @@ class Gateway(BaseHTTPRequestHandler):
                               "return_code": form.get("code-retour", ""),
                               "authorized": form.get("numauto", ""),
                               "updated": dt.datetime.now(dt.timezone.utc).isoformat()})
+                if accepted and order.get("forward_status") != "sent":
+                    sent, detail = self.forward_order(order)
+                    order["forward_status"] = "sent" if sent else "error"
+                    order["forward_detail"] = detail
                 self.store.put(ref, order)
             self.send_response(200); self.end_headers(); self.wfile.write(b"version=2\ncdr=0")
         except (ValueError, UnicodeDecodeError, OSError):

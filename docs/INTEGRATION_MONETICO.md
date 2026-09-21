@@ -50,6 +50,7 @@ MONETICO_SOCIETE=monSite \
 MONETICO_KEY_HEX='CLE_FOURNIE_PAR_MONETICO' \
 MONETICO_PUBLIC_URL='https://paiement.example' \
 MONETICO_CATALOGUE_FILE='/srv/la-trattoria/catalogue.json' \
+MONETICO_ORDER_TARGET='http://IP_DE_LA_TABLETTE:8721/api/commande' \
 MONETICO_ALLOWED_ORIGINS='https://latrattoria-saintes.fr' \
 MONETICO_ORDER_STORE='/var/lib/la-trattoria/monetico-orders.json' \
 python3 carte/monetico_gateway.py
@@ -63,8 +64,11 @@ https://paiement.example/api/monetico/notify
 
 En production, utiliser `MONETICO_ENV=production` et une URL publique HTTPS.
 Le service refuse de préparer un paiement de production si l’URL n’est pas en
-HTTPS. La clé réelle ne doit être fournie que par variable d’environnement ou
-par un gestionnaire de secrets, jamais par un fichier distribué avec l’APK.
+HTTPS ou si `MONETICO_ORDER_TARGET` n’est pas défini. Après confirmation de la
+banque, la commande est transmise une seule fois à l’API de prise de commande
+avec la mention « Paiement Monetico confirmé ». La clé réelle ne doit être
+fournie que par variable d’environnement ou par un gestionnaire de secrets,
+jamais par un fichier distribué avec l’APK.
 
 ## Vérifications avant ouverture
 
