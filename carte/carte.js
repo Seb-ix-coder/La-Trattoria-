@@ -464,6 +464,27 @@
     return p ? (p.photoArdoise || p.photo || null) : null;
   }
 
+  // Illustration déjà générée pour la famille de produit. Les photos
+  // choisies dans l'éditeur restent prioritaires ; sinon on réutilise les
+  // illustrations craie embarquées dans ardoise-assets.js. Ainsi un produit
+  // ajouté par l'administrateur apparaît immédiatement avec le visuel de sa
+  // famille, sans fabriquer ni substituer une image générique.
+  function illustrationProduit(p) {
+    var explicite = photoArdoiseDe(p);
+    if (explicite) return explicite;
+    var assets = (window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.moment) || {};
+    var texte = norm((p && p.type || '') + ' ' + (p && p.fam || '') + ' ' +
+      (p && p.cat || '') + ' ' + (p && p.nom || ''));
+    var cle = 'plats';
+    if (/glace|sorbet|angelys/.test(texte)) cle = 'glaces';
+    else if (/dessert|tiramisu|panna|cafe gourmand/.test(texte)) cle = 'desserts';
+    else if (/biere|peroni|moretti|pression/.test(texte)) cle = 'bieres';
+    else if (/vin|cave|prosecco|chianti|pinot|rose de provence/.test(texte)) cle = 'vins';
+    else if (/formule|menu/.test(texte)) cle = 'formules';
+    else if (/boisson|cocktail|aperitif|sans alcool|limonade|eau |coca|jus /.test(texte)) cle = 'boissons';
+    return assets[cle] || assets.plats || null;
+  }
+
   // ---------- rendu HTML de l'ardoise (aperçu, impression, public) ----------
   var CRAIE_CLASSES = ['craie--jaune', 'craie--blanc', 'craie--rose', 'craie--verte', 'craie--bleue'];
 
@@ -1235,7 +1256,7 @@
     CPT_CRAIE++;
     var photo = null;
     items.some(function (it) {
-      if (it.kind === 'p') { photo = photoArdoiseDe(it.p); return !!photo; }
+      if (it.kind === 'p') { photo = illustrationProduit(it.p); return !!photo; }
       return false;
     });
     var h = '<section class="catArdoise' + (photo ? ' catAvecPhoto' : '') +
@@ -3425,6 +3446,7 @@
     config: function () { return CF; },
     htmlArdoise: htmlArdoise,
     htmlArdoiseExtras: htmlArdoiseExtras,
+    illustrationProduit: illustrationProduit,
     itemsFamille: itemsFamille,
     itemsExtra: itemsExtra,
     htmlMoment: htmlMoment,
