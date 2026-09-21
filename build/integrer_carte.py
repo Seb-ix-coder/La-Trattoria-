@@ -546,10 +546,18 @@ LEGAL_ADDON = """/* ============================================================
 
 
 def patcher_site_js(site_js: str, carte_dir: str) -> str:
+    import re
     module_b64 = base64.b64encode(assembler_module(carte_dir)).decode()
+    # Le fichier source peut déjà contenir une ancienne intégration du
+    # module carte (cas des APK 13.x). On rafraîchit alors uniquement le
+    # bundle HTML : on ne duplique ni le bouton ni l'addon dans site.js.
+    motif = r"(var\s+BUNDLE_B64\s*=\s*')[A-Za-z0-9+/=]+(')"
+    if re.search(motif, site_js):
+        site_js = re.sub(motif, lambda m: m.group(1) + module_b64 + m.group(2), site_js, count=1)
+        if 'barre-sociale' not in site_js:
+            print('[ATTENTION] module social (barre-sociale) introuvable — vérifier le build source')
+        return site_js
     addon = ADDON_TEMPLATE.replace('__BUNDLE_B64__', module_b64)
-    if 'LT_CARTE' in site_js or 'btn-carte' in site_js:
-        raise SystemExit('site.js déjà patché (btn-carte présent)')
     if 'barre-sociale' not in site_js:
         print('[ATTENTION] module social (barre-sociale) introuvable — '
               'vérifier le build source')
@@ -579,13 +587,14 @@ def main() -> None:
     src_apk, carte_dir, keystore, password, dst_apk = args
     version_code = int(opts.get('--version-code', 18))
     version_name = opts.get('--version-name', '11.3')
+    src_version = opts.get('--src-version', '11.2')
 
     import zipfile
     with zipfile.ZipFile(src_apk) as z:
         manifest = z.read('AndroidManifest.xml')
         site_js = z.read('assets/site.js').decode('utf-8')
 
-    manifest_out = patcher_manifest(manifest, version_code, version_name)
+    manifest_out = patcher_manifest(manifest, version_code, version_name, src_version)
     site_js_out = patcher_site_js(site_js, carte_dir)
 
     work = os.path.join(HERE, 'work')
