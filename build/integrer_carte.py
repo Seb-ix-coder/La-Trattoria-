@@ -37,18 +37,29 @@ sans toucher au bytecode :
     (resign.py).
 
 Usage :
-  python3 build/integrer_carte.py SRC_APK CARTE_DIR KEYSTORE.p12 MOT_DE_PASSE OUT_APK \
+  KEYSTORE_PASSWORD=... python3 build/integrer_carte.py \
+      SRC_APK CARTE_DIR KEYSTORE.p12 OUT_APK \
       [--version-code=18] [--version-name=11.3]
+      [--src-version=11.2]
+
+Si SRC_APK est déjà un APK unifié récent, `BUNDLE_B64` est rafraîchi en
+place afin de conserver toutes les fonctions natives/web existantes (caisse,
+commandes, encaissements, tables, modes de l'application). Le mode historique
+avec le mot de passe en argument reste accepté pour compatibilité locale, mais
+il ne doit plus être utilisé dans un pipeline.
 """
 
 import base64
+import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from patch_axml import AXML  # noqa: E402
+from patch_assets import _ajouter_livraison, _remplacer_addon_paiement  # noqa: E402
 
 
 def read(path: str) -> str:
@@ -125,6 +136,34 @@ def assembler_module(carte_dir: str) -> bytes:
         if not (ref.startswith(('http', 'data:', '#', 'tel:', 'mailto:'))
                 or ref == ''):
             raise SystemExit('référence relative restante : %r' % ref)
+
+    # Le module PWA embarqué dans l'APK vit dans une iframe blob: : ses liens
+    # relatifs vers carte/impression/ ne peuvent donc pas être résolus. On
+    # embarque les fiches HTML autonomes comme données et le bouton de l'UI
+    # les ouvre dans une nouvelle fenêtre/onglet pour impression. En mode PWA
+    # normal, le même bouton retombe sur le fichier statique relatif.
+    fichiers_imprimables = [
+        '01-carte-principale.html', '02-carte-pizzas.html',
+        '03-glaces-langelys.html', '04-bieres-du-moment.html',
+        '05-carte-salades.html', '06-carte-formules.html',
+        '07-carte-restaurant-economique.html', '08-carte-boissons.html',
+        'cartes-contact-a4.html',
+    ]
+    cartes_print = {}
+    dossier_print = os.path.join(carte_dir, 'impression')
+    for nom in fichiers_imprimables:
+        chemin = os.path.join(dossier_print, nom)
+        if not os.path.isfile(chemin):
+            raise SystemExit('fiche imprimable introuvable : %s' % chemin)
+        cartes_print[nom] = read(chemin)
+    cartes_json = json.dumps(cartes_print, ensure_ascii=False, separators=(',', ':'))
+    # Ne jamais laisser une séquence </script> fournie par une fiche HTML
+    # fermer prématurément le bloc d'injection JavaScript.
+    cartes_json = cartes_json.replace('</', '<\\/')
+    injection = ('<script>window.TRATTORIA_PRINT_CARDS=' +
+                 cartes_json +
+                 ';</script>')
+    html = html.replace('</body>', injection + '</body>')
     return html.encode('utf-8')
 
 
@@ -546,22 +585,32 @@ LEGAL_ADDON = """/* ============================================================
 
 
 def patcher_site_js(site_js: str, carte_dir: str) -> str:
-    import re
     module_b64 = base64.b64encode(assembler_module(carte_dir)).decode()
-    # Le fichier source peut déjà contenir une ancienne intégration du
-    # module carte (cas des APK 13.x). On rafraîchit alors uniquement le
-    # bundle HTML : on ne duplique ni le bouton ni l'addon dans site.js.
-    motif = r"(var\s+BUNDLE_B64\s*=\s*')[A-Za-z0-9+/=]+(')"
-    if re.search(motif, site_js):
-        site_js = re.sub(motif, lambda m: m.group(1) + module_b64 + m.group(2), site_js, count=1)
-        if 'barre-sociale' not in site_js:
-            print('[ATTENTION] module social (barre-sociale) introuvable — vérifier le build source')
-        return site_js
+
+    # Un APK stable peut déjà contenir l'addon carte. Dans ce cas, on ne
+    # réinjecte pas un deuxième bouton/iframe : on rafraîchit uniquement le
+    # bundle HTML embarqué. Cette voie est indispensable pour partir d'un
+    # APK total récent (commandes, encaissements, tables, modes existants)
+    # sans revenir au vieux socle 11.1.
+    motif_bundle = r"(\bBUNDLE_B64\s*=\s*')[A-Za-z0-9+/=]+(')"
+    site_js_rafraichi, occurrences = re.subn(
+        motif_bundle, lambda m: m.group(1) + module_b64 + m.group(2),
+        site_js, count=1)
+    if occurrences:
+        site_js_rafraichi = _remplacer_addon_paiement(site_js_rafraichi)
+        site_js_rafraichi = site_js_rafraichi.replace("API + '/site/commande'", "API + '/api/commande'")
+        return _ajouter_livraison(site_js_rafraichi)
+
     addon = ADDON_TEMPLATE.replace('__BUNDLE_B64__', module_b64)
+    if 'LT_CARTE' in site_js or 'btn-carte' in site_js:
+        raise SystemExit('site.js contient un addon carte sans BUNDLE_B64 rafraîchissable')
     if 'barre-sociale' not in site_js:
         print('[ATTENTION] module social (barre-sociale) introuvable — '
               'vérifier le build source')
-    return site_js + '\n' + addon + '\n' + LEGAL_ADDON
+    site_js = site_js + '\n' + addon + '\n' + LEGAL_ADDON
+    site_js = _remplacer_addon_paiement(site_js)
+    site_js = site_js.replace("API + '/site/commande'", "API + '/api/commande'")
+    return _ajouter_livraison(site_js)
 
 
 # ---------------------------------------------------------------------------
@@ -581,10 +630,18 @@ def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     opts = {a.split('=', 1)[0]: a.split('=', 1)[1]
             for a in sys.argv[1:] if a.startswith('--') and '=' in a}
-    if len(args) != 5:
+    if len(args) not in (4, 5):
         print(__doc__)
         sys.exit(1)
-    src_apk, carte_dir, keystore, password, dst_apk = args
+    if os.environ.get('KEYSTORE_PASSWORD'):
+        src_apk, carte_dir, keystore, dst_apk = args[:4]
+        password = os.environ['KEYSTORE_PASSWORD']
+        if len(args) == 5:
+            raise SystemExit('Mot de passe en argument interdit avec KEYSTORE_PASSWORD.')
+    else:
+        if len(args) != 5:
+            raise SystemExit('Définir KEYSTORE_PASSWORD dans l\'environnement.')
+        src_apk, carte_dir, keystore, password, dst_apk = args
     version_code = int(opts.get('--version-code', 18))
     version_name = opts.get('--version-name', '11.3')
     src_version = opts.get('--src-version', '11.2')
@@ -613,10 +670,10 @@ def main() -> None:
     import subprocess
     r = subprocess.run([
         sys.executable, os.path.join(HERE, 'resign.py'),
-        src_apk, keystore, password, dst_apk,
+        src_apk, keystore, dst_apk,
         '--replace=AndroidManifest.xml=' + m_path,
         '--replace=assets/site.js=' + j_path,
-    ])
+    ], env=dict(os.environ, KEYSTORE_PASSWORD=password))
     if r.returncode != 0:
         sys.exit('resign.py a échoué')
     print('[ok] APK unifié signé      : %s' % dst_apk)

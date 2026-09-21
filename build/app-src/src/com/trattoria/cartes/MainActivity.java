@@ -126,8 +126,18 @@ public class MainActivity extends Activity {
         return sb.toString();
     }
     private static void ecrire(File f, String s) throws Exception {
-        FileOutputStream fos = new FileOutputStream(f);
-        try { fos.write(s.getBytes(StandardCharsets.UTF_8)); } finally { fos.close(); }
+        File tmp = new File(f.getParentFile(), f.getName() + ".tmp");
+        FileOutputStream fos = new FileOutputStream(tmp);
+        try {
+            fos.write(s.getBytes(StandardCharsets.UTF_8));
+            fos.getFD().sync();
+        } finally { fos.close(); }
+        if (!tmp.renameTo(f)) {
+            // Certains Android refusent le remplacement atomique d'un fichier
+            // existant : supprimer seulement après l'écriture complète.
+            if (f.exists() && !f.delete()) throw new java.io.IOException("suppression impossible");
+            if (!tmp.renameTo(f)) throw new java.io.IOException("remplacement impossible");
+        }
     }
     private String asset(String nom) {
         try { return lireAssetsApp(nom); } catch (Exception e) { return ""; }
@@ -2422,7 +2432,12 @@ public class MainActivity extends Activity {
                 String brut;
                 try { brut = toutLire(is); } finally { is.close(); }
                 JSONObject lu = new JSONObject(brut);
-                if (lu.optJSONArray("carte") == null) { toast("Fichier invalide"); return; }
+                // Le module PWA exporte « produits », tandis que cette app
+                // historique utilise « carte » : accepter les deux formats.
+                JSONArray importCarte = lu.optJSONArray("carte");
+                if (importCarte == null) importCarte = lu.optJSONArray("produits");
+                if (importCarte == null) { toast("Fichier invalide"); return; }
+                lu.put("carte", importCarte);
                 donnees = lu;
                 try {
                     if (!donnees.has("moment")) donnees.put("moment", new JSONObject());

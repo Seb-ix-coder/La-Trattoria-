@@ -5,19 +5,22 @@ import android.content.Context;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Serveur HTTP local du site clients (port 8721).
  * Sert la page de commande et reçoit les commandes via POST /api/commande.
- * Thread unique par connexion ; démarré/arrêté depuis l'activité.
+ * Pool borné de connexions ; démarré/arrêté depuis l'activité.
  */
 public class ServeurSite implements Runnable {
 
@@ -34,6 +37,8 @@ public class ServeurSite implements Runnable {
     private volatile boolean actif = false;
     private ServerSocket socket;
     private Thread thread;
+    private final ExecutorService clients = Executors.newFixedThreadPool(8);
+    private static final int MAX_CORPS = 256 * 1024;
 
     public ServeurSite(int port, Ecouteur ecouteur) {
         this.port = port;
@@ -52,17 +57,19 @@ public class ServeurSite implements Runnable {
     public synchronized void arreter() {
         actif = false;
         try { if (socket != null) socket.close(); } catch (Exception ignored) { }
+        clients.shutdownNow();
     }
 
     @Override public void run() {
         try {
             socket = new ServerSocket(port);
+            socket.setReuseAddress(true);
             actif = true;
             while (actif) {
                 final Socket cli = socket.accept();
-                new Thread(new Runnable() {
+                clients.execute(new Runnable() {
                     public void run() { traiter(cli); }
-                }).start();
+                });
             }
         } catch (Exception ignored) {
             actif = false;
@@ -71,55 +78,136 @@ public class ServeurSite implements Runnable {
 
     private void traiter(Socket cli) {
         try {
-            BufferedReader r = new BufferedReader(new InputStreamReader(
-                    cli.getInputStream(), StandardCharsets.UTF_8));
-            String ligne = r.readLine();
-            if (ligne == null) { cli.close(); return; }
-            String methode = ligne.split(" ")[0];
-            String chemin = ligne.split(" ")[1];
+            cli.setSoTimeout(10000);
+            InputStream in = new BufferedInputStream(cli.getInputStream());
+            String ligne = lireLigne(in, 8192);
+            if (ligne == null || ligne.indexOf(' ') < 0) { envoyer(cli, 400, "text/plain; charset=utf-8", "requête invalide"); return; }
+            String[] premiere = ligne.split(" ", 3);
+            if (premiere.length < 2) { envoyer(cli, 400, "text/plain; charset=utf-8", "requête invalide"); return; }
+            String methode = premiere[0];
+            String chemin = premiere[1];
             int longueur = 0;
             String l;
-            while ((l = r.readLine()) != null && !l.isEmpty()) {
+            while ((l = lireLigne(in, 8192)) != null && !l.isEmpty()) {
                 if (l.toLowerCase(Locale.FRENCH).startsWith("content-length:"))
                     longueur = Integer.parseInt(l.substring(15).trim());
             }
-            StringBuilder corps = new StringBuilder();
-            for (int i = 0; i < longueur; i++)
-                corps.append((char) r.read());
+            if (longueur < 0 || longueur > MAX_CORPS) {
+                envoyer(cli, 413, "text/plain; charset=utf-8", "commande trop volumineuse");
+                return;
+            }
+            byte[] corps = lireCorps(in, longueur);
 
-            if ("POST".equals(methode) && chemin.startsWith("/api/commande")) {
-                String reponse = "{\"ok\":true,\"message\":\"Commande transmise au restaurant\"}";
+            if ("POST".equals(methode) && "/api/commande".equals(chemin.split("\\?", 2)[0])) {
                 try {
-                    JSONObject c = new JSONObject(corps.toString());
+                    JSONObject c = validerCommande(new JSONObject(new String(corps, StandardCharsets.UTF_8)));
                     c.put("date", new SimpleDateFormat("yyyy-MM-dd", Locale.FRENCH).format(new Date()));
                     c.put("heure", new SimpleDateFormat("HH:mm", Locale.FRENCH).format(new Date()));
                     c.put("canal", "enligne");
                     c.put("statut", "nouvelle");
                     ecouteur.commandeRecue(c);
+                    envoyer(cli, 200, "application/json; charset=utf-8",
+                            "{\"ok\":true,\"message\":\"Commande transmise au restaurant\"}");
                 } catch (Exception e) {
-                    reponse = "{\"ok\":false,\"erreur\":\"" + e.getMessage() + "\"}";
+                    envoyer(cli, 400, "application/json; charset=utf-8",
+                            "{\"ok\":false,\"erreur\":" + JSONObject.quote("Commande invalide") + "}");
                 }
-                envoyer(cli, 200, "application/json; charset=utf-8", reponse);
                 return;
             }
-            if ("GET".equals(methode) && (chemin.startsWith("/") || chemin.startsWith("/index"))) {
+            if ("GET".equals(methode) && ("/".equals(chemin) || chemin.startsWith("/index"))) {
                 envoyer(cli, 200, "text/html; charset=utf-8", page());
                 return;
             }
             envoyer(cli, 404, "text/plain; charset=utf-8", "introuvable");
         } catch (Exception ignored) {
+            try { envoyer(cli, 400, "text/plain; charset=utf-8", "requête invalide"); } catch (Exception ignored2) { }
         } finally {
             try { cli.close(); } catch (Exception ignored) { }
         }
     }
 
+    private static String lireLigne(InputStream in, int max) throws Exception {
+        ByteArrayOutputStream b = new ByteArrayOutputStream();
+        int x;
+        while ((x = in.read()) != -1) {
+            if (x == '\n') break;
+            if (x != '\r') b.write(x);
+            if (b.size() > max) throw new IllegalArgumentException("ligne trop longue");
+        }
+        if (x == -1 && b.size() == 0) return null;
+        return b.toString("UTF-8");
+    }
+
+    private static byte[] lireCorps(InputStream in, int longueur) throws Exception {
+        byte[] out = new byte[longueur];
+        int lus = 0;
+        while (lus < longueur) {
+            int n = in.read(out, lus, longueur - lus);
+            if (n < 0) throw new IllegalArgumentException("corps incomplet");
+            lus += n;
+        }
+        return out;
+    }
+
+    /** Ne fait confiance ni au prix ni au libellé envoyés par le navigateur. */
+    private JSONObject validerCommande(JSONObject brut) throws Exception {
+        String client = brut.optString("client", "").trim();
+        if (client.length() == 0 || client.length() > 80) throw new IllegalArgumentException("client");
+        JSONArray demandes = brut.optJSONArray("lignes");
+        if (demandes == null || demandes.length() == 0 || demandes.length() > 100)
+            throw new IllegalArgumentException("lignes");
+        JSONArray catalogue = new JSONArray(ecouteur.catalogueJson());
+        JSONArray lignes = new JSONArray();
+        double total = 0;
+        for (int i = 0; i < demandes.length(); i++) {
+            JSONObject demande = demandes.optJSONObject(i);
+            if (demande == null) throw new IllegalArgumentException("ligne");
+            String id = demande.optString("id", "");
+            if (id.length() == 0 || id.length() > 100) throw new IllegalArgumentException("identifiant");
+            JSONObject produit = null;
+            for (int k = 0; k < catalogue.length(); k++) {
+                JSONObject candidat = catalogue.optJSONObject(k);
+                if (candidat != null && id.equals(candidat.optString("id", ""))) {
+                    produit = candidat; break;
+                }
+            }
+            if (produit == null || !produit.optBoolean("actif", true))
+                throw new IllegalArgumentException("produit");
+            int q = demande.optInt("q", 0);
+            if (q < 1 || q > 99) throw new IllegalArgumentException("quantité");
+            double pv = produit.optDouble("pv", 0);
+            if (Double.isNaN(pv) || Double.isInfinite(pv) || pv < 0 || pv > 100000)
+                throw new IllegalArgumentException("prix");
+            JSONObject ligne = new JSONObject();
+            ligne.put("id", id);
+            ligne.put("nom", produit.optString("nom", ""));
+            ligne.put("pv", pv);
+            ligne.put("tva", produit.optDouble("tva", 0.1));
+            ligne.put("q", q);
+            lignes.put(ligne);
+            total += pv * q;
+            if (total > 10000000) throw new IllegalArgumentException("total");
+        }
+        JSONObject commande = new JSONObject();
+        commande.put("client", client);
+        commande.put("tel", brut.optString("tel", "").trim().substring(0,
+                Math.min(30, brut.optString("tel", "").trim().length())));
+        commande.put("lignes", lignes);
+        commande.put("total", Math.round(total * 100) / 100.0);
+        return commande;
+    }
+
     private void envoyer(Socket cli, int code, String type, String corps) {
         try {
             byte[] b = corps.getBytes(StandardCharsets.UTF_8);
-            String entetes = "HTTP/1.1 " + code + " OK\r\n"
+            String statut = code == 200 ? "OK" : (code == 400 ? "Bad Request" :
+                    (code == 413 ? "Payload Too Large" : "Not Found"));
+            String entetes = "HTTP/1.1 " + code + " " + statut + "\r\n"
                     + "Content-Type: " + type + "\r\n"
                     + "Content-Length: " + b.length + "\r\n"
-                    + "Cache-Control: no-store\r\n\r\n";
+                    + "Cache-Control: no-store\r\n"
+                    + "X-Content-Type-Options: nosniff\r\n"
+                    + "Connection: close\r\n\r\n";
             cli.getOutputStream().write(entetes.getBytes(StandardCharsets.UTF_8));
             cli.getOutputStream().write(b);
             cli.getOutputStream().flush();
@@ -229,7 +317,7 @@ public class ServeurSite implements Runnable {
                 .append("var n=document.getElementById('nom').value.trim();")
                 .append("if(!n){alert('Indiquez votre nom');return;}")
                 .append("fetch('/api/commande',{method:'POST',headers:{'Content-Type':'application/json'},")
-                .append("body:JSON.stringify({client:n,tel:document.getElementById('tel').value,lignes:l,total:t.toFixed(2)})})")
+                .append("body:JSON.stringify({client:n,tel:document.getElementById('tel').value,lignes:l,total:total().toFixed(2)})})")
                 .append(".then(function(r){return r.json();})")
                 .append(".then(function(r){if(r.ok){document.getElementById('conf').style.display='block';panier={};dessiner();window.scrollTo(0,0);}")
                 .append("else alert(r.erreur||'Erreur');}).catch(function(){alert('Serveur injoignable');});}")
@@ -243,6 +331,6 @@ public class ServeurSite implements Runnable {
                 .replace("'", "&#39;").replace("\"", "&quot;");
     }
     private static String echId(String s) {
-        return ech(s).replace("[^a-zA-Z0-9_-]", "");
+        return s == null ? "" : s.replaceAll("[^a-zA-Z0-9_-]", "");
     }
 }

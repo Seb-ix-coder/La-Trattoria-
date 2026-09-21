@@ -32,8 +32,12 @@ logging.disable(logging.CRITICAL)
 # ---------------------------------------------------------------------------
 #  1. Manifeste
 # ---------------------------------------------------------------------------
-def check_manifest(apk_path: str, version_code: str = '17',
-                   version_name: str = '11.2') -> None:
+def check_manifest(apk_path: str, version_code: str = None,
+                   version_name: str = None) -> None:
+    # Les anciens builds gardent leurs valeurs par défaut ; le pipeline
+    # courant peut vérifier une version reconstruite sans modifier le DEX.
+    version_code = version_code or os.environ.get('VERIFY_VERSION_CODE', '17')
+    version_name = version_name or os.environ.get('VERIFY_VERSION_NAME', '11.2')
     from androguard.core.apk import APK
     a = APK(apk_path)
     assert a.get_package() == 'com.trattoria.commande', 'package'

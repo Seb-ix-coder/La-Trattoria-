@@ -1,3 +1,8 @@
+> **Archive historique — non approuvée pour livraison.** Les APK et les
+> identités de signature décrits ici sont historiques ; considérer
+> les anciennes clés comme compromises et consulter
+> `build/KEYSTORE_ROTATION.md` avant toute nouvelle diffusion.
+
 ## 🍽️ Tout s'édite dans l'onglet « La carte » — `trato-11.8-stable.apk` (versionCode 23)
 
 Suite aux retours : **plus besoin d'aller dans « Ardoise & QR »** — l'onglet

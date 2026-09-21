@@ -12,11 +12,12 @@
 #   4. livraison     : copie à la racine du dépôt
 #
 # Usage :
-#   ./run_build_stable.sh                      # 11.4 / versionCode 19
-#   ./run_build_stable.sh --version-name=11.5 --version-code=20
+#   ./run_build_stable.sh                      # 13.0 / versionCode 32
+#   KEYSTORE_PATH=/chemin/keystore.p12 KEYSTORE_PASSWORD=... \
+#     ./run_build_stable.sh --version-name=13.0 --version-code=32
 #
-# Keystore : généré localement au premier lancement (jamais commité —
-# voir generate_keystore.py). Sortie : trato-<version>-stable.apk à la racine.
+# Le mot de passe est lu uniquement depuis l'environnement et n'apparaît
+# jamais dans la liste des processus. Sortie : trato-<version>-stable.apk.
 # ============================================================================
 set -euo pipefail
 
@@ -26,8 +27,8 @@ APK_SRC="${APK_SRC:-$ROOT/trato.apk}"
 CARTE_DIR="$ROOT/carte"
 
 # --- options de version -----------------------------------------------------
-VERSION_NAME="11.5"
-VERSION_CODE="20"
+VERSION_NAME="13.0"
+VERSION_CODE="32"
 for opt in "$@"; do
   case "$opt" in
     --version-name=*) VERSION_NAME="${opt#*=}" ;;
@@ -41,28 +42,32 @@ echo "==============================================================="
 echo " Build stable La Trattoria — versionName $VERSION_NAME, versionCode $VERSION_CODE"
 echo "==============================================================="
 
-# --- keystore : officiel FIGÉ dans le dépôt (priorité), sinon local --------
-KEYSTORE="$HERE/keystore/trattoria-release.p12"
-if [ -f "$KEYSTORE" ]; then
-  PASSWORD="$(sed -n 's/^Mot de passe : //p' "$HERE/keystore/MOT_DE_PASSE.txt" | head -1 | tr -d '[:space:]')"
-else
+# --- keystore : uniquement hors dépôt --------------------------------------
+KEYSTORE="${KEYSTORE_PATH:-}"
+PASSWORD="${KEYSTORE_PASSWORD:-}"
+if [ -z "$KEYSTORE" ]; then
   KS_DIR="${KEYSTORE_DIR:-$HOME/trattoria-keystore}"
   KEYSTORE="$KS_DIR/trattoria-release.p12"
   if [ ! -f "$KEYSTORE" ]; then
-    echo "==> ATTENTION : keystore officiel absent — GÉNÉRATION D'UNE NOUVELLE CLÉ"
-    python3 "$HERE/generate_keystore.py" "$KS_DIR"
+    echo "==> Aucun keystore externe : génération locale dans $KS_DIR"
+    PASSWORD="$(KEYSTORE_PASSWORD="$PASSWORD" python3 "$HERE/generate_keystore.py" "$KS_DIR")"
   fi
-  PASSWORD="$(grep -A1 'MOT DE PASSE' "$KS_DIR/README-KEYSTORE.txt" | tail -1 | tr -d '[:space:]')"
 fi
 if [ -z "$PASSWORD" ]; then
-  echo "ERREUR : mot de passe du keystore introuvable." >&2
+  echo "ERREUR : définir KEYSTORE_PASSWORD dans l'environnement (secrets hors dépôt)." >&2
+  exit 1
+fi
+KEYSTORE_ABS="$(realpath -m "$KEYSTORE")"
+ROOT_ABS="$(realpath -m "$ROOT")"
+if [[ "$KEYSTORE_ABS" == "$ROOT_ABS"/* ]]; then
+  echo "ERREUR : le keystore doit être hors du dépôt ; fournir un coffre externe." >&2
   exit 1
 fi
 
 # --- étape 1 : build durci --------------------------------------------------
 echo ""
 echo "==> [1/4] Build durci (correctifs sécurité) depuis $(basename "$APK_SRC")"
-APK_SRC="$APK_SRC" bash "$HERE/run_build.sh"
+APK_SRC="$APK_SRC" KEYSTORE_PATH="$KEYSTORE" KEYSTORE_PASSWORD="$PASSWORD" bash "$HERE/run_build.sh"
 DURCI="$HERE/out/trato-11.1-durci.apk"
 if [ ! -f "$DURCI" ]; then
   echo "ERREUR : build durci absent ($DURCI)." >&2
@@ -72,7 +77,7 @@ fi
 # --- étape 2 : intégration du module carte ----------------------------------
 echo ""
 echo "==> [2/4] Intégration du module carte (build unifié $VERSION_NAME)"
-python3 "$HERE/integrer_carte.py" "$DURCI" "$CARTE_DIR" "$KEYSTORE" "$PASSWORD" "$OUT_APK" \
+KEYSTORE_PASSWORD="$PASSWORD" python3 "$HERE/integrer_carte.py" "$DURCI" "$CARTE_DIR" "$KEYSTORE" "$OUT_APK" \
         --version-code="$VERSION_CODE" --version-name="$VERSION_NAME"
 
 # --- étape 3 : vérifications ------------------------------------------------

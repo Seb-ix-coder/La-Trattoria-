@@ -1,4 +1,9 @@
-## 🔑 Fin des conflits de signature — keystore officiel figé — `trato-12.6-stable.apk` (versionCode 31)
+## ⚠️ Archive historique — `trato-12.6-stable.apk` (versionCode 31)
+
+> Cette version est retirée de la chaîne de livraison : son ancienne clé de
+> signature a été commitée par erreur et doit être considérée comme compromise.
+> Ne pas l'utiliser comme base de mise à jour ni réutiliser son keystore. Voir
+> `build/KEYSTORE_ROTATION.md` pour générer la nouvelle identité.
 
 ### La cause, enfin identifiée précisément
 « Application non installée » = **conflit de signature**. Chaque session de
@@ -13,13 +18,11 @@ de l'environnement de build) :
 
 Android refuse catégoriquement une mise à jour signée avec une autre clé.
 
-### La solution définitive
-Le **keystore officiel est désormais figé dans le dépôt**
-(`build/keystore/`) et utilisé automatiquement par le pipeline : **toutes
-les versions à partir de la 12.5 partagent la même clé** — les mises à jour
-se font **directement, sans jamais désinstaller**.
-(Compromis de sécurité assumé et documenté dans `build/keystore/MOT_DE_PASSE.txt`,
-avec la procédure de rotation.)
+### Décision de livraison actuelle
+Le keystore historique n'est plus accepté par les scripts et a été retiré de
+l'arbre courant. Une nouvelle clé doit être générée hors dépôt et stockée dans
+le CI ou un coffre. La première version ainsi signée nécessitera une
+réinstallation Android ; exporter les données locales avant cette opération.
 
 ### À faire UNE DERNIÈRE FOIS sur la tablette
 1. **Désinstaller** la version installée (12.4 ou autre) — appui long → Désinstaller

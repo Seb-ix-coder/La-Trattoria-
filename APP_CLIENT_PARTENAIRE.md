@@ -22,7 +22,7 @@ comporte alors comme une application, sans passer par un magasin.
 |---|---|
 | `qr/QR-app-client.png` | QR → `…/?client` (à afficher en salle / terrasse) |
 | `qr/QR-app-partenaire.png` | QR → `…/?partenaire` (à partager aux établissements amis) |
-| `qr/QR-carte-visite.png` | QR inséré sur la carte de visite |
+| `qr/QR-carte-visite.png` | QR vers le site public `https://latrattoria-saintes.fr/`, inséré sur la carte de visite |
 | `qr/carte-visite.png` | **Carte de visite** haute résolution (1505×863 px) |
 | `qr/carte-visite.pdf` | Carte de visite **prête à imprimer** (A4, 2 cartes) |
 | `qr/logo-trattoria.png` | Logo « La Trattoria » |
@@ -47,6 +47,6 @@ comporte alors comme une application, sans passer par un magasin.
 # après avoir corrigé l'IP réelle de la tablette dans les QR :
 python3 build/make_qrcode.py "http://<IP>:8720/?client" qr/QR-app-client.png --label "La Trattoria — Menu & avis" --box 16
 python3 build/make_qrcode.py "http://<IP>:8720/?partenaire" qr/QR-app-partenaire.png --label "La Trattoria — Espace Partenaires" --box 16
-python3 build/make_qrcode.py "http://<IP>:8720/?client" qr/QR-carte-visite.png --box 12 --no-caption
+python3 build/make_qrcode.py "https://latrattoria-saintes.fr/" qr/QR-carte-visite.png --label "La Trattoria — Site" --box 12
 python3 build/carte_visite.py
 ```

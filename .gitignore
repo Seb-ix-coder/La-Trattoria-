@@ -26,6 +26,8 @@ TestResults.xml
 build/work/
 build/out/
 build/work_keystore.p12
+# Secrets de signature : aucun fichier ne doit entrer dans le dépôt.
+build/keystore/
 *.p12
 *.jks
 *.keystore
