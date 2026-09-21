@@ -88,6 +88,15 @@ def check_site_js(apk_path: str) -> None:
     assert 'data:image/png;base64,' in module, 'icônes non embarquées'
     assert '<style>' in module, 'CSS non inclus'
     assert '<link rel="stylesheet"' not in module, 'CSS externe restant'
+    assert 'window.TRATTORIA_PRINT_CARDS=' in module, \
+        'cartes imprimables non embarquées'
+    for nom in (
+            '01-carte-principale.html', '02-carte-pizzas.html',
+            '03-glaces-langelys.html', '04-bieres-du-moment.html',
+            '05-carte-salades.html', '06-carte-formules.html',
+            '07-carte-restaurant-economique.html', '08-carte-boissons.html',
+            'cartes-contact-a4.html'):
+        assert nom in module, 'fiche imprimable absente : %s' % nom
     print('[ok] site.js : build 11.2 conservé + module social + '
           'addon carte (bundle %d Ko)' % (len(js) // 1024))
 

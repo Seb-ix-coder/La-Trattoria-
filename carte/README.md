@@ -113,6 +113,13 @@ dans [`impression/`](impression/) : **une carte = une page A4**.
 - [`04-bieres-du-moment.html`](impression/04-bieres-du-moment.html) — bières
   seules.
 
+Depuis l'application, le bloc **« Imprimer les cartes du restaurant »** ouvre
+ces mêmes fiches, y compris dans l'APK unifiée : les fiches sont embarquées
+pour fonctionner hors ligne. L'impression est en lecture seule : elle ne crée
+aucune vente et n'envoie aucune écriture à Hiboutik. Avant impression, vérifier
+que le catalogue et les prix de l'application correspondent à la caisse
+Hiboutik validée.
+
 Ouvrir le fichier puis cliquer sur **Imprimer cette carte**. Choisir A4,
 échelle 100 %/taille réelle et désactiver les en-têtes et pieds de page du
 navigateur. Régénérer après modification du catalogue :

@@ -49,6 +49,27 @@
     <p class="carte-entete">✏️ <b>Éditer &amp; produire les cartes</b> — la carte
       standard (titres, sous-titres, lignes), les formules, les vins, les glaces,
       les bières, les ardoises du jour · impression A4</p>
+
+    <section class="carte-bloc impression-restaurant" aria-labelledby="titre-impressions-restaurant">
+      <h2 id="titre-impressions-restaurant">🖨️ Imprimer les cartes du restaurant</h2>
+      <p class="aide">Chaque bouton ouvre une carte autonome prête à imprimer. Choisir A4,
+        100&nbsp;% / taille réelle et désactiver les en-têtes et pieds de page.
+        Les prix proviennent du catalogue de cette application : vérifier la dernière
+        synchronisation avec Hiboutik avant impression. Imprimer une carte ne crée
+        aucune vente et ne modifie pas Hiboutik.</p>
+      <div class="rangee-boutons cartes-imprimables" aria-label="Cartes imprimables">
+        <a class="btn btn-p" href="#impression" data-print-card="01-carte-principale.html">🖨️ Imprimer la principale</a>
+        <a class="btn btn-s" href="#impression" data-print-card="02-carte-pizzas.html">🖨️ Imprimer les pizzas</a>
+        <a class="btn btn-s" href="#impression" data-print-card="05-carte-salades.html">🖨️ Imprimer les salades</a>
+        <a class="btn btn-s" href="#impression" data-print-card="06-carte-formules.html">🖨️ Imprimer les formules</a>
+        <a class="btn btn-s" href="#impression" data-print-card="08-carte-boissons.html">🖨️ Imprimer les boissons</a>
+        <a class="btn btn-s" href="#impression" data-print-card="03-glaces-langelys.html">🖨️ Imprimer les glaces</a>
+        <a class="btn btn-s" href="#impression" data-print-card="04-bieres-du-moment.html">🖨️ Imprimer les bières</a>
+        <a class="btn btn-s" href="#impression" data-print-card="07-carte-restaurant-economique.html">🖨️ Imprimer la version économique</a>
+        <a class="btn btn-s" href="#impression" data-print-card="cartes-contact-a4.html">🖨️ Imprimer les cartes de visite + QR</a>
+      </div>
+    </section>
+
     <nav class="carte-vues" id="carte-vues" aria-label="Cartes éditables">
       <button type="button" class="cv on" data-cv="standard" aria-pressed="true">🍽️ Carte standard</button>
       <button type="button" class="cv" data-cv="formules" aria-pressed="false">🧾 Formules</button>
@@ -414,5 +435,30 @@
 <script src="ardoise-assets.js"></script>
 <script src="qr-encodeur.js"></script>
 <script src="carte.js"></script>
+<script>
+(function () {
+  'use strict';
+  function ouvrirCarteImprimable(fichier) {
+    var cartes = window.TRATTORIA_PRINT_CARDS || {};
+    if (cartes[fichier]) {
+      var blob = new Blob([cartes[fichier]], {type: 'text/html;charset=utf-8'});
+      var url = URL.createObjectURL(blob);
+      var fenetre = window.open(url, '_blank', 'noopener');
+      // Certains WebView refusent les fenêtres secondaires : afficher alors
+      // la fiche dans la fenêtre courante plutôt que de perdre l'action.
+      if (!fenetre) window.location.href = url;
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      return;
+    }
+    window.location.href = 'impression/' + encodeURIComponent(fichier);
+  }
+  document.addEventListener('click', function (event) {
+    var target = event.target.closest ? event.target.closest('[data-print-card]') : null;
+    if (!target) return;
+    event.preventDefault();
+    ouvrirCarteImprimable(target.getAttribute('data-print-card'));
+  });
+}());
+</script>
 </body>
 </html>

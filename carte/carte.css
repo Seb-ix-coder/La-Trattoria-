@@ -398,6 +398,11 @@ table .type-mini{display:inline}
   border-radius: 10px; padding: 9px 12px; margin: 0 0 10px;
 }
 .carte-entete b { color: var(--rougef); font-family: Georgia, "Times New Roman", serif; }
+.impression-restaurant { margin: 0 0 12px; }
+.impression-restaurant h2 { margin: 0 0 6px; color: var(--rougef); font-family: Georgia, "Times New Roman", serif; font-size: 18px; }
+.impression-restaurant .aide { margin: 0 0 10px; }
+.cartes-imprimables { display: flex; flex-wrap: wrap; gap: 7px; }
+.cartes-imprimables .btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .carte-vues .cva {
   border: 1.5px solid var(--trait); background: var(--creme);
   border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 14px;

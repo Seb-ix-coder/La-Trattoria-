@@ -46,6 +46,7 @@ compatibilité locale, mais il ne doit plus être utilisé dans un pipeline.
 """
 
 import base64
+import json
 import os
 import sys
 
@@ -129,6 +130,34 @@ def assembler_module(carte_dir: str) -> bytes:
         if not (ref.startswith(('http', 'data:', '#', 'tel:', 'mailto:'))
                 or ref == ''):
             raise SystemExit('référence relative restante : %r' % ref)
+
+    # Le module PWA embarqué dans l'APK vit dans une iframe blob: : ses liens
+    # relatifs vers carte/impression/ ne peuvent donc pas être résolus. On
+    # embarque les fiches HTML autonomes comme données et le bouton de l'UI
+    # les ouvre dans une nouvelle fenêtre/onglet pour impression. En mode PWA
+    # normal, le même bouton retombe sur le fichier statique relatif.
+    fichiers_imprimables = [
+        '01-carte-principale.html', '02-carte-pizzas.html',
+        '03-glaces-langelys.html', '04-bieres-du-moment.html',
+        '05-carte-salades.html', '06-carte-formules.html',
+        '07-carte-restaurant-economique.html', '08-carte-boissons.html',
+        'cartes-contact-a4.html',
+    ]
+    cartes_print = {}
+    dossier_print = os.path.join(carte_dir, 'impression')
+    for nom in fichiers_imprimables:
+        chemin = os.path.join(dossier_print, nom)
+        if not os.path.isfile(chemin):
+            raise SystemExit('fiche imprimable introuvable : %s' % chemin)
+        cartes_print[nom] = read(chemin)
+    cartes_json = json.dumps(cartes_print, ensure_ascii=False, separators=(',', ':'))
+    # Ne jamais laisser une séquence </script> fournie par une fiche HTML
+    # fermer prématurément le bloc d'injection JavaScript.
+    cartes_json = cartes_json.replace('</', '<\\/')
+    injection = ('<script>window.TRATTORIA_PRINT_CARDS=' +
+                 cartes_json +
+                 ';</script>')
+    html = html.replace('</body>', injection + '</body>')
     return html.encode('utf-8')
 
 
