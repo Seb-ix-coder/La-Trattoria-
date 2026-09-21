@@ -38,6 +38,9 @@ __pycache__/
 carte/donnees-serveur.json
 carte/__pycache__/
 carte/gestion-de-la-carte.zip
+# Données locales du relais de paiement Monetico
+monetico-orders.json
+*.monetico-orders.json
 
 # Environnement virtuel Python local
 .venv/

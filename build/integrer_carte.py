@@ -584,6 +584,20 @@ LEGAL_ADDON = """/* ============================================================
 """
 
 
+def _ajouter_extensions_client(source: str) -> str:
+    """Ajoute le paiement Monetico et le thème client sans secret embarqué."""
+    extensions = [
+        ('Monetico — bouton de paiement sécurisé', 'monetico_checkout.js'),
+        ('Design client « La Trattoria — table claire »', 'design_propre.js'),
+    ]
+    for marqueur, fichier in extensions:
+        if marqueur in source:
+            continue
+        chemin = os.path.join(HERE, fichier)
+        source = source.rstrip('\n') + '\n\n' + read(chemin).rstrip() + '\n'
+    return source
+
+
 def patcher_site_js(site_js: str, carte_dir: str) -> str:
     module_b64 = base64.b64encode(assembler_module(carte_dir)).decode()
 
@@ -599,7 +613,7 @@ def patcher_site_js(site_js: str, carte_dir: str) -> str:
     if occurrences:
         site_js_rafraichi = _remplacer_addon_paiement(site_js_rafraichi)
         site_js_rafraichi = site_js_rafraichi.replace("API + '/site/commande'", "API + '/api/commande'")
-        return _ajouter_livraison(site_js_rafraichi)
+        return _ajouter_extensions_client(_ajouter_livraison(site_js_rafraichi))
 
     addon = ADDON_TEMPLATE.replace('__BUNDLE_B64__', module_b64)
     if 'LT_CARTE' in site_js or 'btn-carte' in site_js:
@@ -610,7 +624,7 @@ def patcher_site_js(site_js: str, carte_dir: str) -> str:
     site_js = site_js + '\n' + addon + '\n' + LEGAL_ADDON
     site_js = _remplacer_addon_paiement(site_js)
     site_js = site_js.replace("API + '/site/commande'", "API + '/api/commande'")
-    return _ajouter_livraison(site_js)
+    return _ajouter_extensions_client(_ajouter_livraison(site_js))
 
 
 # ---------------------------------------------------------------------------

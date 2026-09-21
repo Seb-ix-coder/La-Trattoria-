@@ -8,7 +8,8 @@
 
 | Fichier | Statut | SHA-256 | Téléchargement direct |
 |---|---|---|---|
-| `trato-13.0-stable.apk` | **Candidat 13.0 / versionCode 32** — reconstruire avec la clé client avant production | `869d39adf5d0e025429db15c3fe21384a3c3ad686a4ce25e6f2c3372c2e94834` | [Télécharger l'APK](https://raw.githubusercontent.com/Seb-ix-coder/La-Trattoria-/arena/01a051de-la-trattoria/trato-13.0-stable.apk) |
+| `trato-13.4-monetico-pro.apk` | **Candidat 13.4 / versionCode 35** — Monetico côté relais HTTPS, nouveau design client, éditeur de carte corrigé | `c46368a823501c4d989f232c74c54998140ecb1dabed46ac0cda6fb98113fbe8` | [Télécharger l'APK](https://raw.githubusercontent.com/Seb-ix-coder/La-Trattoria-/arena/01a051de-la-trattoria/trato-13.4-monetico-pro.apk) |
+| `trato-13.0-stable.apk` | Archive de base 13.0 / versionCode 32 | `869d39adf5d0e025429db15c3fe21384a3c3ad686a4ce25e6f2c3372c2e94834` | [Télécharger l'APK](https://raw.githubusercontent.com/Seb-ix-coder/La-Trattoria-/arena/01a051de-la-trattoria/trato-13.0-stable.apk) |
 
 **Lien immuable correspondant au build vérifié `b0a0ef8` :**
 

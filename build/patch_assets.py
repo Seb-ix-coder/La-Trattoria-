@@ -99,6 +99,19 @@ def _ajouter_livraison(source: str) -> str:
     return source.rstrip('\n') + '\n\n' + addon + '\n'
 
 
+def _ajouter_extensions_client(source: str) -> str:
+    """Ajoute Monetico et le nouveau thème sans embarquer de secret."""
+    extensions = [
+        ('Monetico — bouton de paiement sécurisé', 'monetico_checkout.js'),
+        ('Design client « La Trattoria — table claire »', 'design_propre.js'),
+    ]
+    for marqueur, fichier in extensions:
+        if marqueur in source:
+            continue
+        source = source.rstrip('\n') + '\n\n' + _read(os.path.join(os.path.dirname(__file__), fichier)).rstrip() + '\n'
+    return source
+
+
 def patch_site_js(source: str) -> str:
     """Applique les correctifs client, paiement et réception."""
     source = _remplacer_addon_paiement(source)
@@ -148,6 +161,7 @@ def patch_site_js(source: str) -> str:
                                    'mode_app.js'))
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
         print('[patch] site.js : modes App client/partenaire (APP)')
+    source = _ajouter_extensions_client(source)
     return source
 
 
