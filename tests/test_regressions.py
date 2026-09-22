@@ -191,6 +191,29 @@ class SourceRegressionTests(unittest.TestCase):
         self.assertIn("/api/carte", source)
         self.assertIn("totalProduits", (self.ROOT / "build/monetico_checkout.js").read_text())
 
+    def test_standard_card_is_directly_editable_in_two_columns(self):
+        html = (self.ROOT / "carte/index.html").read_text()
+        source = (self.ROOT / "carte/carte.js").read_text()
+        css = (self.ROOT / "carte/carte.css").read_text()
+        self.assertIn('id="standard-structure" aria-label="Éditeur de la carte standard à deux colonnes"', html)
+        self.assertNotIn('id="standard-structure" hidden', html)
+        self.assertIn("data-standard-add-produit", source)
+        self.assertIn("function synchroniserProduitRubrique", source)
+        self.assertIn("standardAdminItems", source)
+        self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", css)
+
+    def test_global_card_is_a_four_sheet_portrait_poster(self):
+        html = (self.ROOT / "carte/index.html").read_text()
+        source = (self.ROOT / "carte/carte.js").read_text()
+        css = (self.ROOT / "carte/carte.css").read_text()
+        self.assertIn('data-carte-globale="1"', html)
+        self.assertIn("function ouvrirCarteGlobale", source)
+        self.assertIn("repartirPoster", source)
+        self.assertIn("pages = [[], [], [], []]", source)
+        self.assertIn("@page{size:A4 portrait;margin:0}", css)
+        self.assertIn("width:210mm;height:297mm", css)
+        self.assertIn("poster-page:last-child", css)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -601,3 +601,81 @@ html{scroll-behavior:smooth}
 @media(max-width:780px){.screen-head .nav-retour{align-self:flex-start}.carte-vues{top:108px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}.carte-vues::-webkit-scrollbar{display:none}.carte-vues .cv,.carte-vues .cva{flex:none}.carte-selection-outil{top:164px}}
 @media(max-width:560px){.screen-head .nav-retour{order:0}.carte-selection-outil{top:157px}.carte-guidage{padding:27px 17px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}#ecran-dashboard,#ecran-carte,#ecran-ardoises,#ecran-ardoise,#ecran-objectifs,#ecran-marges,#ecran-donnees{animation:none}.onglet,.screen-head .nav-retour{transition:none}}
+
+/* ============================================================
+   Carte globale — poster imprimable en 4 feuilles A4 portrait
+   ============================================================ */
+.impression-actions-principales{display:flex;gap:8px;flex-wrap:wrap}
+.btn-poster{background:linear-gradient(135deg,#263b30,#1b2923)!important;border-color:#b78a39!important;color:#fffaf0!important;box-shadow:0 5px 13px rgba(27,41,35,.22)}
+.btn-poster:hover{background:linear-gradient(135deg,#304d3e,#263b30)!important;transform:translateY(-1px)}
+.carte-vues .cva-poster{border-color:#b78a39;color:#263b30;background:#fff8ed}
+.carte-vues .cva-poster:hover{background:#f3e7cd}
+.standard-admin-head{position:relative}
+.standard-admin-head::before{content:"ÉDITEUR DIRECT";position:absolute;right:16px;top:-9px;padding:2px 7px;border-radius:999px;background:#a51822;color:#fff;font:800 9px Arial,sans-serif;letter-spacing:.11em}
+.standard-rubrique-head .fam-actions{display:flex;flex-wrap:wrap;gap:5px;max-width:260px}
+.standard-rubrique-head .fam-actions .btn{white-space:nowrap}
+.standard-ligne-actions .btn-danger{background:#fff4f2}
+.standard-vide{display:flex;align-items:center;justify-content:space-between;gap:10px}
+
+/* Le dialogue d'aperçu est utilisé pour le standard et pour le poster. */
+.poster-toolbar{max-width:1380px;margin:0 auto 14px;display:flex;align-items:center;justify-content:space-between;gap:16px;color:#fffaf0}
+.poster-toolbar strong{display:block;font:700 20px Georgia,serif;letter-spacing:.02em}
+.poster-toolbar span{display:block;margin-top:4px;color:#d7d8ca;font:12px Arial,sans-serif}
+.poster-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.poster-a4{max-width:1380px;margin:0 auto;padding:20px;background:#c9c5bb;border:1px solid #b78a39;box-shadow:0 22px 60px rgba(0,0,0,.35)}
+.poster-assemblage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;background:#8b8d83;padding:8px}
+.poster-page{position:relative;min-width:0;aspect-ratio:210/297;overflow:hidden;padding:6.5% 7.5% 5.5%;background:#fffaf0;color:#26332d;border:1px solid #d6bf87;box-shadow:0 2px 12px rgba(18,28,23,.2);display:flex;flex-direction:column}
+.poster-page::before,.poster-page::after{content:"";position:absolute;pointer-events:none;z-index:2}
+.poster-page::before{inset:10px;border:1px solid rgba(183,138,57,.38)}
+.poster-page::after{inset:17px;border:1px solid rgba(183,138,57,.13)}
+.poster-entete,.poster-titre,.poster-sections,.poster-pied{position:relative;z-index:3}
+.poster-entete{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:1px solid #b78a39;padding-bottom:8px}
+.poster-marque{font:700 clamp(11px,1.5vw,19px) Georgia,serif;letter-spacing:.13em;color:#263b30}
+.poster-document{font:800 clamp(7px,1vw,11px) Arial,sans-serif;letter-spacing:.14em;color:#977329}
+.poster-document span{color:#b78a39}
+.poster-titre{padding:10px 0 7px;text-align:center}
+.poster-titre h1{margin:0;font:700 clamp(19px,3vw,35px) Georgia,serif;letter-spacing:.025em;color:#263b30}
+.poster-titre p{margin:4px 0 0;color:#8d1f2b;font:clamp(8px,1vw,12px) Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.poster-sections{columns:1;column-gap:10%;flex:1;min-height:0;overflow:hidden}
+.poster-sections .a4-cat{margin:11px 0 5px;break-inside:avoid;page-break-inside:avoid}
+.poster-sections .a4-cat:first-child{margin-top:3px}
+.poster-sections .a4-cat-tete{display:flex;align-items:center;gap:6px;border-bottom:1px solid #e3d7bd;padding-bottom:4px}
+.poster-sections .a4-illustration{width:25px;height:25px;border-radius:50%;object-fit:cover;border:1px solid #d6bf87}
+.poster-sections .a4-cat-compact h2{margin:0;font:700 clamp(10px,1.35vw,17px) Georgia,serif;color:#263b30;letter-spacing:.04em;text-transform:uppercase}
+.poster-sections .a4-cat-compact h2::after{display:none}
+.poster-sections .a4-sous{margin:2px 0 0;font:clamp(6px,.75vw,9px) Arial,sans-serif;color:#66736c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.poster-sections .a4-cat ul{list-style:none;margin:4px 0 0;padding:0}
+.poster-sections .a4-cat li{display:flex;align-items:baseline;gap:4px;padding:2px 0;border-bottom:1px solid #f0eadd;line-height:1.12}
+.poster-sections .a4-cat li:last-child{border-bottom:0}
+.poster-sections .a4-nom{font:600 clamp(7px,1vw,12px) Georgia,serif;color:#26332d;min-width:0}
+.poster-sections .a4-desc-inline{font:clamp(5px,.65vw,8px) Arial,sans-serif;color:#66736c;margin-left:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42%}
+.poster-sections .a4-pts{flex:1;min-width:5px;border-bottom:1px dotted #cdbd9b;transform:translateY(-2px)}
+.poster-sections .a4-prix{font:700 clamp(7px,1vw,12px) Arial,sans-serif;color:#8d1f2b;white-space:nowrap}
+.poster-sections .a4-allergenes,.poster-sections .a4-formats{font:clamp(5px,.6vw,7px) Arial,sans-serif;color:#977329;white-space:nowrap}
+.poster-sections .a4-formats{display:block;flex-basis:100%;margin-left:4px}
+.poster-pied{display:flex;justify-content:space-between;gap:8px;border-top:1px solid #d6bf87;margin-top:auto;padding-top:7px;color:#66736c;font:clamp(5px,.7vw,8px) Arial,sans-serif;letter-spacing:.02em}
+.poster-vide{margin:auto;text-align:center;color:#977329;font:italic 12px Georgia,serif}
+.poster-assemblage-note{margin:12px 0 0;text-align:center;color:#5b625b;font:12px Arial,sans-serif}
+@media(max-width:900px){.poster-toolbar{align-items:flex-start;flex-direction:column}.poster-toolbar-actions{justify-content:flex-start}.poster-a4{padding:8px}.poster-assemblage{gap:5px;padding:5px}}
+@media(max-width:620px){.poster-a4{margin:0 -6px}.poster-page{padding:7% 8% 6%}.poster-page::before{inset:6px}.poster-page::after{inset:11px}.poster-marque{letter-spacing:.06em}.poster-document{letter-spacing:.04em}.poster-pied{display:block}.poster-pied span{display:block;margin-top:2px}}
+
+/* Au moment d'imprimer, chaque tuile devient exactement une feuille A4. */
+@page{size:A4 portrait;margin:0}
+@media print{
+  html,body{background:#fff!important}
+  body.impression-carte-globale #impression-carte-overlay{position:static!important;overflow:visible!important;background:#fff!important;padding:0!important}
+  body.impression-carte-globale #carte-global-a4{max-width:none;margin:0;padding:0;background:#fff;border:0;box-shadow:none}
+  body.impression-carte-globale .poster-assemblage{display:block;padding:0;background:#fff}
+  body.impression-carte-globale .poster-page{width:210mm;height:297mm;min-height:297mm;max-height:297mm;aspect-ratio:auto;padding:16mm 16mm 13mm;border:0;box-shadow:none;break-after:page;page-break-after:always}
+  body.impression-carte-globale .poster-page:last-child{break-after:auto;page-break-after:auto}
+  body.impression-carte-globale .poster-page::before{inset:5mm;border-color:rgba(183,138,57,.48)}
+  body.impression-carte-globale .poster-page::after{inset:8mm;border-color:rgba(183,138,57,.18)}
+  body.impression-carte-globale .poster-titre h1{font-size:25pt}
+  body.impression-carte-globale .poster-sections .a4-cat-compact h2{font-size:11pt}
+  body.impression-carte-globale .poster-sections .a4-nom{font-size:9pt}
+  body.impression-carte-globale .poster-sections .a4-prix{font-size:9pt}
+  body.impression-carte-globale .poster-sections .a4-desc-inline{font-size:6.5pt}
+  body.impression-carte-globale .poster-sections .a4-sous{font-size:6.5pt}
+  body.impression-carte-globale .poster-sections .a4-cat li{padding:2.4pt 0}
+  body.impression-carte-globale .poster-assemblage-note{display:none}
+}

@@ -117,8 +117,11 @@
       <div class="impression-titre"><div><p class="eyebrow">DOCUMENTS DE SERVICE</p><h2 id="titre-impressions-restaurant">Imprimer sans se perdre</h2></div><span class="impression-note">Une action principale, le reste au besoin</span></div>
       <p class="aide">La carte du restaurant est le document de référence. Les cartes boissons et les formats spécialisés restent séparés pour éviter une feuille illisible. Les prix viennent des données locales et sont actualisés avant impression.</p>
       <div class="impression-principale">
-        <a class="btn btn-p" href="#impression" data-cv-imprimer="1">🖨️ Imprimer la carte du restaurant</a>
-        <span>Plats, formules et desserts réellement publiés</span>
+        <div class="impression-actions-principales">
+          <button type="button" class="btn btn-p" data-standard-preview="1">🖨️ Carte standard · 2 colonnes</button>
+          <button type="button" class="btn btn-p btn-poster" data-carte-globale="1">✦ Carte globale · 4 feuilles A4</button>
+        </div>
+        <span>La carte standard reste éditable ici. La carte globale assemble toute la carte sur 2 feuilles en largeur × 2 en hauteur.</span>
       </div>
       <details class="impressions-secondaires">
         <summary>Autres documents d’impression</summary>
@@ -144,7 +147,8 @@
       <button type="button" class="cv" data-cv="boissons" aria-pressed="false">🥂 Boissons</button>
       <button type="button" class="cv" data-cv="moment" aria-pressed="false">✨ Du moment</button>
       <button type="button" class="cva" data-cv-saut="ardoises" title="Éditer les ardoises du jour">🗓️ Ardoises du jour</button>
-      <button type="button" class="cva cva-action" data-cv-imprimer="1" title="Aperçu et impression A4 de la carte standard">🖨️ Carte A4</button>
+      <button type="button" class="cva cva-action" data-standard-preview="1" title="Aperçu et impression de la carte standard à deux colonnes">🖨️ Standard · 2 colonnes</button>
+      <button type="button" class="cva cva-poster" data-carte-globale="1" title="Imprimer la carte globale sur quatre feuilles A4">✦ Globale · 4 A4</button>
     </nav>
     <div class="outils" id="outils-standard">
       <div class="standard-admin-head">
@@ -154,7 +158,7 @@
         </div>
         <div class="standard-admin-actions"><button type="button" class="btn btn-s btn-mini" id="btn-organiser-carte" aria-expanded="false">Organiser les rubriques</button><button type="button" class="btn btn-p btn-mini" data-standard-preview="1">Aperçu de la carte</button></div>
       </div>
-      <div id="standard-structure" hidden aria-label="Organisation des rubriques de la carte standard"></div>
+      <div id="standard-structure" aria-label="Éditeur de la carte standard à deux colonnes"></div>
       <div class="carte-selection-outil">
         <label class="champ"><span>Je travaille sur</span><select id="filtre-famille" aria-label="Choisir la rubrique à gérer"><option value="">Choisir une rubrique…</option></select></label>
         <label class="champ"><span>État des fiches</span><select id="filtre-etat" aria-label="Filtrer par état"><option value="actifs">Publiées uniquement</option><option value="tous">Toutes les fiches</option><option value="pauses">En pause uniquement</option></select></label>

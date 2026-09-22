@@ -967,6 +967,7 @@
     if (ECRAN !== 'carte') return false;
     var saut = t.closest('[data-cv-saut]');
     if (saut) { montrer(saut.getAttribute('data-cv-saut')); return true; }
+    if (t.closest('[data-carte-globale]')) { ouvrirCarteGlobale(); return true; }
     if (t.closest('[data-cv-imprimer]') || t.closest('[data-standard-preview]')) { ouvrirImpressionCarte(); return true; }
     if (t.closest('[data-standard-formules]')) {
       CARTE_VIEW = 'formules';
@@ -999,6 +1000,10 @@
     }
     var confF = CF && CF.fams[fam];
     if (!confF) return false;
+    if (t.closest('[data-standard-add-produit]')) {
+      ouvrirNouveauProduitDansFamille(fam);
+      return true;
+    }
     if (t.closest('[data-fam-edit]')) {
       var zone = $('.fam-edit', section);
       if (zone) { zone.hidden = false; $('input[data-fe="titre"]', zone).focus(); }
@@ -1172,6 +1177,82 @@
     return sections.filter(function (s) { return s.items.length > 0; });
   }
 
+  // Carte complète pour l'impression en poster : toutes les rubriques
+  // actives du catalogue, dans l'ordre de la carte, y compris les boissons.
+  // Les exclusions de la carte standard sont respectées afin qu'une ligne
+  // retirée par le restaurateur ne réapparaisse pas mystérieusement sur le
+  // grand format.
+  function globalSections() {
+    var sections = [];
+    var parFam = {};
+    famsCatalogue().forEach(function (fam) {
+      var items = itemsFamille(fam).filter(function (it) {
+        return it.kind === 'l' || (it.p && it.p.actif);
+      });
+      if (!items.length) return;
+      var conf = CF && CF.fams[fam];
+      parFam[fam] = {
+        id: 'fam-' + sections.length,
+        titre: conf && conf.titre ? conf.titre : fam,
+        sous: conf && conf.sous ? conf.sous : '',
+        items: items
+      };
+      sections.push(parFam[fam]);
+    });
+
+    // Les lignes libres des formules n'appartiennent pas au catalogue :
+    // elles doivent néanmoins apparaître sur la carte globale.
+    var formulesLibres = itemsExtra('formules').filter(function (it) {
+      return it.kind === 'l';
+    });
+    if (formulesLibres.length) {
+      if (parFam.Formules) parFam.Formules.items = formulesLibres.concat(parFam.Formules.items);
+      else sections.unshift({
+        id: 'formules-libres',
+        titre: CF.extras.formules.titre || 'Nos formules',
+        sous: CF.extras.formules.sous || '',
+        items: formulesLibres
+      });
+    }
+    return sections;
+  }
+
+  function repartirPoster(sections) {
+    var pages = [[], [], [], []];
+    var poids = [0, 0, 0, 0];
+    sections.forEach(function (section) {
+      var page = 0;
+      for (var i = 1; i < poids.length; i++) {
+        if (poids[i] < poids[page]) page = i;
+      }
+      pages[page].push(section);
+      // Une ligne est plus importante qu'un titre : cette balance évite
+      // qu'une page de boissons déborde pendant qu'une autre reste vide.
+      poids[page] += Math.max(4, section.items.length + 2);
+    });
+    return pages;
+  }
+
+  function htmlPosterPage(page, sections) {
+    var position = page === 1 ? 'haut gauche' : page === 2 ? 'haut droit' :
+      page === 3 ? 'bas gauche' : 'bas droit';
+    return '<article class="poster-page poster-page-' + page + '" data-feuille="' + page + '/4">' +
+      '<header class="poster-entete">' +
+        '<div class="poster-marque">LA TRATTORIA</div>' +
+        '<div class="poster-document">LA CARTE <span>·</span> ' + page + '/4</div>' +
+      '</header>' +
+      '<div class="poster-titre">' +
+        (page === 1 ? '<h1>La carte du restaurant</h1><p>Maison italienne · Saintes</p>' :
+          '<h1>La carte</h1><p>Suite · ' + position + '</p>') +
+      '</div>' +
+      '<div class="poster-sections">' +
+        (sections.length ? sections.map(htmlStandardSection).join('') :
+          '<p class="poster-vide">Cette feuille est réservée à la composition de la carte.</p>') +
+      '</div>' +
+      '<footer class="poster-pied"><span>15 rue de la Poste · 17100 Saintes</span><span>06 27 21 31 90</span><span>Feuille ' + page + '/4 · ' + position + '</span></footer>' +
+    '</article>';
+  }
+
   function htmlAllergenes(liste) {
     return (liste || []).map(function (id) {
       for (var i = 0; i < ALLERGENES.length; i++) {
@@ -1231,7 +1312,9 @@
     var ov = document.getElementById('impression-carte-overlay');
     if (ov) ov.remove();
     document.body.classList.remove('impression-carte-a4');
+    document.body.classList.remove('impression-carte-globale');
     document.body.style.overflow = '';
+    document.removeEventListener('keydown', impressionCarteEchap);
   }
 
   function ouvrirImpressionCarte() {
@@ -1278,6 +1361,45 @@
         document.body.classList.add('impression-carte-a4');
         window.print();
         setTimeout(function () { document.body.classList.remove('impression-carte-a4'); }, 400);
+      }
+    });
+    document.addEventListener('keydown', impressionCarteEchap);
+  }
+
+  // ---------- carte globale : poster de 4 feuilles A4 portrait ----------
+  // Le navigateur imprime chaque tuile sur une feuille A4 indépendante.
+  // L'assemblage physique est toujours : 1 | 2 en haut, 3 | 4 en bas.
+  function ouvrirCarteGlobale() {
+    fermerImpressionCarte();
+    var pages = repartirPoster(globalSections());
+    var ov = document.createElement('div');
+    ov.id = 'impression-carte-overlay';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('aria-label', 'Carte globale à assembler sur quatre feuilles A4');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:2147483000;overflow:auto;' +
+      'background:rgba(10,14,12,.88);padding:14px;';
+    ov.innerHTML =
+      '<div class="sansImpression poster-toolbar">' +
+        '<div><strong>Carte globale · 4 feuilles A4</strong><span>Imprimer en A4 portrait à 100 %, puis assembler 1–2 en haut et 3–4 en bas.</span></div>' +
+        '<div class="poster-toolbar-actions"><button type="button" id="btn-global-imprimer" class="btn btn-poster">🖨 Imprimer les 4 feuilles</button><button type="button" id="btn-a4-fermer" class="btn btn-s">Fermer</button></div>' +
+      '</div>' +
+      '<div id="carte-global-a4" class="poster-a4">' +
+        '<div class="poster-assemblage">' + pages.map(function (sections, i) {
+          return htmlPosterPage(i + 1, sections);
+        }).join('') + '</div>' +
+        '<div class="poster-assemblage-note">Assemblage : feuille 1 en haut à gauche · feuille 2 en haut à droite · feuille 3 en bas à gauche · feuille 4 en bas à droite.</div>' +
+      '</div>';
+    document.body.appendChild(ov);
+    document.body.classList.add('impression-carte-globale');
+    document.body.style.overflow = 'hidden';
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) fermerImpressionCarte();
+      if (e.target.closest('#btn-a4-fermer')) fermerImpressionCarte();
+      if (e.target.closest('#btn-global-imprimer')) {
+        document.body.classList.add('impression-carte-a4');
+        window.print();
+        setTimeout(function () { document.body.classList.remove('impression-carte-a4'); }, 500);
       }
     });
     document.addEventListener('keydown', impressionCarteEchap);
@@ -1793,6 +1915,7 @@
   // ---------- éditeur (vue « ✨ Du moment » de l'onglet La carte) ----------
   function dessinerVueMoment() {
     $('#outils-standard').hidden = true;
+    $('#liste-produits').hidden = false;
     var total = MOMENT_ORDRE.reduce(function (n, cle) {
       return n + itemsMoment(cle).length;
     }, 0);
@@ -2577,7 +2700,17 @@
   }
 
   function standardAdminItems(def) {
-    return standardSectionItems(def);
+    // L’éditeur montre aussi les fiches en pause : on doit pouvoir les
+    // réactiver depuis la carte standard, sans passer par un autre écran.
+    return itemsFamille(def.fam).filter(function (it) {
+      if (def.id === 'glaces' || def.id === 'desserts') {
+        if (it.kind !== 'p') return def.id === 'desserts';
+        var glace = norm((it.p.cat || '') + ' ' + (it.p.nom || '')).indexOf('glace') >= 0 ||
+          norm(it.p.cat || '').indexOf('sorbet') >= 0;
+        return def.id === 'glaces' ? glace : !glace;
+      }
+      return true;
+    });
   }
 
   function dessinerStandardStructure() {
@@ -2590,7 +2723,7 @@
       h += '<section class="famille standard-rubrique" data-fam="' + echap(def.fam) + '">' +
         '<div class="standard-rubrique-head"><div><span class="standard-kicker">' + echap(def.id === 'plats' ? 'RUBRIQUE OBLIGATOIRE' : 'RUBRIQUE') + '</span>' +
         '<h3>' + echap(conf.titre || def.titre) + '</h3><p>' + echap(conf.sous || def.texte) + '</p></div>' +
-        '<div class="fam-actions"><button type="button" class="btn btn-s btn-mini" data-fam-edit="1">Modifier titre</button><button type="button" class="btn btn-p btn-mini" data-fam-ligne="1">+ Ajouter une ligne</button></div></div>' +
+        '<div class="fam-actions"><button type="button" class="btn btn-s btn-mini" data-fam-edit="1">Modifier titre</button><button type="button" class="btn btn-s btn-mini" data-standard-add-produit="1">+ Produit</button><button type="button" class="btn btn-p btn-mini" data-fam-ligne="1">+ Ligne libre</button></div></div>' +
         '<div class="fam-edit" hidden>' +
           '<label class="champ"><span>Titre de la rubrique</span><input type="text" data-fe="titre" maxlength="60" value="' + echap(conf.titre || def.titre) + '"></label>' +
           '<label class="champ"><span>Sous-titre vendeur</span><input type="text" data-fe="sous" maxlength="120" value="' + echap(conf.sous || def.texte) + '"></label>' +
@@ -2616,7 +2749,7 @@
           '<span class="standard-ligne-order"><button type="button" class="btn btn-mini" data-standard-order="up" data-standard-id="' + echap(id) + '" title="Monter">▲</button><button type="button" class="btn btn-mini" data-standard-order="down" data-standard-id="' + echap(id) + '" title="Descendre">▼</button></span>' +
           '<span class="standard-ligne-info"><b>' + echap(nom) + '</b>' + (desc ? '<small>' + echap(desc) + '</small>' : '') + (allergens && allergens.length ? '<em title="Allergènes">Allergènes : ' + htmlAllergenes(allergens) + '</em>' : '') + '</span>' +
           '<strong class="standard-ligne-prix">' + prix + '</strong>' +
-          '<span class="standard-ligne-actions">' + (it.kind === 'p' ? '<button type="button" class="btn btn-s btn-mini" data-editer="' + echap(id) + '">Modifier</button><button type="button" class="btn btn-danger btn-mini" data-standard-remove="' + echap(id) + '">Retirer</button>' : '<button type="button" class="btn btn-s btn-mini" data-lf-edit="' + echap(id) + '">Modifier</button><button type="button" class="btn btn-danger btn-mini" data-lf-del="' + echap(id) + '">Supprimer</button>') + '</span>' +
+          '<span class="standard-ligne-actions">' + (it.kind === 'p' ? '<button type="button" class="btn btn-s btn-mini" data-editer="' + echap(id) + '">Modifier</button><button type="button" class="btn btn-s btn-mini" data-actif="' + echap(id) + '">' + (it.p.actif ? 'Pause' : 'Réactiver') + '</button><button type="button" class="btn btn-danger btn-mini" data-standard-remove="' + echap(id) + '">Retirer</button>' : '<button type="button" class="btn btn-s btn-mini" data-lf-edit="' + echap(id) + '">Modifier</button><button type="button" class="btn btn-danger btn-mini" data-lf-del="' + echap(id) + '">Supprimer</button>') + '</span>' +
           '</li>';
       });
       var exclus = conf.exclus || [];
@@ -2632,12 +2765,14 @@
     if (CARTE_VIEW === 'moment') { dessinerVueMoment(); return; }
     if (CARTE_VIEW !== 'standard') { dessinerVueExtra(CARTE_VIEW); return; }
     $('#outils-standard').hidden = false;
+    $('#liste-produits').hidden = false;
     remplirFiltreFamilles();
     dessinerStandardStructure();
     var liste = produitsFiltres();
     var choixNecessaire = !FILTRE_FAMILLE && !RECHERCHE && FILTRE_TYPE === 'tout';
+    $('#liste-produits').hidden = choixNecessaire;
     $('#nb-visibles').textContent = choixNecessaire
-      ? 'Choisissez une rubrique pour commencer'
+      ? 'La carte standard est éditable ci-dessus · choisissez une rubrique pour filtrer le catalogue'
       : liste.length + (liste.length > 1 ? ' produits' : ' produit');
     if (choixNecessaire) {
       $('#liste-produits').innerHTML = '<div class="carte-guidage"><span class="carte-guidage-icone">⌕</span>' +
@@ -2730,6 +2865,7 @@
     var conf = CF.extras[cle];
     if (!conf) return;
     $('#outils-standard').hidden = true;
+    $('#liste-produits').hidden = false;
     var items = itemsExtra(cle);
     $('#nb-visibles').textContent = items.length + (items.length > 1 ? ' lignes' : ' ligne');
     var h = '<p class="note-vue">Éditez « <b>' + echap(conf.titre) + '</b> » : titre &amp; sous-titre, ' +
@@ -3416,6 +3552,59 @@
   }
 
   // ==========================================================
+  //  Création ciblée depuis la carte standard
+  // ==========================================================
+  function typeDefautPourFamille(fam) {
+    if (fam === 'Formules') return 'formule';
+    if (/boisson|apéritif|vins?|bières?|cocktails?/i.test(fam)) return 'boisson';
+    return 'plat';
+  }
+
+  function ouvrirNouveauProduitDansFamille(fam) {
+    ouvrirFiche(null);
+    var type = typeDefautPourFamille(fam);
+    $('#f-type').value = type;
+    remplirFamilles(type, fam);
+    var select = $('#f-fam');
+    var existe = false;
+    Array.prototype.forEach.call(select.options, function (option) {
+      if (option.value === fam) existe = true;
+    });
+    if (!existe) {
+      var option = document.createElement('option');
+      option.value = fam;
+      option.textContent = fam;
+      select.insertBefore(option, select.lastChild);
+    }
+    select.value = fam;
+    majCategories(type, fam);
+    $('#f-nom').focus();
+  }
+
+  function synchroniserProduitRubrique(produit, ancienneFamille) {
+    if (!CF || !produit) return;
+    if (ancienneFamille && CF.fams[ancienneFamille]) {
+      CF.fams[ancienneFamille].ordre = (CF.fams[ancienneFamille].ordre || [])
+        .filter(function (id) { return id !== produit.id; });
+      CF.fams[ancienneFamille].exclus = (CF.fams[ancienneFamille].exclus || [])
+        .filter(function (id) { return id !== produit.id; });
+    }
+    if (!CF.fams[produit.fam]) {
+      var def = window.TRATTORIA_CONFIG_DEFAUT && window.TRATTORIA_CONFIG_DEFAUT.fams
+        ? window.TRATTORIA_CONFIG_DEFAUT.fams[produit.fam] : null;
+      CF.fams[produit.fam] = {
+        titre: def && def.titre || produit.fam,
+        sous: def && def.sous || '',
+        ordre: [], exclus: [], libres: []
+      };
+    }
+    var conf = CF.fams[produit.fam];
+    conf.ordre = conf.ordre || [];
+    conf.exclus = (conf.exclus || []).filter(function (id) { return id !== produit.id; });
+    if (conf.ordre.indexOf(produit.id) < 0) conf.ordre.push(produit.id);
+  }
+
+  // ==========================================================
   //  Enregistrement / suppression de produit
   // ==========================================================
   function enregistrer(e) {
@@ -3475,12 +3664,16 @@
     if (EN_EDITION) {
       var p = parId(EN_EDITION);
       if (p) {
+        var ancienneFamille = p.fam;
         Object.keys(donnees).forEach(function (k) { p[k] = donnees[k]; });
+        synchroniserProduitRubrique(p, ancienneFamille);
         toast(p.nom + ' mis à jour');
       }
     } else {
       donnees.id = 'u' + Date.now().toString(36);
-      CARTE.push(produitNormalise(donnees, 0));
+      var nouveauProduit = produitNormalise(donnees, 0);
+      CARTE.push(nouveauProduit);
+      synchroniserProduitRubrique(nouveauProduit, null);
       toast(donnees.nom + ' ajouté à la carte');
     }
     var produitNouveau = EN_EDITION ? null : parId(donnees.id);
