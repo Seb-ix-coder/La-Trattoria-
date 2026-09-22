@@ -1,0 +1,96 @@
+/*
+ * Direction artistique premium pour les cartes temporaires.
+ * Ce fichier est inclus après ardoise.css afin de pouvoir conserver le
+ * rendu historique et les classes générées par carte.js sans toucher aux
+ * données ni au mode hors ligne.
+ */
+:root {
+  --ardoise-premium: #1b2923;
+  --ardoise-premium-2: #263b30;
+  --or-premium: #d2ad63;
+  --papier-premium: #fffaf0;
+  --encre-premium: #26332d;
+}
+
+.fondArdoise {
+  background:
+    radial-gradient(900px 420px at 8% -5%, rgba(210,173,99,.12), transparent 62%),
+    radial-gradient(760px 360px at 94% 105%, rgba(210,173,99,.08), transparent 62%),
+    linear-gradient(145deg, #14211b 0%, var(--ardoise-premium) 48%, #101a15 100%);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.45;
+  padding: clamp(12px, 3vw, 34px);
+}
+.cadreBois {
+  max-width: 1120px;
+  background: linear-gradient(135deg, rgba(38,59,48,.98), rgba(24,39,31,.99));
+  border: 1px solid rgba(210,173,99,.78);
+  border-radius: 7px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.4), inset 0 0 0 5px rgba(210,173,99,.08), inset 0 0 70px rgba(0,0,0,.25);
+  padding: clamp(24px, 4vw, 54px) clamp(20px, 5vw, 68px) clamp(28px, 4vw, 48px);
+}
+.cadreBois::before { background: linear-gradient(90deg, transparent, rgba(255,255,255,.025), transparent); }
+.craie--blanc,.craie--jaune,.craie--rose,.craie--verte,.craie--bleue { text-shadow: none; }
+.craie--jaune { color: var(--or-premium); }
+.enteteArdoise { padding: 3px 0 20px; }
+.enteteArdoise .logoCercle {
+  width: clamp(78px, 12vw, 108px); height: clamp(78px, 12vw, 108px);
+  border: 2px solid var(--or-premium); box-shadow: 0 7px 20px rgba(0,0,0,.35);
+}
+.enteteArdoise h1,.moment-entete h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(31px, 5vw, 56px); letter-spacing: .045em; text-transform: uppercase; line-height: 1.05; }
+.enteteArdoise .lieu { font-family: Arial, sans-serif; font-size: clamp(11px, 1.5vw, 14px); letter-spacing: .32em; color: var(--or-premium); margin-top: 8px; }
+.filetCraie { width: min(440px, 70%); height: 1px; margin-top: 17px; border-top: 1px solid rgba(210,173,99,.68); opacity: 1; }
+.badgesCraie { gap: 7px 10px; margin-top: 19px; }
+.badgesCraie span { font-family: Arial, sans-serif; font-size: clamp(10px, 1.25vw, 12px); letter-spacing: .08em; text-transform: uppercase; border: 1px solid rgba(210,173,99,.5); border-radius: 999px; padding: 5px 11px; transform: none!important; color: #e8dbc1; }
+.pateCraie { margin-top: 21px; border-top: 1px solid rgba(210,173,99,.58); border-bottom: 1px solid rgba(210,173,99,.58); padding: 10px 14px; }
+.pateCraie .t { font-family: Georgia, serif; font-size: clamp(16px, 2.2vw, 21px); color: var(--or-premium); }
+.pateCraie .s { font-family: Arial, sans-serif; font-size: 11px; color: rgba(243,241,231,.7); }
+.catArdoise { margin: clamp(25px, 4vw, 43px) 0 7px; }
+.catArdoise > h2 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(19px, 2.8vw, 29px); letter-spacing: .045em; text-transform: uppercase; }
+.catArdoise > h2::before { content: ""; display: inline-block; width: 26px; height: 1px; background: var(--or-premium); vertical-align: .22em; margin-right: 11px; }
+.catArdoise > h2::after { content: ""; display: inline-block; width: 26px; height: 1px; background: var(--or-premium); vertical-align: .22em; margin-left: 11px; }
+.catArdoise > .sousCat { font-family: Arial, sans-serif; font-size: 11px; letter-spacing: .025em; color: rgba(243,241,231,.68); margin: 7px 0 12px; }
+.itemsArdoise li,.moment-liste li { padding: 9px 3px 7px; }
+.itemArdoise { gap: 12px; }
+.itemArdoise .nom,.itemArdoise .prix { font-family: Georgia, "Times New Roman", serif; font-size: clamp(15px, 2vw, 20px); }
+.itemArdoise .nom { font-weight: 600; }
+.itemArdoise .prix { color: var(--or-premium); font-weight: 700; }
+.itemArdoise .pts { border-bottom: 1px dotted rgba(210,173,99,.5); transform: translateY(-4px); }
+.itemArdoise .desc { font-family: Arial, sans-serif; font-size: clamp(10px, 1.4vw, 12px); line-height: 1.45; color: rgba(243,241,231,.68); margin: 2px 0 0 1px; }
+.photoCraie { width: min(300px, 78%); padding: 5px; background: var(--papier-premium); border-radius: 5px; box-shadow: 0 9px 24px rgba(0,0,0,.35); transform: none; }
+.photoCraie.droite { transform: none; }
+.photoCraie img { border-radius: 3px; }
+.qrBlocArdoise { margin-top: clamp(30px, 4vw, 50px); max-width: 460px; border: 1px solid rgba(210,173,99,.62); border-radius: 6px; padding: 18px 16px 16px; background: rgba(12,24,18,.2); }
+.qrBlocArdoise .t { font-family: Georgia, serif; font-size: 18px; letter-spacing: .02em; }
+.qrBlocArdoise .s { font-family: Arial, sans-serif; font-size: 11px; color: rgba(243,241,231,.68); }
+.qrCraie { padding: 8px; border-radius: 4px; box-shadow: 0 8px 20px rgba(0,0,0,.34); }
+.qrBlocArdoise .url { font-family: Arial, sans-serif; font-size: 11px; color: var(--or-premium); }
+.piedArdoise { font-family: Arial, sans-serif; font-size: 11px; color: rgba(243,241,231,.72); margin-top: 32px; }
+.piedArdoise .coords { font-size: 9px; color: rgba(243,241,231,.5); margin-top: 6px; }
+.moment-carte { max-width: 720px; }
+.moment-entete { padding-top: 2px; }
+.moment-illus { width: clamp(132px, 25vw, 180px); border: 1px solid rgba(210,173,99,.72); border-radius: 5px; box-shadow: 0 9px 24px rgba(0,0,0,.35); transform: none; }
+.moment-entete h1 { color: var(--or-premium); font-size: clamp(25px, 4vw, 43px); margin-top: 17px; }
+.moment-sous { font-family: Arial, sans-serif; font-size: 12px; color: rgba(243,241,231,.72); margin-top: 7px; }
+.moment-liste { margin-top: 22px; }
+.moment-liste .nom,.moment-liste .prix { font-size: clamp(15px, 2vw, 20px); }
+.moment-liste .desc { font-family: Arial, sans-serif; font-size: 11px; color: rgba(243,241,231,.68); }
+.moment-mentions { margin-top: 27px; padding: 12px 16px; border: 1px solid rgba(210,173,99,.45); border-radius: 5px; }
+.moment-mentions span { font-family: Arial, sans-serif; font-size: 10px; color: rgba(243,241,231,.62); }
+
+/* Une impression lisible et économique : le support devient papier ivoire. */
+@media print {
+  .fondArdoise { background: var(--papier-premium); color: var(--encre-premium); padding: 0; }
+  .cadreBois { background: var(--papier-premium); color: var(--encre-premium); border: 1.5px solid #a98137; border-radius: 0; box-shadow: none; }
+  .craie--blanc { color: var(--encre-premium)!important; }
+  .craie--jaune,.itemArdoise .prix,.qrBlocArdoise .url { color: #8b6118!important; }
+  .enteteArdoise .logoCercle { box-shadow: none; }
+  .catArdoise > .sousCat,.itemArdoise .desc,.piedArdoise,.piedArdoise .coords,.moment-sous,.moment-liste .desc,.moment-mentions span { color: #5e625b!important; }
+  .itemArdoise .pts { border-bottom-color: #b9a77d; }
+  .badgesCraie span { color: #425047; border-color: #b9a77d; }
+  .pateCraie,.filetCraie { border-color: #a98137; }
+  .qrBlocArdoise,.moment-mentions { border-color: #b9a77d; background: transparent; }
+  .qrCraie { box-shadow: none; border: 1px solid #ddd3c0; }
+  .photoCraie { box-shadow: none; border: 1px solid #ddd3c0; }
+}

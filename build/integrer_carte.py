@@ -72,7 +72,9 @@ def assembler_module(carte_dir: str) -> bytes:
     js_assets = read(os.path.join(carte_dir, 'ardoise-assets.js'))
     js_qr = read(os.path.join(carte_dir, 'qr-encodeur.js'))
     js_carte = read(os.path.join(carte_dir, 'carte.js'))
+    js_api = read(os.path.join(carte_dir, 'api-client.js')) if os.path.exists(os.path.join(carte_dir, 'api-client.js')) else ''
     css_ardoise = read(os.path.join(carte_dir, 'ardoise.css'))
+    css_ardoise_premium = read(os.path.join(carte_dir, 'ardoise-premium-overrides.css')) if os.path.exists(os.path.join(carte_dir, 'ardoise-premium-overrides.css')) else ''
     ic180 = base64.b64encode(
         readb(os.path.join(carte_dir, 'icones', 'icone-180.png'))).decode()
     ic192 = base64.b64encode(
@@ -96,11 +98,15 @@ def assembler_module(carte_dir: str) -> bytes:
          '<style>\n' + css + '\n</style>')
     doit('<link rel="stylesheet" href="ardoise.css">',
          '<style>\n' + css_ardoise + '\n</style>')
+    if css_ardoise_premium:
+        doit('<link rel="stylesheet" href="ardoise-premium-overrides.css">',
+             '<style>\n' + css_ardoise_premium + '\n</style>')
     # sécurité (aucun </script> attendu, mais on protège)
     js_donnees = js_donnees.replace('</script>', '<\\/script>')
     js_donnees_carte = js_donnees_carte.replace('</script>', '<\\/script>')
     js_assets = js_assets.replace('</script>', '<\\/script>')
     js_qr = js_qr.replace('</script>', '<\\/script>')
+    js_api = js_api.replace('</script>', '<\\/script>')
     js_carte = js_carte.replace('</script>', '<\\/script>')
     doit('<script src="donnees.js"></script>',
          '<script>\n' + js_donnees + '\n</script>')
@@ -110,6 +116,9 @@ def assembler_module(carte_dir: str) -> bytes:
          '<script>\n' + js_assets + '\n</script>')
     doit('<script src="qr-encodeur.js"></script>',
          '<script>\n' + js_qr + '\n</script>')
+    if js_api:
+        doit('<script src="api-client.js"></script>',
+             '<script>\n' + js_api + '\n</script>')
     doit('<script src="carte.js"></script>',
          '<script>\n' + js_carte + '\n</script>')
     # page publique : inutilisable en embedded (pas de route dédiée)
