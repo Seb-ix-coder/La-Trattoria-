@@ -35,7 +35,7 @@
     </div>
     <button type="button" class="badge-sync" id="badge-sync" title="Synchronisation entre tablettes">
       <span class="point"></span>Mode autonome</button>
-    <button type="button" class="btn btn-p" id="btn-nouveau">+ Ajouter</button>
+    <button type="button" class="btn btn-p" id="btn-nouveau" hidden>+ Ajouter un produit</button>
   </div>
   <nav class="conteneur onglets" aria-label="Écrans">
     <button type="button" class="onglet actif" data-ecran="dashboard" aria-pressed="true">Accueil admin</button>
@@ -80,9 +80,9 @@
         <section class="admin-panel actions-rapides" aria-labelledby="titre-actions-rapides">
           <div class="panel-heading"><div><p class="eyebrow">POUR ALLER VITE</p><h2 id="titre-actions-rapides">Actions fréquentes</h2></div><span class="panel-hint">Les tâches du quotidien, au même endroit</span></div>
           <div class="quick-actions">
-            <button type="button" class="quick-action primary" data-action-admin="nouveau-produit"><span aria-hidden="true">＋</span><span><strong>Ajouter un produit</strong><small>Créer une fiche dans la carte</small></span></button>
+            <button type="button" class="quick-action primary" data-nav-ecran="carte"><span aria-hidden="true">🍽️</span><span><strong>Ouvrir la carte</strong><small>Modifier, ajouter ou mettre en pause</small></span></button>
             <button type="button" class="quick-action" data-nav-ecran="ardoises"><span aria-hidden="true">🗓️</span><span><strong>Préparer le service</strong><small>Composer les cartes du jour</small></span></button>
-            <a class="quick-action" href="public.html" target="_blank" rel="noopener"><span aria-hidden="true">↗</span><span><strong>Voir la carte publique</strong><small>Vérifier ce que voient les clients</small></span></a>
+            <a class="quick-action" id="lien-site-local" href="public.html" target="_blank" rel="noopener"><span aria-hidden="true">↗</span><span><strong>Ouvrir le site client</strong><small id="url-site-local">Adresse du réseau local, en un clic</small></span></a>
             <button type="button" class="quick-action" data-action-admin="publier"><span aria-hidden="true">☁</span><span><strong>Publier les modifications</strong><small>Mettre à jour les autres tablettes</small></span></button>
           </div>
         </section>
@@ -109,7 +109,7 @@
   <section id="ecran-carte" hidden aria-labelledby="titre-carte">
     <div class="screen-head">
       <div><p class="eyebrow">CATALOGUE</p><h2 id="titre-carte">La carte</h2><p class="aide">Modifiez chaque produit, rubrique et prix. Les changements alimentent l'aperçu, l'impression A4 et la page publique.</p></div>
-      <button type="button" class="btn btn-p" data-action-admin="nouveau-produit">+ Ajouter un produit</button>
+      <button type="button" class="btn btn-p" data-action-carte="nouveau-produit">+ Ajouter un produit</button>
     </div>
 
     <section class="carte-bloc impression-restaurant" aria-labelledby="titre-impressions-restaurant">
@@ -167,6 +167,16 @@
       <p class="aide" id="nb-visibles" aria-live="polite"></p>
     </div>
     <div id="liste-produits"></div>
+    <div class="carte-bloc hiboutik-bloc" id="bloc-hiboutik">
+      <h2>Source stock — Hiboutik</h2>
+      <p class="aide">La connexion reste protégée sur le serveur. Actualisez l'inventaire ici, puis importez uniquement les nouveaux produits dans <strong>La carte</strong>. Les modifications manuelles se font dans les fiches ci-dessus.</p>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-p" id="btn-hiboutik-refresh">Actualiser l'inventaire Hiboutik</button>
+        <button type="button" class="btn btn-s" id="btn-hiboutik-importer" disabled>Importer les nouveaux produits dans La carte</button>
+        <span id="hiboutik-statut" class="aide" role="status">Vérification de la connexion…</span>
+      </div>
+      <p class="aide" id="hiboutik-dernier"></p>
+    </div>
   </section>
 
   <!-- ================= écran : cartes du jour ================= -->
@@ -240,8 +250,8 @@
   <!-- ================= écran : marges ================= -->
   <section id="ecran-marges" hidden aria-labelledby="titre-marges">
     <div class="screen-head">
-      <div><p class="eyebrow">PILOTAGE</p><h2 id="titre-marges">Marges &amp; prix</h2><p class="aide">Repérez rapidement les produits à ajuster. Cliquez sur une ligne pour ouvrir sa fiche complète.</p></div>
-      <button type="button" class="btn btn-s" data-action-admin="nouveau-produit">+ Ajouter un produit</button>
+      <div><p class="eyebrow">PILOTAGE</p><h2 id="titre-marges">Marges &amp; prix</h2><p class="aide">Repérez les produits à ajuster. Utilisez « Voir dans La carte » pour modifier la fiche, le prix ou l'état de publication.</p></div>
+      <button type="button" class="btn btn-s" data-nav-ecran="carte">Gérer les produits dans La carte</button>
     </div>
     <div id="kpis" class="kpis"></div>
     <div class="carte-bloc">
@@ -342,19 +352,6 @@
       <p class="aide">La lecture de la page publique est ouverte. La clé d'administration
         est demandée uniquement pour publier une modification ; ne la partagez pas avec
         les clients.</p>
-    </div>
-    <div class="carte-bloc hiboutik-bloc" id="bloc-hiboutik">
-      <h2>Hiboutik — inventaire et catalogue</h2>
-      <p class="aide">La connexion est configurée sur le serveur de gestion, jamais dans le
-        navigateur. Actualisez l'inventaire pour proposer automatiquement les produits
-        disponibles dans les cartes, ou créez un produit manuellement puis demandez sa
-        création dans Hiboutik.</p>
-      <div class="actions-donnees">
-        <button type="button" class="btn btn-p" id="btn-hiboutik-refresh">Actualiser l'inventaire Hiboutik</button>
-        <button type="button" class="btn btn-s" id="btn-hiboutik-importer" disabled>Importer les nouveaux produits</button>
-        <span id="hiboutik-statut" class="aide" role="status">Vérification de la connexion…</span>
-      </div>
-      <p class="aide" id="hiboutik-dernier"></p>
     </div>
     <div class="carte-bloc danger">
       <h2>Zone sensible</h2>

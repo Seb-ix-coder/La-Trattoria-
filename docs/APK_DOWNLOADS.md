@@ -4,6 +4,17 @@
 > un lien Raw GitHub direct et son empreinte SHA-256. Les APK historiques sont
 > conservées uniquement pour audit et ne sont pas approuvées pour production.
 
+## Répartition recommandée
+
+Une seule APK suffit pour l'équipe du restaurant : installer le même fichier
+`trato-13.4-monetico-pro.apk` sur la tablette **Maître** et sur les tablettes
+du **personnel**, puis choisir le rôle correspondant dans l'application.
+
+Les clients n'installent pas d'APK. Ils ouvrent le site servi par le réseau local
+à l'adresse `http://IP_DE_LA_TABLETTE_MAITRE:8720/` ou, pour le module Carte,
+`http://IP_DU_SERVEUR:8080/public.html`. L'administration affiche aussi cette
+adresse sous le bouton **Ouvrir le site client** afin de l'ouvrir en un clic.
+
 ## Candidat actuel
 
 | Fichier | Statut | SHA-256 | Téléchargement direct |

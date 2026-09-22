@@ -148,11 +148,15 @@
     var base = baseServeurEffective();
     if (info) info.textContent = base ? 'Serveur utilisé : ' + base : 'Aucun serveur configuré — mode autonome.';
     var publicLink = $('#lien-public-serveur');
+    var siteLocalLink = $('#lien-site-local');
+    var siteLocalUrl = $('#url-site-local');
     var publicDescriptionLink = $('#lien-public-description');
     var apiLink = $('#lien-api-serveur');
     var previewLink = $('#lien-apercu-serveur');
     var printLink = $('#lien-impression-serveur');
     if (publicLink && base) { publicLink.href = lienServeur('public.html'); publicLink.hidden = false; }
+    if (siteLocalLink && base) siteLocalLink.href = lienServeur('public.html');
+    if (siteLocalUrl && base) siteLocalUrl.textContent = lienServeur('public.html');
     if (publicDescriptionLink && base) publicDescriptionLink.href = lienServeur('public.html');
     if (apiLink && base) { apiLink.href = apiUrl('etat'); apiLink.hidden = false; }
     if (previewLink && base) { previewLink.href = lienServeur('apercu-carte.html'); previewLink.hidden = false; }
@@ -165,11 +169,15 @@
       return r.json();
     }).then(function (liens) {
       var publicLink = $('#lien-public-serveur');
+      var siteLocalLink = $('#lien-site-local');
+      var siteLocalUrl = $('#url-site-local');
       var publicDescriptionLink = $('#lien-public-description');
       var apiLink = $('#lien-api-serveur');
       var previewLink = $('#lien-apercu-serveur');
       var printLink = $('#lien-impression-serveur');
       if (publicLink && liens.public) publicLink.href = liens.public;
+      if (siteLocalLink && liens.public) siteLocalLink.href = liens.public;
+      if (siteLocalUrl && liens.public) siteLocalUrl.textContent = liens.public;
       if (publicDescriptionLink && liens.public) publicDescriptionLink.href = liens.public;
       if (apiLink && liens.api) { apiLink.href = liens.api; apiLink.hidden = false; }
       if (previewLink && liens.apercu) { previewLink.href = liens.apercu; previewLink.hidden = false; }
@@ -2512,7 +2520,7 @@
     return '<article class="carte-prod' + (p.actif ? '' : ' inactif') + '" data-id="' + echap(p.id) + '">' +
       '<div class="visu">' + photo +
       '<span class="badge-type ' + p.type + '">' + TYPES[p.type] + '</span>' +
-      (p.actif ? '' : '<span class="badge-epuise">Masqué</span>') +
+      (p.actif ? '' : '<span class="badge-epuise">En pause</span>') +
       badgeStock +
       '</div>' +
       '<div class="infos">' +
@@ -2539,7 +2547,7 @@
       '<div class="actions-prod">' +
       '<button type="button" class="btn btn-s btn-mini" data-editer="' + echap(p.id) + '">Modifier</button>' +
       '<button type="button" class="btn btn-s btn-mini" data-actif="' + echap(p.id) + '">' +
-      (p.actif ? 'Masquer' : 'Remettre') + '</button>' +
+      (p.actif ? 'Mettre en pause' : 'Réactiver') + '</button>' +
       '</div>' +
       '</article>';
   }
@@ -2772,8 +2780,8 @@
                   txtCoef(f.pv / (1 + p.tva) / f.cout) : '') + '</span>';
             }).join('<br>')
           : '<span class="type-mini">—</span>') + '</td>' +
-        '<td class="num"><button type="button" class="btn btn-s btn-mini" data-editer="' +
-        echap(p.id) + '">⚙</button></td>' +
+        '<td class="num"><button type="button" class="btn btn-s btn-mini" data-voir-carte="' +
+        echap(p.id) + '" title="Ouvrir ce produit dans La carte">Voir dans La carte</button></td>' +
         '</tr>';
     }).join('');
     $('#table-marges tbody').innerHTML = h;
@@ -3809,6 +3817,23 @@
     return true;
   }
 
+  function ouvrirProduitDansCarte(id) {
+    var produit = parId(id);
+    if (!produit) return;
+    CARTE_VIEW = 'standard';
+    $$('.cv').forEach(function (b) {
+      var actif = b.dataset.cv === 'standard';
+      b.classList.toggle('on', actif);
+      b.setAttribute('aria-pressed', actif ? 'true' : 'false');
+    });
+    RECHERCHE = produit.nom;
+    montrer('carte');
+    var recherche = $('#recherche');
+    if (recherche) recherche.value = RECHERCHE;
+    dessinerCarte();
+    toast('Produit sélectionné dans La carte : ' + produit.nom);
+  }
+
   // ==========================================================
   //  Navigation
   // ==========================================================
@@ -3821,6 +3846,8 @@
     };
     var contexte = $('#admin-ecran-label');
     if (contexte) contexte.textContent = libellesEcran[ecran] || 'Administration';
+    var nouveau = $('#btn-nouveau');
+    if (nouveau) nouveau.hidden = ecran !== 'carte';
     ['dashboard', 'carte', 'ardoises', 'ardoise', 'objectifs', 'marges', 'donnees'].forEach(function (nom) {
       var section = $('#ecran-' + nom);
       if (section) section.hidden = nom !== ecran;
@@ -3887,14 +3914,16 @@
 
       if (t.closest('#btn-enregistrer-livraison')) { livraisonSauver(); return; }
 
+      var actionCarte = t.closest('[data-action-carte]');
+      if (actionCarte && actionCarte.dataset.actionCarte === 'nouveau-produit') {
+        montrer('carte');
+        ouvrirFiche(null);
+        return;
+      }
+
       var actionAdmin = t.closest('[data-action-admin]');
       if (actionAdmin) {
         var nomAction = actionAdmin.dataset.actionAdmin;
-        if (nomAction === 'nouveau-produit') {
-          montrer('carte');
-          ouvrirFiche(null);
-          return;
-        }
         if (nomAction === 'publier') {
           montrer('donnees');
           if (!SYNC.actif) {
@@ -3968,6 +3997,9 @@
         return;
       }
 
+      var voirCarte = t.closest('[data-voir-carte]');
+      if (voirCarte) { ouvrirProduitDansCarte(voirCarte.dataset.voirCarte); return; }
+
       var editer = t.closest('[data-editer]');
       if (editer) { ouvrirFiche(editer.dataset.editer); return; }
 
@@ -3984,7 +4016,11 @@
       }
 
       var ligne = t.closest('tr[data-id]');
-      if (ligne) { ouvrirFiche(ligne.dataset.id); return; }
+      if (ligne) {
+        if (ECRAN === 'marges') ouvrirProduitDansCarte(ligne.dataset.id);
+        else ouvrirFiche(ligne.dataset.id);
+        return;
+      }
 
       if (t.closest('#btn-nouveau')) { ouvrirFiche(null); return; }
       if (t.closest('[data-fermer]')) { fermerFiche(); fermerCueillette(); fermerApercu(); return; }

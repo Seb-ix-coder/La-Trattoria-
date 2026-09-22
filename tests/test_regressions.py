@@ -172,11 +172,17 @@ class SourceRegressionTests(unittest.TestCase):
         html = (self.ROOT / "carte/index.html").read_text()
         source = (self.ROOT / "carte/carte.js").read_text()
         self.assertIn('id="admin-ecran-label"', html)
-        self.assertIn('data-action-admin="nouveau-produit"', html)
+        self.assertIn('data-action-carte="nouveau-produit"', html)
+        self.assertNotIn('data-action-admin="nouveau-produit"', html)
         self.assertIn('data-action-admin="publier"', html)
+        self.assertIn('id="lien-site-local"', html)
+        self.assertIn('id="url-site-local"', html)
         self.assertIn('raccourcis', html)
         self.assertIn("e.key === '/'", source)
         self.assertIn("e.key === 'n'", source)
+        self.assertIn("'Mettre en pause'", source)
+        self.assertIn("data-voir-carte", source)
+        self.assertIn("siteLocalUrl.textContent", source)
 
     def test_delivery_client_reads_published_server_tariffs_with_fallback(self):
         source = (self.ROOT / "build/livraison_commande.js").read_text()
