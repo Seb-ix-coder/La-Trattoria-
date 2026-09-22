@@ -35,12 +35,14 @@ node -e "require('qrcode').toFile('qr/QR-communaute.png','http://VRAIE_IP:8721/'
   - sa **page publique** (nom, logo, bio, offres, actualités),
   - l'écran « Proposer une offre éphémère »,
   - la **carte fidélité pro** et l'outil **« Envoyer un client »**.
-- **Staff — « La Trattoria »** : compte système créé automatiquement
-  à la première mise en route (téléphone `0000000000`, code
-  `trattoria`). Il enregistre les achats (cartes fidélité clients),
-  suit toutes les demandes de réservation entre partenaires et
-  échange en temps réel avec les partenaires.
-- Code secret stocké en SHA-256 salé ; session 30 jours (jeton + cookie).
+- **Staff — « La Trattoria »** : compte système provisionné explicitement
+  au démarrage avec les variables d'environnement
+  `TRATTORIA_STAFF_PHONE` et `TRATTORIA_STAFF_PASSWORD` (12 caractères
+  minimum). Il n'existe plus d'identifiant ou de mot de passe par défaut.
+  Une rotation via ces variables invalide les sessions précédentes.
+- Les nouveaux codes sont stockés avec PBKDF2-HMAC-SHA256 (600 000 itérations) ;
+  les anciens hash SHA-256 sont migrés au prochain succès de connexion. Session
+  30 jours, cookie HttpOnly/SameSite et contrôle d'origine sur les POST.
 
 ## Fonctionnalités
 
@@ -130,22 +132,33 @@ communaute/logos/          logos de partenaires
 - Pillow (`pip install pillow`) est **optionnel** : s'il est présent,
   les images sont recadrées/comprimées (JPEG 800–1000 px, qualité 82).
 
-> Le compte staff « La Trattoria » est recréé automatiquement à
-> chaque initialisation (INSERT OR IGNORE) : rien à faire.
-> Pour changer son code, modifier l'utilisateur en base
-> (table `users`, id = `trattoria`) puis vous reconnecter.
+> Au premier démarrage, définir les deux variables avant de lancer le serveur :
+>
+> ```bash
+> export TRATTORIA_STAFF_PHONE='06xxxxxxxx'
+> export TRATTORIA_STAFF_PASSWORD='mot-de-passe-long-et-unique'
+> python3 communaute/serveur_communaute.py
+> ```
+>
+> Le mot de passe ne doit pas être écrit dans le dépôt, dans le QR code ni dans
+> les logs. Pour le faire tourner, modifier la variable puis redémarrer le
+> serveur ; les sessions staff précédentes sont alors invalidées.
 
 ## Sécurité
 
 - Jeton de session aléatoire 32 octets, révocable (déconnexion).
 - Uploads : types image uniquement (JPEG/PNG/WebP), taille plafonnée
-  (4 Mo photos, 1 Mo avatars/logos), noms aléatoires (uuid),
-  service des fichiers restreint aux patterns `[a-f0-9]{32}\.jpg`.
-- Chemins de fichiers validés (pas de traversal), corps de requête
-  plafonnés (8 Mo), texte plafonné (1000 car. post, 300 commentaire,
-  500 message, 300 bio).
-- Écoute en `0.0.0.0` sur le réseau local : ne pas exposer ce port sur
-  Internet.
+  (4 Mo photos, 1 Mo avatars/logos), validation Pillow si disponible, noms
+  aléatoires (uuid) et extension/MIME cohérents.
+- Chemins de fichiers validés (pas de traversal), corps de requête plafonnés
+  (8 Mo), texte plafonné (1000 car. post, 300 commentaire, 500 message,
+  300 bio).
+- CORS inter-sites désactivé par défaut et compte staff par défaut supprimé ; les POST cross-site sont
+  refusés par contrôle d'origine, les cookies sont HttpOnly/SameSite et les
+  tentatives de connexion sont limitées (8 échecs par 5 minutes et IP/téléphone).
+- Écoute en `0.0.0.0` sur le réseau local : le HTTP n'est pas du chiffrement.
+  Ne jamais exposer ce port sur Internet ; pour un usage hors LAN, placer un
+  reverse-proxy HTTPS authentifié devant le serveur.
 
 ## Tester
 

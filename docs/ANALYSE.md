@@ -1,4 +1,8 @@
-# Analyse de l'application « La Trattoria »
+# Analyse historique de l'application « La Trattoria »
+
+> **Rapport de référence statique.** Pour l'état de livraison actuel, consulter
+> `build/README.md` et `build/KEYSTORE_ROTATION.md`. Les APK historiques ne
+> doivent pas être diffusés.
 
 Analyse réalisée par rétro-ingénierie de `trato.apk` (seul artefact présent dans le dépôt —
 le code source n'y figure pas). Décompilation effectuée avec Androguard ; le code n'est pas
