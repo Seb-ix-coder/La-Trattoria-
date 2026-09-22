@@ -48,6 +48,7 @@
   'use strict';
 
   var CLE_STOCK = 'trattoria.carte.v1';
+  var CLE_STOCK_LEGACY = 'trattoria_carte_v1';
   var CLE_CONFIG = 'trattoria.config.v1';
   var CRAIE = ['craie--jaune', 'craie--blanc', 'craie--rose', 'craie--verte', 'craie--bleue'];
   var EXTRA_ORDRE = ['formules', 'vins', 'glaces', 'bieres'];
@@ -511,7 +512,10 @@
   /* ---- sources de données ---- */
   function depuisLocalStorage() {
     var catalogue = [];
-    try { catalogue = JSON.parse(localStorage.getItem(CLE_STOCK) || '[]') || []; } catch (e) { }
+    try {
+      catalogue = JSON.parse(localStorage.getItem(CLE_STOCK) || 'null') ||
+        JSON.parse(localStorage.getItem(CLE_STOCK_LEGACY) || '[]') || [];
+    } catch (e) { catalogue = []; }
     if (!catalogue.length && window.TRATTORIA_CATALOGUE) catalogue = window.TRATTORIA_CATALOGUE;
     var cfg = null;
     try { cfg = JSON.parse(localStorage.getItem(CLE_CONFIG) || 'null'); } catch (e) { }
@@ -524,7 +528,7 @@
         if (!r.ok) throw new Error('ko');
         return r.json();
       }).then(function (d) {
-        var catalogue = (d.carte && d.carte.length) ? d.carte
+        var catalogue = (Array.isArray(d.carte) && Number(d.version) > 0) ? d.carte
           : (window.TRATTORIA_CATALOGUE || []);
         rendu(catalogue, configNormalisee(d.config, catalogue));
       }).catch(depuisLocalStorage);

@@ -23,7 +23,9 @@
     return location.protocol === 'http:' || location.protocol === 'https:' ? location.origin : '';
   }
   function base(value) {
-    return normaliser(value) || memorisee() || origine();
+    // Une page publique servie par le serveur courant doit rester liée à cette
+    // origine ; la base mémorisée ne sert que de repli pour une page locale.
+    return normaliser(value) || origine() || memorisee();
   }
   function url(route, override) {
     var racine = base(override);

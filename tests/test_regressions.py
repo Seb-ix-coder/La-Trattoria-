@@ -50,8 +50,11 @@ class CardServerSecurityTests(unittest.TestCase):
         carte_server.DOSSIER = str(root)
         carte_server.FICHIER_ETAT = str(root / "donnees-serveur.json")
         carte_server.API_TOKEN = "t" * 48
-        carte_server.etat = {"version": 0, "maj": None, "carte": [],
-                             "ardoises": {}, "config": {}}
+        carte_server.etat = {
+            "version": 0, "maj": None, "carte": [], "ardoises": {}, "config": {},
+            "objectifs": [], "livraison": {"sur_place": 0, "uber": 4.5,
+                                             "livraison_urbaine": 3.0},
+        }
         self.httpd = carte_server.ThreadingHTTPServer(("127.0.0.1", 0), carte_server.ServeurCarte)
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
@@ -77,6 +80,14 @@ class CardServerSecurityTests(unittest.TestCase):
         except urllib.error.HTTPError as error:
             return error.code, error.read()
 
+    def request_with_headers(self, path, headers):
+        request = urllib.request.Request(self.base + path, headers=headers, method="GET")
+        try:
+            with urllib.request.urlopen(request) as response:
+                return response.status, response.headers, response.read()
+        except urllib.error.HTTPError as error:
+            return error.code, error.headers, error.read()
+
     def test_write_requires_token_and_state_file_is_not_static(self):
         body = json.dumps({"carte": [{"id": "p1"}]}).encode()
         self.assertEqual(self.request("/api/carte", body)[0], 401)
@@ -87,6 +98,22 @@ class CardServerSecurityTests(unittest.TestCase):
         )
         self.assertEqual(self.request("/donnees-serveur.json")[0], 404)
 
+    def test_server_persists_operational_data_with_the_card(self):
+        body = json.dumps({
+            "carte": [], "ardoises": {}, "config": {},
+            "objectifs": [{"id": "obj-ca", "nom": "CA", "cible": 600}],
+            "livraison": {"sur_place": 0, "uber": 5.5, "livraison_urbaine": 3.25},
+        }).encode()
+        self.assertEqual(self.request("/api/carte", body, {
+            "X-Carte-Token": carte_server.API_TOKEN,
+            "Content-Type": "application/json",
+        })[0], 200)
+        status, raw = self.request("/api/carte")
+        self.assertEqual(status, 200)
+        state = json.loads(raw.decode("utf-8"))
+        self.assertEqual(state["objectifs"][0]["nom"], "CA")
+        self.assertEqual(state["livraison"]["uber"], 5.5)
+
     def test_server_publishes_explicit_links(self):
         status, raw = self.request("/api/liens")
         self.assertEqual(status, 200)
@@ -95,6 +122,14 @@ class CardServerSecurityTests(unittest.TestCase):
         self.assertEqual(links["apercu"], self.base + "/apercu-carte.html")
         self.assertEqual(links["impression"], self.base + "/impression/preview-modifiable.html")
         self.assertEqual(links["api"], self.base + "/api/etat")
+
+        status, _, raw = self.request_with_headers("/api/liens", {
+            "X-Forwarded-Proto": "https",
+            "X-Forwarded-Host": "admin.example",
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(raw.decode("utf-8"))["public"],
+                         "https://admin.example/public.html")
 
 
 class SourceRegressionTests(unittest.TestCase):
@@ -117,8 +152,28 @@ class SourceRegressionTests(unittest.TestCase):
         self.assertIn("function apiUrl(route)", source)
         self.assertIn("api-client.js", (self.ROOT / "carte/index.html").read_text())
         self.assertIn("TrattoriaApi.url('carte')", (self.ROOT / "carte/public.html").read_text())
+        self.assertIn("var CLE_STOCK = 'trattoria.carte.v1';", source)
         self.assertNotIn("fetch('api/", source)
         self.assertNotIn('fetch("api/', source)
+
+    def test_client_bundle_has_no_payment_or_hiboutik_secret(self):
+        client_sources = "\n".join((self.ROOT / path).read_text(encoding="utf-8")
+                                      for path in ("carte/index.html", "carte/carte.js",
+                                                   "carte/public.html", "build/monetico_checkout.js"))
+        self.assertNotIn("MONETICO_KEY_HEX=", client_sources)
+        self.assertNotIn("HIBOUTIK_API_KEY=", client_sources)
+
+    def test_native_admin_menu_is_two_columns(self):
+        source = (self.ROOT / "build/app-src/src/com/trattoria/cartes/MainActivity.java").read_text()
+        self.assertIn("LinearLayout grille = colonne();", source)
+        self.assertIn("indiceTuile % 2", source)
+
+    def test_delivery_client_reads_published_server_tariffs_with_fallback(self):
+        source = (self.ROOT / "build/livraison_commande.js").read_text()
+        self.assertIn("function chargerTarifsPublies()", source)
+        self.assertIn("Number(d.version) <= 0", source)
+        self.assertIn("/api/carte", source)
+        self.assertIn("totalProduits", (self.ROOT / "build/monetico_checkout.js").read_text())
 
 
 if __name__ == "__main__":

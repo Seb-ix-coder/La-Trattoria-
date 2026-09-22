@@ -7,7 +7,7 @@ Rôle :
   2. fait office de relais de synchronisation entre tablettes :
      GET  /api/etat   -> {"version": n}
      GET  /api/liens  -> URLs officielles de gestion, public, aperçu et API
-     GET  /api/carte  -> {"version": n, "maj": "...", "carte": [...], "ardoises": {...}}
+     GET  /api/carte  -> carte, ardoises, config, objectifs et livraison publiés
      POST /api/carte  <- {"carte": [...], "ardoises": {...}}  (jeton requis ; dernière écriture fait foi)
   3. sert la page publique des clients (public.html) sur le Wi-Fi ;
   4. relaie, avec un jeton de gestion, la lecture du catalogue et la création
@@ -43,9 +43,27 @@ TOKEN_FILE = os.environ.get(
 )
 MAX_BODY = 20 * 1024 * 1024
 
-etat = {'version': 0, 'maj': None, 'carte': [], 'ardoises': {}, 'config': {}}
+etat = {
+    'version': 0, 'maj': None, 'carte': [], 'ardoises': {}, 'config': {},
+    'objectifs': [], 'livraison': {'sur_place': 0, 'uber': 4.5, 'livraison_urbaine': 3.0}
+}
 ETAT_LOCK = threading.RLock()
 API_TOKEN = ''
+
+
+def tarifs_livraison_normalises(source):
+    """Conserve uniquement les trois frais autorisés, bornés à 100 €."""
+    valeurs = {'sur_place': 0.0, 'uber': 4.5, 'livraison_urbaine': 3.0}
+    if not isinstance(source, dict):
+        return valeurs
+    for cle in valeurs:
+        try:
+            valeur = float(source.get(cle, valeurs[cle]))
+            if 0 <= valeur <= 100:
+                valeurs[cle] = round(valeur, 2)
+        except (TypeError, ValueError):
+            pass
+    return valeurs
 
 
 def charger_token():
@@ -91,6 +109,10 @@ def charger_etat():
                     etat['ardoises'] = lu['ardoises']
                 if isinstance(lu.get('config'), dict):
                     etat['config'] = lu['config']
+                if isinstance(lu.get('objectifs'), list):
+                    etat['objectifs'] = lu['objectifs'][:100]
+                if isinstance(lu.get('livraison'), dict):
+                    etat['livraison'] = tarifs_livraison_normalises(lu['livraison'])
     except Exception:
         pass  # premier démarrage : état vide, la première tablette nourrira le serveur
 
@@ -220,8 +242,9 @@ class ServeurCarte(SimpleHTTPRequestHandler):
     def do_GET(self):
         api = self._chemin_api()
         if api == '/api/liens':
-            base = '{}://{}'.format('https' if self.headers.get('X-Forwarded-Proto') == 'https' else 'http',
-                                     self.headers.get('Host') or '')
+            proto = (self.headers.get('X-Forwarded-Proto') or '').split(',')[0].strip().lower()
+            host = (self.headers.get('X-Forwarded-Host') or self.headers.get('Host') or '').split(',')[0].strip()
+            base = '{}://{}'.format('https' if proto == 'https' else 'http', host)
             self._envoyer_json({'base': base,
                                 'gestion': base + '/index.html',
                                 'public': base + '/public.html',
@@ -269,8 +292,12 @@ class ServeurCarte(SimpleHTTPRequestHandler):
             return
         if api == '/api/etat':
             with ETAT_LOCK:
-                version = etat['version']
-            self._envoyer_json({'version': version})
+                self._envoyer_json({
+                    'version': etat['version'],
+                    'maj': etat['maj'],
+                    'produits': len(etat.get('carte', [])),
+                    'objectifs': len(etat.get('objectifs', [])),
+                })
             return
         if api == '/api/carte':
             with ETAT_LOCK:
@@ -278,6 +305,10 @@ class ServeurCarte(SimpleHTTPRequestHandler):
                 contenu['carte'] = list(etat['carte'])
                 contenu['ardoises'] = dict(etat['ardoises'])
                 contenu['config'] = dict(etat['config'])
+                contenu['objectifs'] = list(etat.get('objectifs', []))
+                contenu['livraison'] = dict(etat.get('livraison',
+                                                    {'sur_place': 0, 'uber': 4.5,
+                                                     'livraison_urbaine': 3.0}))
             self._envoyer_json(contenu)
             return
         chemin = unquote(urlparse(self.path).path).lstrip('/')
@@ -352,12 +383,33 @@ class ServeurCarte(SimpleHTTPRequestHandler):
                 raise ValueError('produit invalide')
             ardoises = recu.get('ardoises')
             config = recu.get('config')
+            objectifs = recu.get('objectifs')
+            livraison = recu.get('livraison')
+            if objectifs is not None and (not isinstance(objectifs, list) or len(objectifs) > 100 or
+                                          any(not isinstance(o, dict) for o in objectifs)):
+                raise ValueError('objectifs invalides')
+            if livraison is not None:
+                if not isinstance(livraison, dict):
+                    raise ValueError('tarifs de livraison invalides')
+                for cle in ('sur_place', 'uber', 'livraison_urbaine'):
+                    if cle in livraison:
+                        valeur = float(livraison[cle])
+                        if not (0 <= valeur <= 100):
+                            raise ValueError('tarif de livraison invalide')
             with ETAT_LOCK:
                 etat['carte'] = carte
                 if isinstance(ardoises, dict):
                     etat['ardoises'] = ardoises
                 if isinstance(config, dict):
                     etat['config'] = config
+                if objectifs is not None:
+                    etat['objectifs'] = objectifs
+                if livraison is not None:
+                    # Un client ancien peut n'envoyer qu'un mode : préserver
+                    # les deux autres tarifs déjà publiés évite une régression.
+                    tarifs = dict(etat.get('livraison', {}))
+                    tarifs.update(livraison)
+                    etat['livraison'] = tarifs_livraison_normalises(tarifs)
                 etat['version'] += 1
                 etat['maj'] = datetime.now(timezone.utc).isoformat()
                 sauver_etat()

@@ -14,6 +14,8 @@ Variables indispensables en production :
   MONETICO_KEY_HEX          clé Monetico fournie par la banque (40 hex)
   MONETICO_PUBLIC_URL       URL HTTPS publique de ce relais
   MONETICO_CATALOGUE_FILE   catalogue JSON de référence {id: {pv: ...}}
+  MONETICO_FRAIS_*           frais de repli si aucun état Carte n'est relié
+  MONETICO_DELIVERY_FILE     état JSON publié par serveur_carte.py (conseillé)
 
 Exemple :
   MONETICO_ENV=test MONETICO_TPE=1234567 MONETICO_SOCIETE=monSite \
@@ -62,6 +64,7 @@ RETURN_ORDER = (
     "veres", "pares",
 )
 REFERENCE_RE = re.compile(r"^[A-Za-z0-9]{8,12}$")
+DELIVERY_MODES = {"sur_place", "uber", "livraison_urbaine"}
 
 
 def env(name: str, default: str = "") -> str:
@@ -99,6 +102,39 @@ def money(value: object) -> Decimal:
     if result <= 0 or result > Decimal("100000.00"):
         raise ValueError("montant hors limites")
     return result
+
+
+def money_nonnegative(value: object) -> Decimal:
+    try:
+        result = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("frais de livraison invalides")
+    if result < 0 or result > Decimal("100.00"):
+        raise ValueError("frais de livraison hors limites")
+    return result
+
+
+def delivery_rates(path: str, fallback: dict[str, Decimal]) -> dict[str, Decimal]:
+    """Lit les tarifs publiés par serveur_carte, avec repli par variable d'env."""
+    rates = dict(fallback)
+    if not path:
+        return rates
+    try:
+        with open(path, "r", encoding="utf-8") as stream:
+            published = json.load(stream)
+        source = published.get("livraison") if isinstance(published, dict) else None
+        if not isinstance(source, dict):
+            return rates
+        for mode in DELIVERY_MODES:
+            if mode not in source:
+                continue
+            try:
+                rates[mode] = money_nonnegative(source[mode])
+            except ValueError:
+                pass
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pass
+    return rates
 
 
 def load_catalogue(path: str) -> dict[str, Decimal]:
@@ -179,8 +215,24 @@ class Config:
         # API de la tablette ou du serveur de commandes. Après confirmation
         # Monetico, le relais y transmet la commande avec le statut payé.
         self.order_target = env("MONETICO_ORDER_TARGET")
+        self.delivery = {}
+        self.delivery_missing = []
+        for mode, variable, default in (
+            ("sur_place", "MONETICO_FRAIS_SUR_PLACE", "0"),
+            ("uber", "MONETICO_FRAIS_UBER", "4.50"),
+            ("livraison_urbaine", "MONETICO_FRAIS_LIVRAISON_URBAINE", "3.00"),
+        ):
+            try:
+                self.delivery[mode] = money_nonnegative(env(variable, default))
+            except ValueError:
+                self.delivery[mode] = Decimal("0.00")
+                self.delivery_missing.append(variable)
+        self.delivery_file = env("MONETICO_DELIVERY_FILE")
         self.store_file = env("MONETICO_ORDER_STORE", "./monetico-orders.json")
         self.allowed_origins = {x.rstrip("/") for x in env("MONETICO_ALLOWED_ORIGINS").split(",") if x.strip()}
+
+    def delivery_for(self, mode: str) -> Decimal:
+        return delivery_rates(self.delivery_file, self.delivery)[mode]
 
     def ready(self) -> tuple[bool, list[str]]:
         missing = []
@@ -197,6 +249,9 @@ class Config:
             missing.append("MONETICO_CATALOGUE_FILE_readable")
         if self.env == "production" and not self.order_target:
             missing.append("MONETICO_ORDER_TARGET")
+        if self.delivery_file and not os.path.isfile(self.delivery_file):
+            missing.append("MONETICO_DELIVERY_FILE_readable")
+        missing.extend(self.delivery_missing)
         return (not missing, missing)
 
     @property
@@ -298,6 +353,13 @@ class Gateway(BaseHTTPRequestHandler):
             phone = str(payload.get("tel", "")).strip()
             email = str(payload.get("email", "")).strip()
             slot = str(payload.get("creneau", "")).strip()
+            mode = str(payload.get("modeReception", payload.get("mode_reception", "sur_place"))).strip()
+            if mode not in DELIVERY_MODES:
+                raise ValueError("mode de réception invalide")
+            # Le fichier d'état publié est lu à chaque commande : une
+            # modification dans Administration ne peut pas diverger d'un
+            # paiement déjà préparé après redémarrage.
+            delivery_fee = self.config.delivery_for(mode)
             if not (2 <= len(name) <= 120 and 6 <= len(phone) <= 30):
                 raise ValueError("coordonnées client invalides")
             if not re.fullmatch(r"[^@\s]{1,100}@[^@\s]{1,100}\.[^@\s]{2,30}", email):
@@ -320,8 +382,9 @@ class Gateway(BaseHTTPRequestHandler):
                 unit = catalogue[product_id]
                 total += unit * quantity
                 clean_lines.append({"id": product_id, "qte": quantity, "unit": str(unit)})
-            total = total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            if total <= 0: raise ValueError("panier vide")
+            products_total = total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if products_total <= 0: raise ValueError("panier vide")
+            total = (products_total + delivery_fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             ref = reference()
             date = dt.datetime.now().strftime("%d/%m/%Y:%H:%M:%S")
             text = ("La Trattoria " + slot)[:3200]
@@ -329,6 +392,8 @@ class Gateway(BaseHTTPRequestHandler):
                 "client": {"name": name, "phone": phone},
                 "shoppingCart": clean_lines,
                 "pickup": slot,
+                "reception": mode,
+                "deliveryFee": str(delivery_fee),
             })).decode("ascii")
             form = {
                 "version": VERSION, "TPE": self.config.tpe, "date": date,
@@ -342,6 +407,8 @@ class Gateway(BaseHTTPRequestHandler):
             # ne jamais signer ni exposer une URL de notification inventée ici.
             form["MAC"] = sign_form(self.config.secret, form)
             self.store.put(ref, {"status": "pending", "reference": ref, "amount": str(total),
+                                 "products_amount": str(products_total),
+                                 "delivery_mode": mode, "delivery_fee": str(delivery_fee),
                                  "email": email, "name": name, "phone": phone,
                                  "slot": slot, "note": str(payload.get("note", ""))[:400],
                                  "lines": clean_lines,
@@ -371,6 +438,10 @@ class Gateway(BaseHTTPRequestHandler):
             "tel": str(order.get("phone", "")),
             "email": str(order.get("email", "")),
             "creneau": str(order.get("slot", "")),
+            "modeReception": str(order.get("delivery_mode", "sur_place")),
+            "reception": str(order.get("delivery_mode", "sur_place")),
+            "fraisLivraison": float(order.get("delivery_fee", 0)),
+            "totalProduits": float(order.get("products_amount", order.get("amount", 0))),
             "note": (note + " | " if note else "") + payment_note,
             "lignes": lines,
             "total": float(order.get("amount", 0)),

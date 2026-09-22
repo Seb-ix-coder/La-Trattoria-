@@ -81,6 +81,9 @@
     var email = value('monetico-email');
     var creneau = (document.querySelector('[data-creneau][aria-pressed="true"]') || {}).dataset;
     var note = value('cl-note');
+    var livraison = window.TrattoriaLivraison;
+    var modeReception = livraison && typeof livraison.mode === 'function'
+      ? livraison.mode() : 'sur_place';
     if (!lignes.length) { setMessage('Votre panier est vide.', true); return; }
     if (!nom || !tel) { setMessage('Indiquez votre nom et votre téléphone avant de payer.', true); return; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -90,9 +93,14 @@
     var button = el('monetico-payer');
     if (button) { button.disabled = true; button.classList.add('is-loading'); }
     setMessage('Préparation sécurisée du paiement…', false);
+    var totalProduits = total();
+    var totalAvecLivraison = livraison && typeof livraison.total === 'function'
+      ? Number(livraison.total()) : totalProduits;
     var payload = {
       nom: nom, tel: tel, email: email, creneau: creneau.creneau,
-      note: note, lignes: lignes, total: Number(total().toFixed(2)),
+      note: note, lignes: lignes, totalProduits: Number(totalProduits.toFixed(2)),
+      total: Number(totalAvecLivraison.toFixed(2)),
+      modeReception: modeReception,
       source: 'site-la-trattoria'
     };
     var xhr = new XMLHttpRequest();

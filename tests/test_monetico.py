@@ -1,15 +1,21 @@
+import base64
 import hashlib
 import hmac
 import json
+import os
 import tempfile
+import threading
 import unittest
+import urllib.request
 from pathlib import Path
 
 from carte.monetico_gateway import (
     FORM_FIELDS,
     RETURN_ORDER,
     Config,
+    delivery_rates,
     load_catalogue,
+    make_server,
     sign_form,
     sign_return,
 )
@@ -64,6 +70,37 @@ class MoneticoCatalogueTests(unittest.TestCase):
         self.assertEqual(str(catalogue["p1"]), "10.00")
         self.assertNotIn("p2", catalogue)
 
+    def test_delivery_fees_are_server_configured_and_nonnegative(self):
+        import os
+        old = dict(os.environ)
+        try:
+            os.environ.update({
+                "MONETICO_FRAIS_SUR_PLACE": "0",
+                "MONETICO_FRAIS_UBER": "5.50",
+                "MONETICO_FRAIS_LIVRAISON_URBAINE": "3.25",
+            })
+            config = Config()
+            self.assertEqual(str(config.delivery["sur_place"]), "0.00")
+            self.assertEqual(str(config.delivery["uber"]), "5.50")
+            self.assertEqual(str(config.delivery["livraison_urbaine"]), "3.25")
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
+
+    def test_published_delivery_file_overrides_environment_fallback(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "donnees-serveur.json"
+            path.write_text(json.dumps({"livraison": {
+                "sur_place": 0, "uber": 6.25, "livraison_urbaine": 2.75,
+            }}), encoding="utf-8")
+            rates = delivery_rates(path.as_posix(), {
+                "sur_place": Config().delivery["sur_place"],
+                "uber": Config().delivery["uber"],
+                "livraison_urbaine": Config().delivery["livraison_urbaine"],
+            })
+        self.assertEqual(str(rates["uber"]), "6.25")
+        self.assertEqual(str(rates["livraison_urbaine"]), "2.75")
+
     def test_production_needs_https(self):
         old = dict(__import__("os").environ)
         try:
@@ -79,6 +116,54 @@ class MoneticoCatalogueTests(unittest.TestCase):
             self.assertIn("MONETICO_PUBLIC_URL_https", missing)
         finally:
             import os
+            os.environ.clear()
+            os.environ.update(old)
+
+
+class MoneticoPrepareTests(unittest.TestCase):
+    def test_prepare_recalculates_products_and_adds_published_delivery_fee(self):
+        old = dict(os.environ)
+        server = None
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                (root / "catalogue.json").write_text(json.dumps([
+                    {"id": "pizza", "pv": 10, "actif": True},
+                ]), encoding="utf-8")
+                (root / "donnees-serveur.json").write_text(json.dumps({
+                    "livraison": {"sur_place": 0, "uber": 6.25, "livraison_urbaine": 2.75},
+                }), encoding="utf-8")
+                os.environ.update({
+                    "MONETICO_ENV": "test", "MONETICO_TPE": "1234567",
+                    "MONETICO_SOCIETE": "monSite", "MONETICO_KEY_HEX": "0" * 40,
+                    "MONETICO_PUBLIC_URL": "http://payment.example",
+                    "MONETICO_CATALOGUE_FILE": str(root / "catalogue.json"),
+                    "MONETICO_DELIVERY_FILE": str(root / "donnees-serveur.json"),
+                    "MONETICO_ORDER_STORE": str(root / "orders.json"),
+                })
+                server = make_server("127.0.0.1", 0)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                body = json.dumps({
+                    "nom": "Anaïs", "tel": "0612345678", "email": "ana@example.test",
+                    "creneau": "19h00", "modeReception": "uber",
+                    "lignes": [{"id": "pizza", "qte": 1}], "total": 1,
+                }).encode("utf-8")
+                request = urllib.request.Request(
+                    "http://127.0.0.1:{}/api/monetico/prepare".format(server.server_port),
+                    data=body, headers={"Content-Type": "application/json"}, method="POST")
+                with urllib.request.urlopen(request) as response:
+                    result = json.loads(response.read().decode("utf-8"))
+                self.assertTrue(result["ok"])
+                self.assertEqual(result["form"]["montant"], "16.25EUR")
+                context = json.loads(base64.b64decode(
+                    result["form"]["contexte_commande"]).decode("utf-8"))
+                self.assertEqual(context["reception"], "uber")
+                self.assertEqual(context["deliveryFee"], "6.25")
+        finally:
+            if server is not None:
+                server.shutdown()
+                server.server_close()
             os.environ.clear()
             os.environ.update(old)
 

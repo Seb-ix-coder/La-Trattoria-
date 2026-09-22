@@ -3,7 +3,8 @@
    --------------------------------------------------------------------------
    Les frais sont une ligne séparée du panier : ils ne modifient jamais le
    prix unitaire d'une pizza ou d'un autre produit. La configuration est
-   éditée dans le module Carte et conservée sous localStorage.
+   éditée dans le module Carte ; le site lit l'état publié et garde
+   localStorage comme repli hors ligne.
    ========================================================================== */
 (function () {
   'use strict';
@@ -17,15 +18,60 @@
     { id: 'livraison_urbaine', label: 'Livraison urbaine', aide: 'Livraison locale par la Trattoria' }
   ];
   var MODE = 'sur_place';
+  var PUBLICATION = false;
 
+  function appliquerTarifs(src) {
+    if (!src || typeof src !== 'object') return false;
+    var change = false;
+    MODES.forEach(function (m) {
+      var n = Number(src[m.id]);
+      if (isFinite(n) && n >= 0 && n <= 100) {
+        n = Math.round(n * 100) / 100;
+        if (CONFIG[m.id] !== n) change = true;
+        CONFIG[m.id] = n;
+      }
+    });
+    return change;
+  }
   function charger() {
     try {
       var src = JSON.parse(localStorage.getItem(CLE) || 'null');
-      if (src && typeof src === 'object') MODES.forEach(function (m) {
-        var n = Number(src[m.id]);
-        if (isFinite(n) && n >= 0 && n <= 100) CONFIG[m.id] = Math.round(n * 100) / 100;
-      });
+      appliquerTarifs(src);
     } catch (e) { }
+  }
+  function apiCarteUrl() {
+    var configuree = window.TRATTORIA_DELIVERY_API ||
+      (window.TRATTORIA && window.TRATTORIA.deliveryApi);
+    if (configuree) return String(configuree).replace(/\/+$/, '');
+    if (window.TrattoriaApi && typeof window.TrattoriaApi.url === 'function') {
+      return window.TrattoriaApi.url('carte');
+    }
+    if (window.TRATTORIA && window.TRATTORIA.api) {
+      return String(window.TRATTORIA.api).replace(/\/+$/, '') + '/api/carte';
+    }
+    if (location.protocol === 'http:' || location.protocol === 'https:') {
+      return location.origin + '/api/carte';
+    }
+    return '';
+  }
+  function chargerTarifsPublies() {
+    var endpoint = apiCarteUrl();
+    if (!endpoint || typeof window.fetch !== 'function') return;
+    fetch(endpoint, { cache: 'no-store', credentials: 'omit' }).then(function (r) {
+      if (!r.ok) throw new Error('tarifs indisponibles');
+      return r.json();
+    }).then(function (d) {
+      // Un état versionné est la seule source autoritative. Sinon on conserve
+      // le repli local afin de ne pas remplacer des tarifs existants par des
+      // valeurs par défaut sur une tablette qui ne sert pas l'API Carte.
+      if (!d || Number(d.version) <= 0 || !d.livraison) return;
+      PUBLICATION = true;
+      if (appliquerTarifs(d.livraison)) {
+        try { localStorage.setItem(CLE, JSON.stringify(CONFIG)); } catch (e) { }
+      }
+      actualiserOptions();
+      majTotaux();
+    }).catch(function () { /* site autonome : repli local */ });
   }
   function eur(n) {
     return Number(n || 0).toFixed(2).replace('.', ',') + ' €';
@@ -47,7 +93,12 @@
     // panier ; sinon la valeur courante comprend déjà nos frais.
     if (recap && recap.dataset.produits) {
       var ancien = Number(recap.dataset.produits) || 0;
-      var ancienTotal = ancien + frais();
+      // Comparer avec le supplément réellement affiché au dernier rendu :
+      // un tarif publié peut arriver pendant qu'un total inclut encore
+      // l'ancien frais.
+      var ancienFrais = recap.dataset.frais != null
+        ? Number(recap.dataset.frais) || 0 : frais();
+      var ancienTotal = ancien + ancienFrais;
       if (Math.abs(total - ancienTotal) < 0.001) total = ancien;
     }
     return Math.max(0, total);
@@ -64,6 +115,7 @@
     var recap = document.getElementById('livraison-recap');
     if (recap) {
       recap.dataset.produits = String(produits);
+      recap.dataset.frais = String(frais());
       recap.innerHTML = 'Produits : ' + eur(produits) + ' · ' + labelMode() +
         ' : ' + (frais() ? '+' + eur(frais()) : 'gratuit') +
         ' · <strong>Total : ' + eur(total) + '</strong>';
@@ -74,6 +126,15 @@
     if (paiement && paiement.dataset.paiement) {
       paiement.textContent = paiement.dataset.paiement + ' · ' + labelMode() +
         (frais() ? ' · Frais : ' + eur(frais()) : ' · Frais : gratuit');
+    }
+  }
+
+  function actualiserOptions() {
+    var radios = document.querySelectorAll('#livraison-bloc input[name="mode-reception"]');
+    for (var i = 0; i < radios.length; i++) {
+      var mode = radios[i].value;
+      var small = radios[i].parentNode && radios[i].parentNode.querySelector('small');
+      if (small) small.textContent = CONFIG[mode] ? '+' + eur(CONFIG[mode]) : 'Sans frais';
     }
   }
 
@@ -202,6 +263,7 @@
   function init() {
     styles();
     charger();
+    chargerTarifsPublies();
     envelopperEnvoi();
     document.addEventListener('click', function (e) {
       if (e.target && e.target.closest && e.target.closest('#valider')) ajouterNote();
@@ -231,6 +293,7 @@
     total: totalCommande,
     frais: frais,
     mode: function () { return MODE; },
-    label: labelMode
+    label: labelMode,
+    tarifsPublies: function () { return PUBLICATION; }
   };
 })();

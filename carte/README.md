@@ -68,7 +68,8 @@ refusée sans l'en-tête `X-Carte-Token`. Pour un déploiement automatisé,
 utiliser `CARTE_API_TOKEN` ou `CARTE_TOKEN_FILE` hors du dossier servi.
 
 - les tablettes ouvertes sur `http://<serveur>:8080/index.html` se synchronisent
-  automatiquement (relevé toutes les 15 s ; la dernière modification fait foi) ;
+  automatiquement (relevé toutes les 15 s ; la dernière modification fait foi). Les objectifs
+et les frais Sur place/Uber/Livraison urbaine suivent aussi la publication ;
 - **`public.html`** est une page clients en **lecture seule**, rafraîchie chaque
   minute ;
 - `donnees-serveur.json` est conservé hors des fichiers statiques et n'est plus
@@ -138,8 +139,9 @@ d'après les ingrédients de la carte d'origine et affichés sur la page clients
 La liste doit être vérifiée fiche par fiche avant publication.
 
 ### Import/export
-Le format JSON v4 contient `produits` et l'alias historique `carte`, ainsi que
-`ardoises` et `config`. L'application native `com.trattoria.cartes` accepte les
+Le format JSON v5 contient `produits` et l'alias historique `carte`, ainsi que
+`ardoises`, `config`, les `objectifs` et les tarifs `livraison`. Les imports v4
+restent acceptés. L'application native `com.trattoria.cartes` accepte les
 deux noms de catalogue. Les structures détaillées de cartes du jour ne sont
 pas identiques entre les deux modules : vérifier le rendu après transfert.
 

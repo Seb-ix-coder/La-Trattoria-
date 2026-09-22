@@ -53,6 +53,10 @@ MONETICO_CATALOGUE_FILE='/srv/la-trattoria/catalogue.json' \
 MONETICO_ORDER_TARGET='http://IP_DE_LA_TABLETTE:8721/api/commande' \
 MONETICO_ALLOWED_ORIGINS='https://latrattoria-saintes.fr' \
 MONETICO_ORDER_STORE='/var/lib/la-trattoria/monetico-orders.json' \
+MONETICO_FRAIS_SUR_PLACE='0' \
+MONETICO_FRAIS_UBER='4.50' \
+MONETICO_FRAIS_LIVRAISON_URBAINE='3.00' \
+MONETICO_DELIVERY_FILE='/srv/la-trattoria/donnees-serveur.json' \
 python3 carte/monetico_gateway.py
 ```
 
@@ -69,6 +73,16 @@ banque, la commande est transmise une seule fois à l’API de prise de commande
 avec la mention « Paiement Monetico confirmé ». La clé réelle ne doit être
 fournie que par variable d’environnement ou par un gestionnaire de secrets,
 jamais par un fichier distribué avec l’APK.
+
+Les frais de réception sont ajoutés comme une ligne distincte : ils ne changent
+jamais le prix unitaire des pizzas. Le relais recalcule les produits depuis le
+catalogue puis ajoute le montant serveur correspondant à `modeReception`
+(`sur_place`, `uber` ou `livraison_urbaine`). Les trois variables
+`MONETICO_DELIVERY_FILE` pointe vers le `donnees-serveur.json` écrit par
+`serveur_carte.py` : les tarifs publiés sont alors lus à chaque commande et
+restent la source autoritative. Les variables `MONETICO_FRAIS_*` constituent
+le repli de démarrage si aucun fichier d'état n'est relié et doivent reprendre
+les montants affichés dans **Données → Commande en ligne — réception et frais**.
 
 ## Vérifications avant ouverture
 

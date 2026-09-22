@@ -365,7 +365,16 @@ public class MainActivity extends Activity {
         tuiles.put("admin", new String[]{"⚙️", "Administration — plan de salle, paramètres"});
         tuiles.put("donnees", new String[]{"💾", "Données — export / import JSON"});
         tuiles.put("apropos", new String[]{"ℹ️", "À propos et mentions"});
+        LinearLayout grille = colonne();
+        LinearLayout ligneGrille = null;
+        int indiceTuile = 0;
         for (final java.util.Map.Entry<String, String[]> t : tuiles.entrySet()) {
+            if (indiceTuile % 2 == 0) {
+                ligneGrille = new LinearLayout(this);
+                ligneGrille.setOrientation(LinearLayout.HORIZONTAL);
+                grille.addView(ligneGrille, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            }
             LinearLayout l = colonne();
             l.setBackground(fondBord(CREME, TRAIT, 14, 1));
             l.setPadding(dp(16), dp(14), dp(16), dp(14));
@@ -397,9 +406,14 @@ public class MainActivity extends Activity {
             l.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) { afficher(t.getKey()); }
             });
-            contenu.addView(l);
-            contenu.addView(espace(10));
+            LinearLayout.LayoutParams tuileParams = new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            tuileParams.setMargins(indiceTuile % 2 == 0 ? 0 : dp(5), 0,
+                    indiceTuile % 2 == 0 ? dp(5) : 0, dp(10));
+            ligneGrille.addView(l, tuileParams);
+            indiceTuile++;
         }
+        contenu.addView(grille);
         contenu.addView(texte("La Trattoria — 15 rue de la poste, 17100 Saintes — SIRET 106 050 263 00016",
                 11.5f, GRIS, false));
     }

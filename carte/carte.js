@@ -16,8 +16,12 @@
   var COEF_CIBLE_ALCOOL = 3.8;
   var SEUIL_COEFF = 0.8;          // alerte sous 80 % de l'objectif…
   var SEUIL_MARGE = 5;            // …et marge inférieure à 5 € (vueAdmin de l'APK)
-  var CLE_STOCK = 'trattoria_carte_v1';
-  var CLE_ARDOISES = 'trattoria_ardoises_v1';
+  // Clés publiques partagées avec public.html/apercu-carte.html. Les clés
+  // historiques sont relues une fois pour ne perdre aucune tablette existante.
+  var CLE_STOCK = 'trattoria.carte.v1';
+  var CLE_STOCK_LEGACY = 'trattoria_carte_v1';
+  var CLE_ARDOISES = 'trattoria.ardoises.v1';
+  var CLE_ARDOISES_LEGACY = 'trattoria_ardoises_v1';
   var EMPOTER_MIN = 1e-9;
 
   // Les 14 allergènes à déclaration obligatoire (règlement UE 1169/2011).
@@ -50,7 +54,10 @@
   var EN_EDITION = null;      // id du produit en cours d'édition, null = création
   var PHOTO_BROUILLON = null; // data-URL en cours dans la fiche (null = aucune)
   var CUEILLETTE = null;      // {cle, choisis:[ids]} pendant la composition d'une carte
-  var SYNC = { actif: false, version: 0, minuteur: null, polling: null, base: '' };
+  var SYNC = {
+    actif: false, authentifie: false, version: 0, minuteur: null, polling: null,
+    base: '', dirty: false, dernierePublication: null, derniereErreur: ''
+  };
   var CLE_SYNC_TOKEN = 'trattoria.sync_token.v1';
   var CLE_SYNC_BASE = 'trattoria.sync_base.v1';
   var SYNC_TOKEN = localStorage.getItem(CLE_SYNC_TOKEN) || '';
@@ -212,6 +219,7 @@
       LIVRAISON[id] = Math.round(Math.min(100, n) * 100) / 100;
     });
     try { localStorage.setItem(CLE_LIVRAISON, JSON.stringify(LIVRAISON)); } catch (e) { }
+    sauver();
     var info = $('#info-livraison');
     if (info) info.textContent = 'Tarifs enregistrés sur cette tablette.';
     toast('Tarifs de livraison enregistrés');
@@ -272,6 +280,11 @@
       localStorage.setItem(CLE_STOCK, JSON.stringify(CARTE));
       localStorage.setItem(CLE_ARDOISES, JSON.stringify(ARDOISES));
       if (CF) localStorage.setItem(CLE_CONFIG, JSON.stringify(CF));
+      localStorage.setItem(CLE_OBJECTIFS, JSON.stringify(OBJECTIFS));
+      localStorage.setItem(CLE_LIVRAISON, JSON.stringify(LIVRAISON));
+      // Une sauvegarde réussie devient une publication locale à envoyer.
+      SYNC.dirty = true;
+      SYNC.derniereErreur = '';
     } catch (e) {
       toast('Espace de stockage insuffisant — photo trop lourde ?');
     }
@@ -2094,7 +2107,14 @@
       }
     } catch (e) { }
     var brut = null;
-    try { brut = JSON.parse(localStorage.getItem(CLE_STOCK) || 'null'); } catch (e) { }
+    var migrationStock = false;
+    try {
+      brut = JSON.parse(localStorage.getItem(CLE_STOCK) || 'null');
+      if (!brut) {
+        brut = JSON.parse(localStorage.getItem(CLE_STOCK_LEGACY) || 'null');
+        migrationStock = !!brut;
+      }
+    } catch (e) { }
     if (brut && Object.prototype.toString.call(brut) === '[object Array]') {
       CARTE = brut.map(produitNormalise);
     } else {
@@ -2102,10 +2122,22 @@
       CARTE = (window.TRATTORIA_CATALOGUE || []).map(produitNormalise);
     }
     var brutA = null;
-    try { brutA = JSON.parse(localStorage.getItem(CLE_ARDOISES) || 'null'); } catch (e) { }
+    var migrationArdoises = false;
+    try {
+      brutA = JSON.parse(localStorage.getItem(CLE_ARDOISES) || 'null');
+      if (!brutA) {
+        brutA = JSON.parse(localStorage.getItem(CLE_ARDOISES_LEGACY) || 'null');
+        migrationArdoises = !!brutA;
+      }
+    } catch (e) { }
     ARDOISES = ardoisesToutesNormalisees(brutA);
     configCharger();
     sauver();
+    // La sauvegarde d'initialisation ne doit pas être confondue avec une
+    // modification humaine avant le premier contact avec le serveur.
+    SYNC.dirty = false;
+    if (migrationStock) localStorage.removeItem(CLE_STOCK_LEGACY);
+    if (migrationArdoises) localStorage.removeItem(CLE_ARDOISES_LEGACY);
   }
 
   // ----------------------------------------------------------
@@ -2132,6 +2164,7 @@
     }
     if (!token) return false;
     SYNC_TOKEN = token;
+    SYNC.authentifie = false;
     localStorage.setItem(CLE_SYNC_TOKEN, token);
     if (champ) champ.value = token;
     return true;
@@ -2140,9 +2173,18 @@
   function badgeSync() {
     var b = $('#badge-sync');
     if (!b) return;
-    if (SYNC.actif) {
+    if (SYNC.actif && SYNC.dirty) {
+      b.innerHTML = '<span class="point attente"></span>Modification à publier';
+      b.className = 'badge-sync attente';
+    } else if (SYNC.actif && !SYNC.authentifie) {
+      b.innerHTML = '<span class="point attente"></span>Serveur connecté · lecture seule';
+      b.className = 'badge-sync attente';
+    } else if (SYNC.actif) {
       b.innerHTML = '<span class="point ok"></span>Tablettes synchronisées';
       b.className = 'badge-sync on';
+    } else if (SYNC.dirty) {
+      b.innerHTML = '<span class="point attente"></span>Mode autonome · modification locale';
+      b.className = 'badge-sync attente';
     } else {
       b.innerHTML = '<span class="point"></span>Mode autonome';
       b.className = 'badge-sync';
@@ -2159,14 +2201,20 @@
       return r.json();
     }).then(function (r) {
       SYNC.actif = true;
+      SYNC.authentifie = !!SYNC_TOKEN;
       SYNC.version = Number(r.version) || 0;
+      SYNC.derniereErreur = '';
       var infoServeur = $('#info-sync-serveur');
       if (infoServeur) infoServeur.textContent = 'Serveur connecté : ' + baseServeurEffective() +
-        ' · version publiée ' + SYNC.version;
+        ' · version publiée ' + SYNC.version + (r.maj ? ' · ' + new Date(r.maj).toLocaleString('fr-FR') : '');
       badgeSync();
       afficherLiensServeur();
-      if (SYNC.version > 0) syncTirer(false);
-      else planifierEnvoi(true);
+      if (SYNC.version > 0) {
+        if (SYNC.dirty && SYNC_TOKEN) planifierEnvoi(true);
+        else syncTirer(false);
+      } else {
+        planifierEnvoi(true);
+      }
       if (SYNC.polling) clearInterval(SYNC.polling);
       SYNC.polling = setInterval(function () { syncTirer(false); }, 15000);
     }).catch(function () {
@@ -2182,6 +2230,13 @@
       if (manuel) toast('Aucun serveur de carte joint — lancez serveur_carte.py');
       return;
     }
+    if (SYNC.dirty) {
+      planifierEnvoi(manuel);
+      if (manuel) toast(SYNC_TOKEN
+        ? 'Votre modification locale va être publiée.'
+        : 'Modification locale conservée ; clé d’administration requise pour publier.');
+      return;
+    }
     fetch(apiUrl('carte'), { cache: 'no-store' }).then(function (r) {
       if (!r.ok) throw new Error('ko');
       return r.json();
@@ -2192,27 +2247,51 @@
         return;
       }
       SYNC.version = v;
-      if (Object.prototype.toString.call(r.carte) === '[object Array]' && r.carte.length) {
+      if (Object.prototype.toString.call(r.carte) === '[object Array]') {
         CARTE = r.carte.map(produitNormalise);
       }
-      ARDOISES = ardoisesToutesNormalisees(r.ardoises);
-      CF = configNormalisee(r.config || CF);
+      if (r.ardoises && typeof r.ardoises === 'object') {
+        ARDOISES = ardoisesToutesNormalisees(r.ardoises);
+      }
+      if (r.config && typeof r.config === 'object') CF = configNormalisee(r.config);
+      if (Object.prototype.toString.call(r.objectifs) === '[object Array]') {
+        try { localStorage.setItem(CLE_OBJECTIFS, JSON.stringify(r.objectifs)); } catch (e) { }
+        objectifsCharger();
+      }
+      if (r.livraison && typeof r.livraison === 'object') {
+        ['sur_place', 'uber', 'livraison_urbaine'].forEach(function (id) {
+          var n = Number(r.livraison[id]);
+          if (isFinite(n) && n >= 0 && n <= 100) LIVRAISON[id] = Math.round(n * 100) / 100;
+        });
+        try { localStorage.setItem(CLE_LIVRAISON, JSON.stringify(LIVRAISON)); } catch (e) { }
+        livraisonAfficher();
+      }
       try {
         localStorage.setItem(CLE_STOCK, JSON.stringify(CARTE));
         localStorage.setItem(CLE_ARDOISES, JSON.stringify(ARDOISES));
         localStorage.setItem(CLE_CONFIG, JSON.stringify(CF));
       } catch (e) { }
+      SYNC.dirty = false;
+      SYNC.derniereErreur = '';
       toutDessiner();
       majInfoDonnees();
-      toast('Carte synchronisée avec les autres tablettes');
+      var infoServeur = $('#info-sync-serveur');
+      if (infoServeur) infoServeur.textContent = 'Serveur connecté : ' + baseServeurEffective() +
+        ' · version publiée ' + SYNC.version + (r.maj ? ' · ' + new Date(r.maj).toLocaleString('fr-FR') : '');
+      toast('Données synchronisées avec le serveur');
       badgeSync();
-    }).catch(function () {
-      if (manuel) toast('Le serveur de carte ne répond pas');
+    }).catch(function (e) {
+      SYNC.derniereErreur = e && e.message ? e.message : 'lecture impossible';
+      if (manuel) toast('Le serveur de carte ne répond pas — données locales conservées');
+      badgeSync();
     });
   }
 
   function planifierEnvoi(immediat) {
-    if (!SYNC.actif || !SYNC_TOKEN) return;
+    if (!SYNC.actif || !SYNC_TOKEN) {
+      badgeSync();
+      return;
+    }
     clearTimeout(SYNC.minuteur);
     var envoyer = function () {
       var headers = syncHeaders();
@@ -2220,17 +2299,34 @@
       fetch(apiUrl('carte'), {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify({ carte: CARTE, ardoises: ARDOISES, config: CF })
+        body: JSON.stringify({
+          carte: CARTE, ardoises: ARDOISES, config: CF,
+          objectifs: OBJECTIFS, livraison: LIVRAISON
+        })
       }).then(function (r) {
         if (r.status === 401) throw new Error('token');
         if (!r.ok) throw new Error('ko');
         return r.json();
       }).then(function (r) {
         SYNC.version = Number(r.version) || SYNC.version;
+        SYNC.authentifie = true;
+        SYNC.dirty = false;
+        SYNC.dernierePublication = new Date().toISOString();
+        SYNC.derniereErreur = '';
+        var infoServeur = $('#info-sync-serveur');
+        if (infoServeur) infoServeur.textContent = 'Publication réussie : version ' + SYNC.version +
+          ' · ' + new Date(SYNC.dernierePublication).toLocaleString('fr-FR');
+        majInfoDonnees();
         badgeSync();
       }).catch(function (e) {
+        SYNC.derniereErreur = e && e.message ? e.message : 'publication impossible';
+        if (e && e.message === 'token') SYNC.authentifie = false;
+        var infoServeur = $('#info-sync-serveur');
+        if (infoServeur) infoServeur.textContent = e && e.message === 'token'
+          ? 'Publication refusée : clé d’administration invalide.'
+          : 'Publication en attente : serveur indisponible, données locales conservées.';
         badgeSync();
-        if (e && e.message === 'token') toast('Jeton requis pour publier la carte — onglet Données.');
+        if (e && e.message === 'token') toast('Clé d’administration invalide — publication non effectuée.');
       });
     };
     if (immediat) envoyer();
@@ -3381,14 +3477,16 @@
   function exporterJSON() {
     var paquet = {
       application: 'la-trattoria-carte',
-      version: 4,
+      version: 5,
       exporte: new Date().toISOString(),
       // Alias "carte" pour permettre l'import depuis l'application native
       // com.trattoria.cartes, qui utilise ce nom historique.
       produits: CARTE,
       carte: CARTE,
       ardoises: ARDOISES,
-      config: CF
+      config: CF,
+      objectifs: OBJECTIFS,
+      livraison: LIVRAISON
     };
     telecharger(new Blob([JSON.stringify(paquet, null, 1)], { type: 'application/json' }),
       'carte-la-trattoria.json');
@@ -3452,6 +3550,17 @@
         CARTE = tab.map(produitNormalise);
         ARDOISES = ardoisesToutesNormalisees(paquet.ardoises || null);
         CF = configNormalisee(paquet.config || null);
+        if (Object.prototype.toString.call(paquet.objectifs) === '[object Array]') {
+          localStorage.setItem(CLE_OBJECTIFS, JSON.stringify(paquet.objectifs));
+          objectifsCharger();
+        }
+        if (paquet.livraison && typeof paquet.livraison === 'object') {
+          ['sur_place', 'uber', 'livraison_urbaine'].forEach(function (id) {
+            var n = Number(paquet.livraison[id]);
+            if (isFinite(n) && n >= 0 && n <= 100) LIVRAISON[id] = Math.round(n * 100) / 100;
+          });
+          livraisonAfficher();
+        }
         sauver();
         toutDessiner();
         toast('Carte importée');
@@ -3468,6 +3577,8 @@
     CARTE = (window.TRATTORIA_CATALOGUE || []).map(produitNormalise);
     ARDOISES = ardoisesDefaut();
     localStorage.removeItem(CLE_CONFIG);
+    localStorage.removeItem(CLE_STOCK_LEGACY);
+    localStorage.removeItem(CLE_ARDOISES_LEGACY);
     configCharger();
     sauver();
     toutDessiner();
@@ -3478,8 +3589,11 @@
     var infos = $('#info-donnees');
     if (!infos) return;
     var photos = CARTE.filter(function (p) { return p.photo; }).length;
+    var syncInfo = !SYNC.actif ? (SYNC.dirty ? 'mode autonome · modification à publier' : 'mode autonome') :
+      (SYNC.dirty ? 'modification locale à publier' :
+        (SYNC.derniereErreur ? 'dernière publication en échec' : 'synchronisé (v' + SYNC.version + ')'));
     infos.textContent = CARTE.length + ' produits · ' + photos + ' photographiés · ' +
-      'enregistré sur cet appareil' + (SYNC.actif ? ' · synchronisé (v' + SYNC.version + ')' : '');
+      'enregistré sur cet appareil · ' + syncInfo;
   }
 
   // ==========================================================
@@ -3673,6 +3787,7 @@
     o.periode = $('#objectif-periode').value;
     o.valeur = Math.max(0, Number(String($('#objectif-valeur').value || 0).replace(',', '.')) || 0);
     objectifsSauver();
+    sauver();
     fermerObjectifForm();
     dessinerObjectifs();
     dessinerDashboard();
@@ -3685,6 +3800,7 @@
     if (!confirm('Supprimer cet objectif ?')) return false;
     OBJECTIFS.splice(index, 1);
     objectifsSauver();
+    sauver();
     dessinerObjectifs();
     dessinerDashboard();
     toast('Objectif supprimé');
@@ -3890,6 +4006,7 @@
       }
       if (t.closest('#btn-sync-token-oublier')) {
         SYNC_TOKEN = '';
+        SYNC.authentifie = false;
         localStorage.removeItem(CLE_SYNC_TOKEN);
         var champToken = $('#champ-sync-token');
         if (champToken) champToken.value = '';
@@ -3908,10 +4025,17 @@
         toast(SYNC_BASE ? 'Serveur enregistré — test en cours' : 'Mode autonome activé');
         return;
       }
+      if (t.closest('#btn-publier')) {
+        if (!SYNC.actif) { toast('Aucun serveur disponible — données conservées sur cette tablette.'); return; }
+        if (!SYNC_TOKEN && !demanderToken()) return;
+        SYNC.dirty = true;
+        planifierEnvoi(true);
+        toast('Publication en cours…');
+        return;
+      }
       if (t.closest('#btn-sync')) {
         syncTirer(true);
-        if (SYNC_TOKEN) planifierEnvoi(true);
-        else toast('Lecture effectuée ; ajoutez la clé d’administration pour publier.');
+        if (!SYNC_TOKEN && !SYNC.dirty) toast('Lecture effectuée ; ajoutez la clé d’administration pour publier.');
         return;
       }
       if (t.closest('#btn-hiboutik-refresh')) { actualiserInventaireHiboutik(); return; }
@@ -4088,7 +4212,7 @@
     if (['dashboard', 'carte', 'ardoises', 'ardoise', 'objectifs', 'marges', 'donnees'].indexOf(ecran) < 0) return;
     montrer(ecran);
     var mV = h.match(/vue=([a-z]+)/);
-    if (mV && ['standard', 'formules', 'vins', 'glaces', 'bieres'].indexOf(mV[1]) >= 0) {
+    if (mV && ['standard', 'formules', 'vins', 'glaces', 'bieres', 'boissons', 'moment'].indexOf(mV[1]) >= 0) {
       CARTE_VIEW = mV[1];
       $$('.cv').forEach(function (b) {
         var on = b.dataset.cv === CARTE_VIEW;

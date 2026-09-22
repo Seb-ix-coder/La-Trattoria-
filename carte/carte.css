@@ -269,6 +269,8 @@ table .type-mini{display:inline}
 .badge-sync .point{width:9px;height:9px;border-radius:50%;background:var(--trait)}
 .badge-sync.on{color:var(--vert-f);border-color:#bfd8ab}
 .badge-sync.on .point{background:var(--vert)}
+.badge-sync.attente{color:var(--or);border-color:#ddc787}
+.badge-sync.attente .point{background:#c89f2e}
 
 /* ---------------- écran cartes du jour ---------------- */
 .ardoise-intro{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
