@@ -1,3 +1,8 @@
+> **Archive historique — non approuvée pour livraison.** Les APK et les
+> identités de signature décrits ici sont historiques ; considérer
+> les anciennes clés comme compromises et consulter
+> `build/KEYSTORE_ROTATION.md` avant toute nouvelle diffusion.
+
 ## ✏️ « Éditer les cartes » dès l'écran d'accueil de l'application — `trato-12.0-stable.apk` (versionCode 25)
 
 Retour pris en compte : inutile de chercher un menu — le point d'entrée

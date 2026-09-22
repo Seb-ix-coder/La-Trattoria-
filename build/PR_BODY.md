@@ -1,4 +1,9 @@
-## Résumé
+> **Document historique — ne pas utiliser comme description d'une release.**
+> Les clés et APK décrits ci-dessous sont révoqués/non approuvés après audit.
+> La livraison actuelle doit utiliser `build/KEYSTORE_ROTATION.md` et le
+> candidat `trato-13.0-stable.apk`, à reconstruire avec la clé client.
+
+## Résumé historique
 
 Unification de toutes les branches/tags du projet et livraison d'une **nouvelle version stable de l'application, compilée proprement** — avec le **correctif du crash silencieux au lancement** signalé sur tablette (« s'installe, s'ouvre, ne produit rien »).
 

@@ -1,3 +1,8 @@
+> **Archive historique — non approuvée pour livraison.** Les APK et les
+> identités de signature décrits ici sont historiques ; considérer
+> les anciennes clés comme compromises et consulter
+> `build/KEYSTORE_ROTATION.md` avant toute nouvelle diffusion.
+
 ## ✏️ L'onglet « La carte » = miroir étendu de l'onglet natif « Cartes » — `trato-12.4-stable.apk` (versionCode 29)
 
 **Corriger aussi : les prix produits affichaient « 0,00 € »** dans l'éditeur

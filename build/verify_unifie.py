@@ -30,8 +30,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 
-def check_manifest(apk_path: str, version_name: str = '11.3',
-                   version_code: str = '18') -> None:
+def check_manifest(apk_path: str, version_name: str = None,
+                   version_code: str = None) -> None:
+    # Valeurs historiques conservées en l'absence de variables ; les sorties
+    # récentes peuvent être vérifiées avec VERIFY_VERSION_*.
+    version_name = version_name or os.environ.get('VERIFY_VERSION_NAME', '11.3')
+    version_code = version_code or os.environ.get('VERIFY_VERSION_CODE', '18')
     from androguard.core.apk import APK
     a = APK(apk_path)
     assert a.get_package() == 'com.trattoria.commande', 'package'
@@ -88,6 +92,15 @@ def check_site_js(apk_path: str) -> None:
     assert 'data:image/png;base64,' in module, 'icônes non embarquées'
     assert '<style>' in module, 'CSS non inclus'
     assert '<link rel="stylesheet"' not in module, 'CSS externe restant'
+    assert 'window.TRATTORIA_PRINT_CARDS=' in module, \
+        'cartes imprimables non embarquées'
+    for nom in (
+            '01-carte-principale.html', '02-carte-pizzas.html',
+            '03-glaces-langelys.html', '04-bieres-du-moment.html',
+            '05-carte-salades.html', '06-carte-formules.html',
+            '07-carte-restaurant-economique.html', '08-carte-boissons.html',
+            'cartes-contact-a4.html'):
+        assert nom in module, 'fiche imprimable absente : %s' % nom
     print('[ok] site.js : build 11.2 conservé + module social + '
           'addon carte (bundle %d Ko)' % (len(js) // 1024))
 
@@ -142,8 +155,8 @@ def main() -> None:
         print(__doc__)
         sys.exit(1)
     out, orig = sys.argv[1], sys.argv[2]
-    version_name = sys.argv[3] if len(sys.argv) == 5 else '11.3'
-    version_code = sys.argv[4] if len(sys.argv) == 5 else '18'
+    version_name = sys.argv[3] if len(sys.argv) == 5 else os.environ.get('VERIFY_VERSION_NAME', '11.3')
+    version_code = sys.argv[4] if len(sys.argv) == 5 else os.environ.get('VERIFY_VERSION_CODE', '18')
     check_manifest(out, version_name, version_code)
     check_dex_unchanged(out, orig)
     check_site_js(out)

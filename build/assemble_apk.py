@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 assemble_apk.py — assemble et signe l'application native « Édition des cartes »
-Utilise l'outillage maison (sign_v1/sign_v2, keystore figé) + alignement ZIP.
+Utilise l'outillage maison (sign_v1/sign_v2) et un keystore fourni hors dépôt
+via `KEYSTORE_PATH` et `KEYSTORE_PASSWORD`, avec alignement ZIP.
 """
 import os
 import struct
@@ -15,7 +16,8 @@ sys.path.insert(0, HERE)
 
 DOSSIER = os.path.join(HERE, 'app-src')
 SORTIE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..', 'trato-gestion-1.3.apk')
-KEYSTORE = os.path.join(HERE, 'keystore', 'trattoria-release.p12')
+KEYSTORE = os.environ.get('KEYSTORE_PATH', '')
+MOT_DE_PASSE = os.environ.get('KEYSTORE_PASSWORD', '')
 
 
 def reconstruire(source, sortie):
@@ -124,9 +126,11 @@ def main():
     # signature v1 (inline, préserve le ZIP aligné) + v2 (bloc inséré)
     import sign_v1
     import sign_v2
-    mot_de_passe = open(os.path.join(HERE, 'keystore', 'MOT_DE_PASSE.txt'),
-                        encoding='utf-8').read().split('Mot de passe : ')[1].splitlines()[0].strip()
-    key, cert_der = sign_v1.load_key_cert(KEYSTORE, mot_de_passe)
+    if not KEYSTORE or not os.path.isfile(KEYSTORE) or not MOT_DE_PASSE:
+        raise SystemExit(
+            'Signature impossible : définir KEYSTORE_PATH et KEYSTORE_PASSWORD '
+            'dans l\'environnement (secrets hors dépôt).')
+    key, cert_der = sign_v1.load_key_cert(KEYSTORE, MOT_DE_PASSE)
     zin = zipfile.ZipFile(interm)
     entrees = [(i.filename, zin.read(i.filename)) for i in zin.infolist()
                if i.filename not in ('META-INF/MANIFEST.MF', 'META-INF/CERT.SF', 'META-INF/CERT.RSA')]
@@ -139,7 +143,7 @@ def main():
         ('META-INF/CERT.SF', sf),
         ('META-INF/CERT.RSA', rsa),
     ])
-    sign_v2.sign(SORTIE, KEYSTORE, mot_de_passe, SORTIE)
+    sign_v2.sign(SORTIE, KEYSTORE, MOT_DE_PASSE, SORTIE)
     print('[ok] signatures v1+v2 appliquées')
     print('[ok] APK final : %s' % SORTIE)
 
