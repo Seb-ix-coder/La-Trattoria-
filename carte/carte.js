@@ -3587,13 +3587,15 @@
 
   function majInfoDonnees() {
     var infos = $('#info-donnees');
-    if (!infos) return;
     var photos = CARTE.filter(function (p) { return p.photo; }).length;
     var syncInfo = !SYNC.actif ? (SYNC.dirty ? 'mode autonome · modification à publier' : 'mode autonome') :
       (SYNC.dirty ? 'modification locale à publier' :
         (SYNC.derniereErreur ? 'dernière publication en échec' : 'synchronisé (v' + SYNC.version + ')'));
-    infos.textContent = CARTE.length + ' produits · ' + photos + ' photographiés · ' +
-      'enregistré sur cet appareil · ' + syncInfo;
+    var resume = CARTE.length + ' produits · ' + photos + ' photographiés · ' + syncInfo;
+    if (infos) infos.textContent = resume;
+    var etatAdmin = $('#admin-etat-label');
+    if (etatAdmin) etatAdmin.textContent = SYNC.dirty ? 'Modification locale à publier' :
+      (SYNC.actif ? 'Données synchronisées' : 'Données locales disponibles');
   }
 
   // ==========================================================
@@ -3812,6 +3814,13 @@
   // ==========================================================
   function montrer(ecran) {
     ECRAN = ecran;
+    var libellesEcran = {
+      dashboard: 'Accueil admin', carte: 'La carte', ardoises: 'Cartes du jour',
+      ardoise: 'Ardoise & QR', objectifs: 'Objectifs', marges: 'Marges & prix',
+      donnees: 'Données & publication'
+    };
+    var contexte = $('#admin-ecran-label');
+    if (contexte) contexte.textContent = libellesEcran[ecran] || 'Administration';
     ['dashboard', 'carte', 'ardoises', 'ardoise', 'objectifs', 'marges', 'donnees'].forEach(function (nom) {
       var section = $('#ecran-' + nom);
       if (section) section.hidden = nom !== ecran;
@@ -3877,6 +3886,28 @@
       var t = e.target;
 
       if (t.closest('#btn-enregistrer-livraison')) { livraisonSauver(); return; }
+
+      var actionAdmin = t.closest('[data-action-admin]');
+      if (actionAdmin) {
+        var nomAction = actionAdmin.dataset.actionAdmin;
+        if (nomAction === 'nouveau-produit') {
+          montrer('carte');
+          ouvrirFiche(null);
+          return;
+        }
+        if (nomAction === 'publier') {
+          montrer('donnees');
+          if (!SYNC.actif) {
+            toast('Aucun serveur disponible — vos données restent enregistrées ici.');
+            return;
+          }
+          if (!SYNC_TOKEN && !demanderToken()) return;
+          SYNC.dirty = true;
+          planifierEnvoi(true);
+          toast('Publication en cours…');
+          return;
+        }
+      }
 
       var onglet = t.closest('.onglet');
       if (onglet) { montrer(onglet.dataset.ecran); return; }
@@ -4187,6 +4218,22 @@
     });
 
     document.addEventListener('keydown', function (e) {
+      var tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : '';
+      var saisie = tag === 'input' || tag === 'textarea' || tag === 'select' ||
+        (e.target && e.target.isContentEditable);
+      if (e.key === '/' && !saisie && ECRAN === 'carte' && $('#fiche').hidden) {
+        var recherche = $('#recherche');
+        if (recherche && !recherche.hidden) {
+          e.preventDefault();
+          recherche.focus();
+          return;
+        }
+      }
+      if ((e.key === 'n' || e.key === 'N') && !saisie && ECRAN === 'carte' && $('#fiche').hidden) {
+        e.preventDefault();
+        ouvrirFiche(null);
+        return;
+      }
       if (e.key !== 'Escape') return;
       if (document.getElementById('ardoise-overlay')) { fermerArdoise(); return; }
       if (!$('#fiche').hidden) fermerFiche();

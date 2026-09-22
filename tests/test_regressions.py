@@ -168,6 +168,16 @@ class SourceRegressionTests(unittest.TestCase):
         self.assertIn("LinearLayout grille = colonne();", source)
         self.assertIn("indiceTuile % 2", source)
 
+    def test_admin_interface_has_quick_actions_and_keyboard_help(self):
+        html = (self.ROOT / "carte/index.html").read_text()
+        source = (self.ROOT / "carte/carte.js").read_text()
+        self.assertIn('id="admin-ecran-label"', html)
+        self.assertIn('data-action-admin="nouveau-produit"', html)
+        self.assertIn('data-action-admin="publier"', html)
+        self.assertIn('raccourcis', html)
+        self.assertIn("e.key === '/'", source)
+        self.assertIn("e.key === 'n'", source)
+
     def test_delivery_client_reads_published_server_tariffs_with_fallback(self):
         source = (self.ROOT / "build/livraison_commande.js").read_text()
         self.assertIn("function chargerTarifsPublies()", source)

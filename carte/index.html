@@ -29,6 +29,10 @@
         <span class="s">Gestion de la carte</span>
       </span>
     </div>
+    <div class="admin-context" aria-live="polite">
+      <strong id="admin-ecran-label">Accueil admin</strong>
+      <span id="admin-etat-label">Données locales disponibles</span>
+    </div>
     <button type="button" class="badge-sync" id="badge-sync" title="Synchronisation entre tablettes">
       <span class="point"></span>Mode autonome</button>
     <button type="button" class="btn btn-p" id="btn-nouveau">+ Ajouter</button>
@@ -73,6 +77,16 @@
           </div>
         </section>
 
+        <section class="admin-panel actions-rapides" aria-labelledby="titre-actions-rapides">
+          <div class="panel-heading"><div><p class="eyebrow">POUR ALLER VITE</p><h2 id="titre-actions-rapides">Actions fréquentes</h2></div><span class="panel-hint">Les tâches du quotidien, au même endroit</span></div>
+          <div class="quick-actions">
+            <button type="button" class="quick-action primary" data-action-admin="nouveau-produit"><span aria-hidden="true">＋</span><span><strong>Ajouter un produit</strong><small>Créer une fiche dans la carte</small></span></button>
+            <button type="button" class="quick-action" data-nav-ecran="ardoises"><span aria-hidden="true">🗓️</span><span><strong>Préparer le service</strong><small>Composer les cartes du jour</small></span></button>
+            <a class="quick-action" href="public.html" target="_blank" rel="noopener"><span aria-hidden="true">↗</span><span><strong>Voir la carte publique</strong><small>Vérifier ce que voient les clients</small></span></a>
+            <button type="button" class="quick-action" data-action-admin="publier"><span aria-hidden="true">☁</span><span><strong>Publier les modifications</strong><small>Mettre à jour les autres tablettes</small></span></button>
+          </div>
+        </section>
+
         <section class="admin-panel objectifs-panel" aria-labelledby="titre-objectifs-dashboard">
           <div class="panel-heading"><div><p class="eyebrow">SUIVI DYNAMIQUE</p><h2 id="titre-objectifs-dashboard">Objectifs du service</h2></div><button type="button" class="btn btn-p btn-mini" id="btn-ajouter-objectif">+ Nouvel objectif</button></div>
           <p class="panel-intro">Les indicateurs se recalculent dès qu'une vente ou une modification de carte est disponible. Vous pouvez ajouter autant d'objectifs que nécessaire.</p>
@@ -92,10 +106,11 @@
   </section>
 
   <!-- ================= écran : la carte ================= -->
-  <section id="ecran-carte" hidden>
-    <p class="carte-entete">✏️ <b>Éditer &amp; produire les cartes</b> — la carte
-      standard (titres, sous-titres, lignes), les formules, les vins, les glaces,
-      les bières, les ardoises du jour · impression A4</p>
+  <section id="ecran-carte" hidden aria-labelledby="titre-carte">
+    <div class="screen-head">
+      <div><p class="eyebrow">CATALOGUE</p><h2 id="titre-carte">La carte</h2><p class="aide">Modifiez chaque produit, rubrique et prix. Les changements alimentent l'aperçu, l'impression A4 et la page publique.</p></div>
+      <button type="button" class="btn btn-p" data-action-admin="nouveau-produit">+ Ajouter un produit</button>
+    </div>
 
     <section class="carte-bloc impression-restaurant" aria-labelledby="titre-impressions-restaurant">
       <h2 id="titre-impressions-restaurant">🖨️ Imprimer les cartes du restaurant</h2>
@@ -137,8 +152,11 @@
         <div class="standard-admin-actions"><button type="button" class="btn btn-s btn-mini" data-standard-formules="1">Éditer les formules</button><button type="button" class="btn btn-p btn-mini" data-standard-preview="1">Aperçu A4 en deux colonnes</button></div>
       </div>
       <div id="standard-structure" aria-label="Rubriques éditables de la carte standard"></div>
-      <input type="search" id="recherche" placeholder="Rechercher un produit…"
-             aria-label="Rechercher un produit">
+      <div class="recherche-ligne">
+        <input type="search" id="recherche" placeholder="Rechercher un produit…"
+               aria-label="Rechercher un produit">
+        <span class="raccourcis" aria-label="Raccourcis clavier">/ rechercher · N ajouter</span>
+      </div>
       <div class="filtres" role="group" aria-label="Filtrer par type">
         <button type="button" class="filtre actif" data-type="tout" aria-pressed="true">Tout</button>
         <button type="button" class="filtre" data-type="formule" aria-pressed="false">Formules</button>
@@ -152,20 +170,27 @@
   </section>
 
   <!-- ================= écran : cartes du jour ================= -->
-  <section id="ecran-ardoises" hidden>
+  <section id="ecran-ardoises" hidden aria-labelledby="titre-ardoises">
+    <div class="screen-head">
+      <div><p class="eyebrow">SERVICE</p><h2 id="titre-ardoises">Cartes du jour</h2><p class="aide">Préparez les sélections du service, puis imprimez-les ou publiez-les sur le site.</p></div>
+      <button type="button" class="btn btn-p" id="btn-imprimer-tout">🖨 Imprimer les trois cartes</button>
+    </div>
     <div class="ardoise-intro carte-bloc">
-      <h2>Les cartes du jour</h2>
+      <h2>Composer les sélections</h2>
       <p class="aide">Composez les ardoises du service — bières du jour, plats du jour,
         carte des desserts — automatiquement depuis les produits disponibles de
         l'inventaire, ou manuellement avec le catalogue et des lignes libres, puis
         imprimez-les ou affichez-les. Vides, elles ne sont ni affichées ni imprimées.</p>
-      <button type="button" class="btn btn-p" id="btn-imprimer-tout">🖨 Imprimer les trois cartes</button>
     </div>
     <div id="ardoises"></div>
   </section>
 
   <!-- ================= écran : ardoise (carte principale) & QR ================= -->
-  <section id="ecran-ardoise" hidden>
+  <section id="ecran-ardoise" hidden aria-labelledby="titre-ardoise">
+    <div class="screen-head">
+      <div><p class="eyebrow">PUBLICATION</p><h2 id="titre-ardoise">Ardoise &amp; QR</h2><p class="aide">Gérez les cartes dédiées, les titres visibles par les clients et l'adresse du QR code.</p></div>
+      <button type="button" class="btn btn-p" id="btn-ouvrir-ardoise">🧾 Ouvrir l'ardoise</button>
+    </div>
     <div class="ardoise-intro carte-bloc">
       <h2>L'ardoise — la carte principale</h2>
       <p class="aide">Éditez le titre et le sous-titre de chaque catégorie,
@@ -175,7 +200,6 @@
         imprimez l'ardoise. Elle est publiée sur la page clients
         (apercu-carte.html, serveur de carte) et embarquée dans l'application.</p>
       <div class="rangee-boutons">
-        <button type="button" class="btn btn-p" id="btn-ouvrir-ardoise">🧾 Ouvrir l'ardoise</button>
         <button type="button" class="btn btn-s" id="btn-imprimer-ardoise">🖨 Imprimer / PDF</button>
         <button type="button" class="btn btn-s" id="btn-reinit-cf">🧹 Titres par défaut</button>
       </div>
@@ -214,7 +238,11 @@
   </section>
 
   <!-- ================= écran : marges ================= -->
-  <section id="ecran-marges" hidden>
+  <section id="ecran-marges" hidden aria-labelledby="titre-marges">
+    <div class="screen-head">
+      <div><p class="eyebrow">PILOTAGE</p><h2 id="titre-marges">Marges &amp; prix</h2><p class="aide">Repérez rapidement les produits à ajuster. Cliquez sur une ligne pour ouvrir sa fiche complète.</p></div>
+      <button type="button" class="btn btn-s" data-action-admin="nouveau-produit">+ Ajouter un produit</button>
+    </div>
     <div id="kpis" class="kpis"></div>
     <div class="carte-bloc">
       <h2>Marge par produit</h2>
@@ -248,7 +276,11 @@
   </section>
 
   <!-- ================= écran : données ================= -->
-  <section id="ecran-donnees" hidden>
+  <section id="ecran-donnees" hidden aria-labelledby="titre-donnees">
+    <div class="screen-head">
+      <div><p class="eyebrow">SÉCURITÉ &amp; PARTAGE</p><h2 id="titre-donnees">Données &amp; publication</h2><p class="aide">Sauvegardez, synchronisez et contrôlez ce qui est publié sur les tablettes et le site public.</p></div>
+      <button type="button" class="btn btn-p" data-action-admin="publier">☁ Publier maintenant</button>
+    </div>
     <div class="carte-bloc">
       <h2>Sauvegarde et échange</h2>
       <p class="aide">La carte est conservée sur cet appareil. Exportez-la pour la
