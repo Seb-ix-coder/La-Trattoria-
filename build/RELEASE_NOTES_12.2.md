@@ -1,3 +1,8 @@
+> **Archive historique — non approuvée pour livraison.** Les APK et les
+> identités de signature décrits ici sont historiques ; considérer
+> les anciennes clés comme compromises et consulter
+> `build/KEYSTORE_ROTATION.md` avant toute nouvelle diffusion.
+
 ## ⚖️ Mentions légales, CGV et données personnelles officielles — `trato-12.2-stable.apk` (versionCode 27)
 
 Intégration des **informations légales officielles** du restaurant sur le

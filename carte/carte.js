@@ -16,8 +16,12 @@
   var COEF_CIBLE_ALCOOL = 3.8;
   var SEUIL_COEFF = 0.8;          // alerte sous 80 % de l'objectif…
   var SEUIL_MARGE = 5;            // …et marge inférieure à 5 € (vueAdmin de l'APK)
-  var CLE_STOCK = 'trattoria_carte_v1';
-  var CLE_ARDOISES = 'trattoria_ardoises_v1';
+  // Clés publiques partagées avec public.html/apercu-carte.html. Les clés
+  // historiques sont relues une fois pour ne perdre aucune tablette existante.
+  var CLE_STOCK = 'trattoria.carte.v1';
+  var CLE_STOCK_LEGACY = 'trattoria_carte_v1';
+  var CLE_ARDOISES = 'trattoria.ardoises.v1';
+  var CLE_ARDOISES_LEGACY = 'trattoria_ardoises_v1';
   var EMPOTER_MIN = 1e-9;
 
   // Les 14 allergènes à déclaration obligatoire (règlement UE 1169/2011).
@@ -45,12 +49,35 @@
   var ARDOISES = null;
   var ECRAN = 'carte';
   var FILTRE_TYPE = 'tout';
+  var FILTRE_FAMILLE = '';
+  var FILTRE_ETAT = 'actifs';
   var RECHERCHE = '';
   var TRI = { cle: 'fam', sens: 1 };
   var EN_EDITION = null;      // id du produit en cours d'édition, null = création
   var PHOTO_BROUILLON = null; // data-URL en cours dans la fiche (null = aucune)
   var CUEILLETTE = null;      // {cle, choisis:[ids]} pendant la composition d'une carte
-  var SYNC = { actif: false, version: 0, minuteur: null };
+  var SYNC = {
+    actif: false, authentifie: false, version: 0, minuteur: null, polling: null,
+    base: '', dirty: false, dernierePublication: null, derniereErreur: ''
+  };
+  var CLE_SYNC_TOKEN = 'trattoria.sync_token.v1';
+  var CLE_SYNC_BASE = 'trattoria.sync_base.v1';
+  var SYNC_TOKEN = localStorage.getItem(CLE_SYNC_TOKEN) || '';
+  var SYNC_BASE = normaliserBaseServeur(localStorage.getItem(CLE_SYNC_BASE) || '');
+  SYNC.base = SYNC_BASE;
+  var CLE_HIBOUTIK = 'trattoria.hiboutik_catalogue.v1';
+  var CLE_LIVRAISON = 'trattoria.delivery.v1';
+  var LIVRAISON = { sur_place: 0, uber: 4.5, livraison_urbaine: 3.0 };
+  var HIBOUTIK = { configure: false, creation: false, produits: [], maj: null, chargement: false };
+
+  // Objectifs de pilotage : extensibles, persistants et alimentés par les
+  // ventes/catalogue disponibles. Cette couche reste indépendante du DEX :
+  // elle se synchronise avec l'API locale quand celle-ci est joignable et
+  // conserve toujours un repli local hors réseau.
+  var CLE_OBJECTIFS = 'trattoria.objectifs.v1';
+  var OBJECTIFS = [];
+  var OBJECTIF_VENTES = [];
+  var OBJECTIF_EDIT = null;
 
   // Ardoise (carte principale) : titres/sous-titres de catégories,
   // lignes libres, ordre, en-tête (badges, pâte 48 h), QR du site.
@@ -59,7 +86,7 @@
   var PHOTO_ARDOISE_BROUILLON = null; // data-URL « photo d'ardoise » de la fiche
   var LIGNE_A_EDITER = null;  // id de ligne libre à éditer après le prochain rendu
   var CPT_CRAIE = 0;          // alternance des couleurs de craie
-  var CARTE_VIEW = 'standard'; // vue de l'onglet « La carte » : standard | formules | vins | glaces | bieres
+  var CARTE_VIEW = 'standard'; // vue de l'onglet « La carte » : standard | formules | vins | glaces | bieres | boissons
   var LF_A_EDITER = null;     // {fam, id} : ligne libre (catégorie) à éditer après rendu
 
   // ==========================================================
@@ -92,6 +119,120 @@
       return new Date().toLocaleDateString('fr-FR',
         { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     } catch (e) { return ''; }
+  }
+
+  // URL unique du serveur de carte : tous les appels et les liens publics
+  // passent par cette fonction pour éviter les erreurs de chemin relatif.
+  function normaliserBaseServeur(value) {
+    if (window.TrattoriaApi) return window.TrattoriaApi.normaliser(value);
+    var raw = String(value || '').trim();
+    if (!raw) return '';
+    if (!/^https?:\/\//i.test(raw)) return '';
+    return raw.replace(/\/+$/, '');
+  }
+  function baseServeurEffective() {
+    return SYNC_BASE || (location.protocol === 'http:' || location.protocol === 'https:' ? location.origin : '');
+  }
+  function apiUrl(route) {
+    if (window.TrattoriaApi) return window.TrattoriaApi.url(route, SYNC_BASE);
+    var base = baseServeurEffective();
+    if (!base) return '';
+    return base + '/api/' + String(route || '').replace(/^\/+/, '');
+  }
+  function lienServeur(route) {
+    var base = baseServeurEffective();
+    return base ? base + '/' + String(route || '').replace(/^\/+/, '') : '';
+  }
+  function afficherLiensServeur() {
+    var champ = $('#champ-sync-base');
+    if (champ) champ.value = SYNC_BASE || baseServeurEffective();
+    var info = $('#info-sync-serveur');
+    var base = baseServeurEffective();
+    if (info) info.textContent = base ? 'Serveur utilisé : ' + base : 'Aucun serveur configuré — mode autonome.';
+    var publicLink = $('#lien-public-serveur');
+    var siteLocalLink = $('#lien-site-local');
+    var siteLocalUrl = $('#url-site-local');
+    var publicDescriptionLink = $('#lien-public-description');
+    var apiLink = $('#lien-api-serveur');
+    var previewLink = $('#lien-apercu-serveur');
+    var printLink = $('#lien-impression-serveur');
+    if (publicLink && base) { publicLink.href = lienServeur('public.html'); publicLink.hidden = false; }
+    if (siteLocalLink && base) siteLocalLink.href = lienServeur('public.html');
+    if (siteLocalUrl && base) siteLocalUrl.textContent = lienServeur('public.html');
+    if (publicDescriptionLink && base) publicDescriptionLink.href = lienServeur('public.html');
+    if (apiLink && base) { apiLink.href = apiUrl('etat'); apiLink.hidden = false; }
+    if (previewLink && base) { previewLink.href = lienServeur('apercu-carte.html'); previewLink.hidden = false; }
+    if (printLink && base) { printLink.href = lienServeur('impression/preview-modifiable.html'); printLink.hidden = false; }
+  }
+  function actualiserLiensServeur() {
+    if (!syncDispo()) return;
+    fetch(apiUrl('liens'), { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('liens');
+      return r.json();
+    }).then(function (liens) {
+      var publicLink = $('#lien-public-serveur');
+      var siteLocalLink = $('#lien-site-local');
+      var siteLocalUrl = $('#url-site-local');
+      var publicDescriptionLink = $('#lien-public-description');
+      var apiLink = $('#lien-api-serveur');
+      var previewLink = $('#lien-apercu-serveur');
+      var printLink = $('#lien-impression-serveur');
+      if (publicLink && liens.public) publicLink.href = liens.public;
+      if (siteLocalLink && liens.public) siteLocalLink.href = liens.public;
+      if (siteLocalUrl && liens.public) siteLocalUrl.textContent = liens.public;
+      if (publicDescriptionLink && liens.public) publicDescriptionLink.href = liens.public;
+      if (apiLink && liens.api) { apiLink.href = liens.api; apiLink.hidden = false; }
+      if (previewLink && liens.apercu) { previewLink.href = liens.apercu; previewLink.hidden = false; }
+      if (printLink && liens.impression) { printLink.href = liens.impression; printLink.hidden = false; }
+      var info = $('#info-sync-serveur');
+      if (info && liens.base) info.textContent = 'Serveur connecté : ' + liens.base;
+    }).catch(function () { /* le test principal affiche l'état hors ligne */ });
+  }
+
+  function configurerServeur(value) {
+    SYNC_BASE = normaliserBaseServeur(value);
+    SYNC.base = SYNC_BASE;
+    if (window.TrattoriaApi) window.TrattoriaApi.setBase(SYNC_BASE);
+    else if (SYNC_BASE) localStorage.setItem(CLE_SYNC_BASE, SYNC_BASE);
+    else localStorage.removeItem(CLE_SYNC_BASE);
+    SYNC.actif = false;
+    if (SYNC.polling) { clearInterval(SYNC.polling); SYNC.polling = null; }
+    afficherLiensServeur();
+    badgeSync();
+    syncDetecter();
+  }
+
+  function livraisonCharger() {
+    var src = null;
+    try { src = JSON.parse(localStorage.getItem(CLE_LIVRAISON) || 'null'); } catch (e) { }
+    if (!src || typeof src !== 'object') return;
+    ['sur_place', 'uber', 'livraison_urbaine'].forEach(function (id) {
+      var n = Number(src[id]);
+      if (isFinite(n) && n >= 0 && n <= 100) LIVRAISON[id] = Math.round(n * 100) / 100;
+    });
+  }
+
+  function livraisonAfficher() {
+    var ids = { sur_place: 'tarif-sur-place', uber: 'tarif-uber', livraison_urbaine: 'tarif-livraison-urbaine' };
+    Object.keys(ids).forEach(function (id) {
+      var input = $('#' + ids[id]);
+      if (input) input.value = LIVRAISON[id].toFixed(2);
+    });
+  }
+
+  function livraisonSauver() {
+    var ids = { sur_place: 'tarif-sur-place', uber: 'tarif-uber', livraison_urbaine: 'tarif-livraison-urbaine' };
+    Object.keys(ids).forEach(function (id) {
+      var input = $('#' + ids[id]);
+      var n = input ? Number(String(input.value).replace(',', '.')) : LIVRAISON[id];
+      if (!isFinite(n) || n < 0) n = 0;
+      LIVRAISON[id] = Math.round(Math.min(100, n) * 100) / 100;
+    });
+    try { localStorage.setItem(CLE_LIVRAISON, JSON.stringify(LIVRAISON)); } catch (e) { }
+    sauver();
+    var info = $('#info-livraison');
+    if (info) info.textContent = 'Tarifs enregistrés sur cette tablette.';
+    toast('Tarifs de livraison enregistrés');
   }
 
   var minuteurToast;
@@ -149,6 +290,11 @@
       localStorage.setItem(CLE_STOCK, JSON.stringify(CARTE));
       localStorage.setItem(CLE_ARDOISES, JSON.stringify(ARDOISES));
       if (CF) localStorage.setItem(CLE_CONFIG, JSON.stringify(CF));
+      localStorage.setItem(CLE_OBJECTIFS, JSON.stringify(OBJECTIFS));
+      localStorage.setItem(CLE_LIVRAISON, JSON.stringify(LIVRAISON));
+      // Une sauvegarde réussie devient une publication locale à envoyer.
+      SYNC.dirty = true;
+      SYNC.derniereErreur = '';
     } catch (e) {
       toast('Espace de stockage insuffisant — photo trop lourde ?');
     }
@@ -170,6 +316,13 @@
       tvaEmporter: (p.tvaEmporter != null && [0.2, 0.1, 0.055].indexOf(Number(p.tvaEmporter)) >= 0)
         ? Number(p.tvaEmporter) : null,
       actif: p.actif !== false,
+      suiviStock: p.suiviStock === true || p.suiviStock === 1 || p.suiviStock === '1',
+      stock: Math.max(0, Number(p.stock) || 0),
+      stockMini: Math.max(0, Number(p.stockMini) || 0),
+      hiboutikId: p.hiboutikId != null ? String(p.hiboutikId).slice(0, 80) : '',
+      hiboutikBarcode: typeof p.hiboutikBarcode === 'string' ? p.hiboutikBarcode.slice(0, 80) : '',
+      hiboutikStock: p.hiboutikStock != null && isFinite(Number(p.hiboutikStock))
+        ? Number(p.hiboutikStock) : null,
       allergenes: (Object.prototype.toString.call(p.allergenes) === '[object Array]')
         ? p.allergenes.filter(function (c) {
             return ALLERGENES.some(function (a) { return a[0] === c; });
@@ -253,11 +406,29 @@
     return null;
   }
 
+  function stockProduit(p) {
+    if (p.hiboutikStock != null) return Number(p.hiboutikStock);
+    return p.suiviStock ? Number(p.stock) || 0 : null;
+  }
+
+  function produitDisponible(p) {
+    var qte = stockProduit(p);
+    return qte == null || qte > 0;
+  }
+
+  function libelleStock(p) {
+    var qte = stockProduit(p);
+    if (qte == null) return 'stock non suivi';
+    return (qte > 0 ? 'disponible' : 'épuisé') + ' · ' + qte.toLocaleString('fr-FR') +
+      (p.hiboutikStock != null ? ' Hiboutik' : ' local');
+  }
+
   /** Sélection automatique proposée à la création d'une carte du jour. */
   function semencesPour(cle) {
     var ids = [];
     CARTE.forEach(function (p) {
-      if (!p.actif) return;
+      if (!p.actif || !produitDisponible(p)) return;
+      if (cle === 'plats' && (p.type === 'plat' || p.type === 'formule')) ids.push(p.id);
       if (cle === 'bieres' && p.type === 'boisson' && norm(p.cat).indexOf('biere') >= 0) ids.push(p.id);
       if (cle === 'desserts' && norm(p.fam).indexOf('dessert') >= 0) ids.push(p.id);
     });
@@ -336,6 +507,7 @@
         sous: def.sous || '',
         ordre: CARTE.filter(function (p) { return String(p.fam) === f; })
           .map(function (p) { return p.id; }),
+        exclus: [],
         libres: []
       };
     });
@@ -377,10 +549,12 @@
       var src = (c.fams && c.fams[f]) || def.fams[f] || {};
       var presents = CARTE.filter(function (p) { return String(p.fam) === f; })
         .map(function (p) { return p.id; });
+      var exclus = (Object.prototype.toString.call(src.exclus) === '[object Array]')
+        ? src.exclus.map(String).filter(function (id) { return presents.indexOf(id) >= 0; }) : [];
       var ordre = (Object.prototype.toString.call(src.ordre) === '[object Array]')
-        ? src.ordre.filter(function (id) { return presents.indexOf(id) >= 0; })
+        ? src.ordre.filter(function (id) { return presents.indexOf(id) >= 0 && exclus.indexOf(id) < 0; })
         : [];
-      presents.forEach(function (id) { if (ordre.indexOf(id) < 0) ordre.push(id); });
+      presents.forEach(function (id) { if (exclus.indexOf(id) < 0 && ordre.indexOf(id) < 0) ordre.push(id); });
       var libres = (Object.prototype.toString.call(src.libres) === '[object Array]')
         ? src.libres.slice(0, 30).map(function (l, i) {
             if (!l || typeof l !== 'object') return null;
@@ -391,7 +565,8 @@
               nom: nom,
               sous: String(l.sous || '').trim().slice(0, 90),
               desc: String(l.desc || '').trim().slice(0, 200),
-              prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0)
+              prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0),
+              allergenes: allergenesLibres(l.allergenes || l.alg)
             };
           }).filter(Boolean)
         : [];
@@ -399,6 +574,7 @@
         titre: String(src.titre || '').trim().slice(0, 60) || (def.fams[f] ? def.fams[f].titre : f),
         sous: String(src.sous || '').trim().slice(0, 120),
         ordre: ordre,
+        exclus: exclus,
         libres: libres
       };
     });
@@ -433,6 +609,27 @@
 
   function photoArdoiseDe(p) {
     return p ? (p.photoArdoise || p.photo || null) : null;
+  }
+
+  // Illustration déjà générée pour la famille de produit. Les photos
+  // choisies dans l'éditeur restent prioritaires ; sinon on réutilise les
+  // illustrations craie embarquées dans ardoise-assets.js. Ainsi un produit
+  // ajouté par l'administrateur apparaît immédiatement avec le visuel de sa
+  // famille, sans fabriquer ni substituer une image générique.
+  function illustrationProduit(p) {
+    var explicite = photoArdoiseDe(p);
+    if (explicite) return explicite;
+    var assets = (window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.moment) || {};
+    var texte = norm((p && p.type || '') + ' ' + (p && p.fam || '') + ' ' +
+      (p && p.cat || '') + ' ' + (p && p.nom || ''));
+    var cle = 'plats';
+    if (/glace|sorbet|angelys/.test(texte)) cle = 'glaces';
+    else if (/dessert|tiramisu|panna|cafe gourmand/.test(texte)) cle = 'desserts';
+    else if (/biere|peroni|moretti|pression/.test(texte)) cle = 'bieres';
+    else if (/vin|cave|prosecco|chianti|pinot|rose de provence/.test(texte)) cle = 'vins';
+    else if (/formule|menu/.test(texte)) cle = 'formules';
+    else if (/boisson|cocktail|aperitif|sans alcool|limonade|eau |coca|jus /.test(texte)) cle = 'boissons';
+    return assets[cle] || assets.plats || null;
   }
 
   // ---------- rendu HTML de l'ardoise (aperçu, impression, public) ----------
@@ -644,6 +841,7 @@
   function enregistrerTitreFamille(card) {
     var conf = confDeCarte(card);
     if (!conf) return;
+    var fam = card.getAttribute('data-fam') || 'Divers';
     conf.titre = String($('[data-cf-champ="titre"]', card).value || '').trim().slice(0, 60) || fam;
     conf.sous = String($('[data-cf-champ="sous"]', card).value || '').trim().slice(0, 120);
     sauver();
@@ -671,7 +869,7 @@
     if (conf.libres.length >= 30) { toast('Maximum 30 lignes libres par catégorie'); return; }
     var l = {
       id: 'l' + Date.now().toString(36),
-      nom: 'Nouvelle ligne', sous: '', desc: '', prix: 0
+      nom: 'Nouvelle ligne', sous: '', desc: '', prix: 0, allergenes: []
     };
     conf.libres.push(l);
     conf.ordre.push(l.id);
@@ -691,7 +889,8 @@
       '<div class="cf-libre-form">' +
         '<input type="text" data-cf-l="nom" maxlength="60" value="' + echap(l.nom) + '" placeholder="Nom (ex. : Menu enfant)">' +
         '<input type="text" data-cf-l="sous" maxlength="90" value="' + echap(l.sous) + '" placeholder="Sous-titre (facultatif)">' +
-        '<input type="text" data-cf-l="desc" maxlength="200" value="' + echap(l.desc) + '" placeholder="Descriptif (facultatif)">' +
+        '<input type="text" data-cf-l="desc" maxlength="200" value="' + echap(l.desc) + '" placeholder="Descriptif vendeur (facultatif)">' +
+        '<input type="text" data-cf-l="allergenes" maxlength="180" value="' + echap((l.allergenes || []).join(', ')) + '" placeholder="Allergènes : gluten, lactose…">' +
         '<input type="text" data-cf-l="prix" inputmode="decimal" value="' +
           (l.prix > 0 ? String(l.prix).replace('.', ',') : '') + '" placeholder="Prix €">' +
         '<button type="button" class="btn btn-p btn-mini" data-cf="libre-ok">OK</button>' +
@@ -710,6 +909,7 @@
     l.nom = nom.slice(0, 60);
     l.sous = String($('[data-cf-l="sous"]', li).value || '').trim().slice(0, 90);
     l.desc = String($('[data-cf-l="desc"]', li).value || '').trim().slice(0, 200);
+    l.allergenes = allergenesLibres($('[data-cf-l="allergenes"]', li).value || '');
     l.prix = Math.max(0, Math.round((parseFloat(String($('[data-cf-l="prix"]', li).value).replace(',', '.')) || 0) * 100) / 100);
     sauver();
     dessinerCF();
@@ -756,12 +956,25 @@
     return false;
   }
 
+  function memoriserVueCarte() {
+    if (!window.history || !window.history.replaceState || ECRAN !== 'carte') return;
+    var hash = '#ecran-carte&vue=' + encodeURIComponent(CARTE_VIEW);
+    if (location.hash !== hash) window.history.replaceState({ ecran: 'carte', vue: CARTE_VIEW }, '', hash);
+  }
+
   // Clics de l'onglet « La carte » : vues + édition en place.
   function clicCarteStandard(t) {
     if (ECRAN !== 'carte') return false;
     var saut = t.closest('[data-cv-saut]');
     if (saut) { montrer(saut.getAttribute('data-cv-saut')); return true; }
-    if (t.closest('[data-cv-imprimer]')) { ouvrirImpressionCarte(); return true; }
+    if (t.closest('[data-cv-imprimer]') || t.closest('[data-standard-preview]')) { ouvrirImpressionCarte(); return true; }
+    if (t.closest('[data-standard-formules]')) {
+      CARTE_VIEW = 'formules';
+      $$('.cv').forEach(function (b) { var on = b.dataset.cv === CARTE_VIEW; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+      memoriserVueCarte();
+      dessinerCarte();
+      return true;
+    }
     var cv = t.closest('.cv[data-cv]');
     if (cv) {
       CARTE_VIEW = cv.dataset.cv;
@@ -770,12 +983,20 @@
         b.classList.toggle('on', on);
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
+      memoriserVueCarte();
       dessinerCarte();
       return true;
     }
     var section = t.closest('.famille[data-fam]');
     if (!section) return false;
     var fam = section.dataset.fam;
+    // Ouvrir directement la fiche depuis chaque ligne de la carte générale.
+    // Ce traitement prioritaire évite toute dépendance à un autre écran.
+    var productEdit = t.closest('[data-editer]');
+    if (productEdit) {
+      ouvrirFiche(productEdit.getAttribute('data-editer'));
+      return true;
+    }
     var confF = CF && CF.fams[fam];
     if (!confF) return false;
     if (t.closest('[data-fam-edit]')) {
@@ -804,6 +1025,43 @@
       sauver(); dessinerCF(); dessinerCarte();
       return true;
     }
+    var reintegrer = t.closest('[data-standard-reintegrer]');
+    if (reintegrer) {
+      var reinSection = reintegrer.closest('.famille[data-fam]');
+      var reinConf = reinSection && CF.fams[reinSection.dataset.fam];
+      var reinSelect = reinSection && $('[data-standard-reintegrer-select]', reinSection);
+      var reinId = reinSelect && reinSelect.value;
+      if (reinConf && reinId) {
+        reinConf.exclus = (reinConf.exclus || []).filter(function (id) { return id !== reinId; });
+        if (reinConf.ordre.indexOf(reinId) < 0) reinConf.ordre.push(reinId);
+        sauver(); dessinerStandardStructure(); dessinerCarte();
+        toast('Ligne réintégrée dans la carte standard');
+      }
+      return true;
+    }
+    var removeStandard = t.closest('[data-standard-remove]');
+    if (removeStandard) {
+      var removeId = removeStandard.getAttribute('data-standard-remove');
+      if (confF.ordre.indexOf(removeId) >= 0) confF.ordre = confF.ordre.filter(function (id) { return id !== removeId; });
+      confF.exclus = confF.exclus || [];
+      if (confF.exclus.indexOf(removeId) < 0) confF.exclus.push(removeId);
+      sauver(); dessinerStandardStructure(); dessinerCarte();
+      toast('Ligne retirée de la carte standard');
+      return true;
+    }
+    var orderButton = t.closest('[data-standard-order]');
+    if (orderButton) {
+      var moveId = orderButton.getAttribute('data-standard-id');
+      var order = confF.ordre || [];
+      var pos = order.indexOf(moveId);
+      if (pos < 0) { order.push(moveId); pos = order.length - 1; }
+      var target = orderButton.getAttribute('data-standard-order') === 'up' ? pos - 1 : pos + 1;
+      if (target >= 0 && target < order.length) {
+        var tmp = order[pos]; order[pos] = order[target]; order[target] = tmp;
+        confF.ordre = order; sauver(); dessinerCarte();
+      }
+      return true;
+    }
     var lfEdit = t.closest('[data-lf-edit]');
     if (lfEdit) {
       LF_A_EDITER = { fam: fam, id: lfEdit.getAttribute('data-lf-edit') };
@@ -820,6 +1078,8 @@
         if (!nomOk) { toast('Le nom de la ligne est obligatoire'); return true; }
         lOk.nom = nomOk.slice(0, 60);
         lOk.sous = String($('[data-lf-champ="sous"]', section).value || '').trim().slice(0, 90);
+        lOk.desc = String($('[data-lf-champ="desc"]', section).value || '').trim().slice(0, 200);
+        lOk.allergenes = allergenesLibres($('[data-lf-champ="allergenes"]', section).value || '');
         lOk.prix = Math.max(0, Math.round(
           (parseFloat(String($('[data-lf-champ="prix"]', section).value).replace(',', '.')) || 0) * 100) / 100);
         LF_A_EDITER = null;
@@ -843,6 +1103,129 @@
     return false;
   }
 
+  // ---------- carte standard imprimable : sections éditées + compactes ----------
+  // La carte imprimée est toujours recalculée depuis le catalogue et CF :
+  // aucune fiche HTML statique ne peut donc écraser les prix ou les titres
+  // modifiés par l'administrateur.
+  var STANDARD_SECTIONS = [
+    { id: 'entrees', fam: 'Entrées', titre: 'À partager', texte: 'Focaccia, bruschettas et bouchées italiennes préparées maison.' },
+    { id: 'salades', fam: 'Salades', titre: 'Salades fraîches', texte: 'Des assiettes colorées, préparées minute avec les produits de saison.' },
+    { id: 'pizzas', fam: 'Pizzas', titre: 'Pizzas au feu de bois', texte: 'Pâte maison maturée 48 heures, garnitures choisies chaque matin.' },
+    { id: 'plats', fam: 'Pâtes', titre: 'Plats', texte: 'Pâtes fraîches, recettes généreuses et sauces mijotées chaque matin.' },
+    { id: 'desserts', fam: 'Desserts', titre: 'Desserts maison', texte: 'Tiramisus et douceurs italiennes préparés dans notre cuisine.' },
+    { id: 'glaces', fam: 'Desserts', titre: 'Glaces artisanales', texte: 'Une fin fraîche et gourmande, avec nos glaces et sorbets.' }
+  ];
+
+  function standardSectionItems(def) {
+    var items = itemsFamille(def.fam).filter(function (it) {
+      if (def.id === 'glaces' || def.id === 'desserts') {
+        if (it.kind !== 'p') return def.id === 'desserts';
+        var glace = norm((it.p.cat || '') + ' ' + (it.p.nom || '')).indexOf('glace') >= 0 ||
+          norm(it.p.cat || '').indexOf('sorbet') >= 0;
+        return def.id === 'glaces' ? glace : !glace;
+      }
+      return true;
+    });
+    // Les lignes libres de la carte des glaces sont également imprimables.
+    if (def.id === 'glaces' && CF && CF.extras && CF.extras.glaces) {
+      items = items.concat(itemsExtra('glaces').filter(function (it) { return it.kind === 'l'; }));
+    }
+    return items.filter(function (it) { return it.kind === 'l' || it.p.actif; });
+  }
+
+  function standardSections() {
+    var sections = [];
+    var famillesUtilisees = {};
+    // Les formules sont volontairement la première rubrique de la première
+    // page : elles sont une offre commerciale, pas une carte annexe oubliée.
+    if (CF && CF.extras && CF.extras.formules) {
+      var formules = itemsExtra('formules').filter(function (it) {
+        return it.kind === 'l' || it.p.actif;
+      });
+      sections.push({
+        id: 'formules',
+        titre: CF.extras.formules.titre || 'Nos formules',
+        sous: CF.extras.formules.sous || 'Menus et formules du moment',
+        items: formules
+      });
+    }
+    STANDARD_SECTIONS.forEach(function (def) {
+      var conf = CF && CF.fams[def.fam];
+      var items = standardSectionItems(def);
+      // Les catégories et sous-titres restent modifiables depuis
+      // « Ardoise & QR » ; ils sont repris ici dans la carte standard.
+      sections.push({
+        id: def.id,
+        titre: def.id === 'glaces' ? (CF.extras.glaces.titre || def.titre) :
+          (conf && conf.titre ? conf.titre : def.titre),
+        sous: def.id === 'glaces' ? (CF.extras.glaces.sous || def.texte) :
+          (conf && conf.sous ? conf.sous : def.texte),
+        items: items
+      });
+      famillesUtilisees[def.fam] = true;
+    });
+    // La carte standard reste volontairement courte et lisible : elle porte
+    // la cuisine et les formules. Les boissons, vins, bières et cafés ont
+    // leurs propres fiches imprimables et ne doivent pas écraser le menu.
+    // Les catégories vides ne sont jamais imprimées : une rubrique vide est
+    // un signal de configuration, pas une page à montrer au client.
+    return sections.filter(function (s) { return s.items.length > 0; });
+  }
+
+  function htmlAllergenes(liste) {
+    return (liste || []).map(function (id) {
+      for (var i = 0; i < ALLERGENES.length; i++) {
+        if (ALLERGENES[i][0] === id) return ALLERGENES[i][2];
+      }
+      return '';
+    }).join('');
+  }
+
+  function htmlStandardSection(section) {
+    var firstProduct = null;
+    section.items.some(function (it) {
+      if (it.kind === 'p') { firstProduct = it.p; return true; }
+      return false;
+    });
+    var illustration = illustrationProduit(firstProduct) ||
+      ((window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.moment &&
+        window.ARDOISE_ASSETS.moment[section.id === 'glaces' ? 'glaces' : section.id === 'plats' ? 'plats' : section.id]) || '');
+    var h = '<section class="a4-cat a4-cat-compact">' +
+      '<div class="a4-cat-tete">' +
+      (illustration ? '<img class="a4-illustration" alt="" src="' + illustration + '">' : '') +
+      '<div><h2>' + echap(section.titre) + '</h2>' +
+      '<p class="a4-sous">' + echap(section.sous) + '</p></div></div>' +
+      '<ul>';
+    section.items.forEach(function (it) {
+      if (it.kind === 'l') {
+        h += '<li><span class="a4-nom">' + echap(it.l.nom) + '</span>' +
+          ((it.l.sous || it.l.desc) ? '<small class="a4-desc-inline">' + echap(it.l.sous || it.l.desc) + '</small>' : '') +
+          (it.l.allergenes && it.l.allergenes.length ? '<small class="a4-allergenes" title="Allergènes">' + htmlAllergenes(it.l.allergenes) + '</small>' : '') +
+          '<span class="a4-pts"></span><span class="a4-prix">' +
+          (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></li>';
+      } else {
+        var p = it.p;
+        var formats = p.formats && p.formats.length
+          ? '<small class="a4-formats">' + p.formats.map(function (f) {
+              return echap(f.nom) + ' ' + eur(f.pv);
+            }).join(' · ') + '</small>' : '';
+        h += '<li><span class="a4-nom">' + echap(p.nom) + '</span>' +
+          (p.desc ? '<small class="a4-desc-inline">' + echap(p.desc) + '</small>' : '') +
+          (p.allergenes && p.allergenes.length ? '<small class="a4-allergenes" title="Allergènes">' + htmlAllergenes(p.allergenes) + '</small>' : '') +
+          '<span class="a4-pts"></span><span class="a4-prix">' + prixAffiche(p) +
+          '</span>' + formats + '</li>';
+      }
+    });
+    return h + '</ul></section>';
+  }
+
+  function htmlA4Page(nom, sections) {
+    return '<div class="a4-page a4-page-' + nom + '">' +
+      '<div class="a4-colonne">' + sections.filter(function (_, i) { return i % 2 === 0; }).join('') + '</div>' +
+      '<div class="a4-colonne">' + sections.filter(function (_, i) { return i % 2 === 1; }).join('') + '</div>' +
+      '</div>';
+  }
+
   // ---------- aperçu / impression A4 de la carte standard ----------
   function fermerImpressionCarte() {
     var ov = document.getElementById('impression-carte-overlay');
@@ -853,41 +1236,12 @@
 
   function ouvrirImpressionCarte() {
     fermerImpressionCarte();
-    var dansExtras = idsDansExtras();
-    var fams = famsCatalogue();
-    var sections = '';
-    fams.forEach(function (fam) {
-      var conf = CF.fams[fam];
-      if (!conf) return;
-      var items = itemsFamille(fam).filter(function (it) {
-        if (it.kind === 'p') {
-          if (!it.p.actif) return false;
-          if (dansExtras[it.p.id]) return false;
-        }
-        return true;
-      });
-      if (!items.length) return;
-      sections += '<section class="a4-cat">' +
-        '<h2>' + echap(conf.titre) + '</h2>' +
-        (conf.sous ? '<p class="a4-sous">' + echap(conf.sous) + '</p>' : '') +
-        '<ul>';
-      items.forEach(function (it) {
-        if (it.kind === 'l') {
-          sections += '<li><span class="a4-nom">' + echap(it.l.nom) + '</span>' +
-            '<span class="a4-pts"></span><span class="a4-prix">' +
-            (it.l.prix > 0 ? eur(it.l.prix) : '') + '</span></li>' +
-            (it.l.sous ? '<li class="a4-desc"><span>' + echap(it.l.sous) + '</span></li>' : '');
-        } else {
-          var q = it.p;
-          var sous = q.sous || q.desc || '';
-          sections += '<li><span class="a4-nom">' + echap(q.nom) + '</span>' +
-            '<span class="a4-pts"></span><span class="a4-prix">' + prixAffiche(q) +
-            '</span></li>' +
-            (sous ? '<li class="a4-desc"><span>' + echap(sous) + '</span></li>' : '');
-        }
-      });
-      sections += '</ul></section>';
-    });
+    var toutes = standardSections();
+    var idsPage1 = ['formules', 'entrees', 'salades', 'pizzas'];
+    var page1 = toutes.filter(function (s) { return idsPage1.indexOf(s.id) >= 0; });
+    var page2 = toutes.filter(function (s) { return idsPage1.indexOf(s.id) < 0; });
+    var sections = htmlA4Page('1', page1.map(htmlStandardSection)) +
+      htmlA4Page('2', page2.map(htmlStandardSection));
     var ov = document.createElement('div');
     ov.id = 'impression-carte-overlay';
     ov.setAttribute('role', 'dialog');
@@ -899,7 +1253,7 @@
       '<div class="sansImpression" style="max-width:820px;margin:0 auto 12px;' +
         'display:flex;gap:10px;justify-content:flex-end;align-items:center;">' +
         '<span style="color:#F3F1E7;font-family:Georgia,serif;font-size:14px;margin-right:auto;">' +
-          'La carte standard — A4, prête à imprimer (données éditées ici)</span>' +
+          'La carte du restaurant — A4, prête à imprimer (données éditées ici)</span>' +
         '<button type="button" id="btn-a4-imprimer" class="btn btn-s">🖨 Imprimer / PDF</button>' +
         '<button type="button" id="btn-a4-fermer" class="btn btn-s">Fermer</button>' +
       '</div>' +
@@ -943,6 +1297,14 @@
     dessinerQRDans(canvas, CF ? CF.site : '', 512);
     var aff = $('#qr-url-affichee');
     if (aff && CF) aff.textContent = 'QR actuel : ' + CF.site;
+    var lien = $('#lien-qr-site');
+    var site = CF ? String(CF.site || '').trim() : '';
+    if (lien && /^https?:\/\//i.test(site)) {
+      lien.href = site;
+      lien.hidden = false;
+    } else if (lien) {
+      lien.hidden = true;
+    }
   }
 
   // ---------- photo d'ardoise (depuis l'écran ardoise) ----------
@@ -988,9 +1350,10 @@
     formules: { titre: 'Nos formules',        sous: 'Menus et formules du moment' },
     vins:     { titre: 'La carte des vins',   sous: 'Au pichet et à la bouteille' },
     glaces:   { titre: 'La carte des glaces', sous: 'Glaces et sorbets maison' },
-    bieres:   { titre: 'La carte des bières', sous: 'Pression et bouteilles' }
+    bieres:   { titre: 'La carte des bières', sous: 'Pression et bouteilles' },
+    boissons: { titre: 'La carte des boissons', sous: 'Alcools, vins, bières, softs, eaux, cafés et digestifs' }
   };
-  var EXTRA_ORDRE = ['formules', 'vins', 'glaces', 'bieres'];
+  var EXTRA_ORDRE = ['formules', 'vins', 'glaces', 'bieres', 'boissons'];
 
   // Produits du catalogue placés automatiquement dans une carte.
   function extrasSeed(cle) {
@@ -1005,6 +1368,18 @@
     }).map(function (p) { return p.id; });
   }
 
+  function allergenesLibres(v) {
+    var valeurs = Object.prototype.toString.call(v) === '[object Array]'
+      ? v : String(v || '').split(',');
+    return valeurs.map(function (token) {
+      var t = norm(token).trim();
+      for (var i = 0; i < ALLERGENES.length; i++) {
+        if (t === ALLERGENES[i][0] || t === norm(ALLERGENES[i][1])) return ALLERGENES[i][0];
+      }
+      return null;
+    }).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+  }
+
   function ligneLibreNormalisee(l, i) {
     if (!l || typeof l !== 'object') return null;
     var nom = String(l.nom || '').trim().slice(0, 60);
@@ -1014,7 +1389,8 @@
       nom: nom,
       sous: String(l.sous || '').trim().slice(0, 90),
       desc: String(l.desc || '').trim().slice(0, 200),
-      prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0)
+      prix: Math.max(0, Math.round(Number(l.prix) * 100) / 100 || 0),
+      allergenes: allergenesLibres(l.allergenes || l.alg)
     };
   }
 
@@ -1205,7 +1581,7 @@
     CPT_CRAIE++;
     var photo = null;
     items.some(function (it) {
-      if (it.kind === 'p') { photo = photoArdoiseDe(it.p); return !!photo; }
+      if (it.kind === 'p') { photo = illustrationProduit(it.p); return !!photo; }
       return false;
     });
     var h = '<section class="catArdoise' + (photo ? ' catAvecPhoto' : '') +
@@ -1316,7 +1692,7 @@
   // Produits du catalogue proposés automatiquement pour une carte du moment.
   function momentSeed(cle) {
     return CARTE.filter(function (p) {
-      if (!p.actif) return false;
+      if (!p.actif || !produitDisponible(p)) return false;
       if (cle === 'plats') return p.type === 'plat';
       if (cle === 'boissons') return p.type === 'boisson';
       if (cle === 'vins') return norm(p.cat).indexOf('cave') >= 0 || /limoncello|amaretto/i.test(p.nom);
@@ -1616,8 +1992,10 @@
     if (!conf) return;
     CUEILLETTE = {
       cle: 'moment:' + cle,
-      choisis: conf.ordre.filter(function (id) { return !!parId(id); })
+      choisis: conf.ordre.filter(function (id) { return !!parId(id); }),
+      disponibles: false
     };
+    $('#cueillette-disponibles').checked = false;
     $('#cueillette-titre').textContent = conf.titre + ' — produits du catalogue';
     $('#cueillette-recherche').value = '';
     dessinerCueillette();
@@ -1724,8 +2102,24 @@
 
 
   function charger() {
+    try {
+      var hib = JSON.parse(localStorage.getItem(CLE_HIBOUTIK) || 'null');
+      if (hib && Object.prototype.toString.call(hib.produits) === '[object Array]') {
+        HIBOUTIK.produits = hib.produits;
+        HIBOUTIK.maj = hib.maj || null;
+        HIBOUTIK.configure = !!hib.configure;
+        HIBOUTIK.creation = !!hib.creation;
+      }
+    } catch (e) { }
     var brut = null;
-    try { brut = JSON.parse(localStorage.getItem(CLE_STOCK) || 'null'); } catch (e) { }
+    var migrationStock = false;
+    try {
+      brut = JSON.parse(localStorage.getItem(CLE_STOCK) || 'null');
+      if (!brut) {
+        brut = JSON.parse(localStorage.getItem(CLE_STOCK_LEGACY) || 'null');
+        migrationStock = !!brut;
+      }
+    } catch (e) { }
     if (brut && Object.prototype.toString.call(brut) === '[object Array]') {
       CARTE = brut.map(produitNormalise);
     } else {
@@ -1733,10 +2127,22 @@
       CARTE = (window.TRATTORIA_CATALOGUE || []).map(produitNormalise);
     }
     var brutA = null;
-    try { brutA = JSON.parse(localStorage.getItem(CLE_ARDOISES) || 'null'); } catch (e) { }
+    var migrationArdoises = false;
+    try {
+      brutA = JSON.parse(localStorage.getItem(CLE_ARDOISES) || 'null');
+      if (!brutA) {
+        brutA = JSON.parse(localStorage.getItem(CLE_ARDOISES_LEGACY) || 'null');
+        migrationArdoises = !!brutA;
+      }
+    } catch (e) { }
     ARDOISES = ardoisesToutesNormalisees(brutA);
     configCharger();
     sauver();
+    // La sauvegarde d'initialisation ne doit pas être confondue avec une
+    // modification humaine avant le premier contact avec le serveur.
+    SYNC.dirty = false;
+    if (migrationStock) localStorage.removeItem(CLE_STOCK_LEGACY);
+    if (migrationArdoises) localStorage.removeItem(CLE_ARDOISES_LEGACY);
   }
 
   // ----------------------------------------------------------
@@ -1745,15 +2151,45 @@
   //  enregistre fait foi (« last-write-wins »).
   // ----------------------------------------------------------
   function syncDispo() {
-    return typeof fetch === 'function' && /^https?:$/.test(location.protocol);
+    return typeof fetch === 'function' && !!baseServeurEffective();
+  }
+
+  function syncHeaders() {
+    var h = {};
+    if (SYNC_TOKEN) h['X-Carte-Token'] = SYNC_TOKEN;
+    return h;
+  }
+
+  function demanderToken() {
+    var champ = $('#champ-sync-token');
+    var token = champ ? String(champ.value || '').trim() : '';
+    if (!token) {
+      token = prompt('Clé d’administration du serveur de carte :') || '';
+      token = token.trim();
+    }
+    if (!token) return false;
+    SYNC_TOKEN = token;
+    SYNC.authentifie = false;
+    localStorage.setItem(CLE_SYNC_TOKEN, token);
+    if (champ) champ.value = token;
+    return true;
   }
 
   function badgeSync() {
     var b = $('#badge-sync');
     if (!b) return;
-    if (SYNC.actif) {
+    if (SYNC.actif && SYNC.dirty) {
+      b.innerHTML = '<span class="point attente"></span>Modification à publier';
+      b.className = 'badge-sync attente';
+    } else if (SYNC.actif && !SYNC.authentifie) {
+      b.innerHTML = '<span class="point attente"></span>Serveur connecté · lecture seule';
+      b.className = 'badge-sync attente';
+    } else if (SYNC.actif) {
       b.innerHTML = '<span class="point ok"></span>Tablettes synchronisées';
       b.className = 'badge-sync on';
+    } else if (SYNC.dirty) {
+      b.innerHTML = '<span class="point attente"></span>Mode autonome · modification locale';
+      b.className = 'badge-sync attente';
     } else {
       b.innerHTML = '<span class="point"></span>Mode autonome';
       b.className = 'badge-sync';
@@ -1764,18 +2200,32 @@
       une carte ; sinon on lui envoie la nôtre. */
   function syncDetecter() {
     if (!syncDispo()) { badgeSync(); return; }
-    fetch('api/etat', { cache: 'no-store' }).then(function (r) {
+    actualiserLiensServeur();
+    fetch(apiUrl('etat'), { cache: 'no-store' }).then(function (r) {
       if (!r.ok) throw new Error('ko');
       return r.json();
     }).then(function (r) {
       SYNC.actif = true;
+      SYNC.authentifie = !!SYNC_TOKEN;
       SYNC.version = Number(r.version) || 0;
+      SYNC.derniereErreur = '';
+      var infoServeur = $('#info-sync-serveur');
+      if (infoServeur) infoServeur.textContent = 'Serveur connecté : ' + baseServeurEffective() +
+        ' · version publiée ' + SYNC.version + (r.maj ? ' · ' + new Date(r.maj).toLocaleString('fr-FR') : '');
       badgeSync();
-      if (SYNC.version > 0) syncTirer(false);
-      else planifierEnvoi(true);
-      setInterval(function () { syncTirer(false); }, 15000);
+      afficherLiensServeur();
+      if (SYNC.version > 0) {
+        if (SYNC.dirty && SYNC_TOKEN) planifierEnvoi(true);
+        else syncTirer(false);
+      } else {
+        planifierEnvoi(true);
+      }
+      if (SYNC.polling) clearInterval(SYNC.polling);
+      SYNC.polling = setInterval(function () { syncTirer(false); }, 15000);
     }).catch(function () {
       SYNC.actif = false;
+      var infoServeur = $('#info-sync-serveur');
+      if (infoServeur) infoServeur.textContent = 'Serveur indisponible ou adresse non autorisée — données locales conservées.';
       badgeSync();
     });
   }
@@ -1785,7 +2235,14 @@
       if (manuel) toast('Aucun serveur de carte joint — lancez serveur_carte.py');
       return;
     }
-    fetch('api/carte', { cache: 'no-store' }).then(function (r) {
+    if (SYNC.dirty) {
+      planifierEnvoi(manuel);
+      if (manuel) toast(SYNC_TOKEN
+        ? 'Votre modification locale va être publiée.'
+        : 'Modification locale conservée ; clé d’administration requise pour publier.');
+      return;
+    }
+    fetch(apiUrl('carte'), { cache: 'no-store' }).then(function (r) {
       if (!r.ok) throw new Error('ko');
       return r.json();
     }).then(function (r) {
@@ -1795,43 +2252,228 @@
         return;
       }
       SYNC.version = v;
-      if (Object.prototype.toString.call(r.carte) === '[object Array]' && r.carte.length) {
+      if (Object.prototype.toString.call(r.carte) === '[object Array]') {
         CARTE = r.carte.map(produitNormalise);
       }
-      ARDOISES = ardoisesToutesNormalisees(r.ardoises);
-      CF = configNormalisee(r.config || CF);
+      if (r.ardoises && typeof r.ardoises === 'object') {
+        ARDOISES = ardoisesToutesNormalisees(r.ardoises);
+      }
+      if (r.config && typeof r.config === 'object') CF = configNormalisee(r.config);
+      if (Object.prototype.toString.call(r.objectifs) === '[object Array]') {
+        try { localStorage.setItem(CLE_OBJECTIFS, JSON.stringify(r.objectifs)); } catch (e) { }
+        objectifsCharger();
+      }
+      if (r.livraison && typeof r.livraison === 'object') {
+        ['sur_place', 'uber', 'livraison_urbaine'].forEach(function (id) {
+          var n = Number(r.livraison[id]);
+          if (isFinite(n) && n >= 0 && n <= 100) LIVRAISON[id] = Math.round(n * 100) / 100;
+        });
+        try { localStorage.setItem(CLE_LIVRAISON, JSON.stringify(LIVRAISON)); } catch (e) { }
+        livraisonAfficher();
+      }
       try {
         localStorage.setItem(CLE_STOCK, JSON.stringify(CARTE));
         localStorage.setItem(CLE_ARDOISES, JSON.stringify(ARDOISES));
         localStorage.setItem(CLE_CONFIG, JSON.stringify(CF));
       } catch (e) { }
+      SYNC.dirty = false;
+      SYNC.derniereErreur = '';
       toutDessiner();
       majInfoDonnees();
-      toast('Carte synchronisée avec les autres tablettes');
+      var infoServeur = $('#info-sync-serveur');
+      if (infoServeur) infoServeur.textContent = 'Serveur connecté : ' + baseServeurEffective() +
+        ' · version publiée ' + SYNC.version + (r.maj ? ' · ' + new Date(r.maj).toLocaleString('fr-FR') : '');
+      toast('Données synchronisées avec le serveur');
       badgeSync();
-    }).catch(function () {
-      if (manuel) toast('Le serveur de carte ne répond pas');
+    }).catch(function (e) {
+      SYNC.derniereErreur = e && e.message ? e.message : 'lecture impossible';
+      if (manuel) toast('Le serveur de carte ne répond pas — données locales conservées');
+      badgeSync();
     });
   }
 
   function planifierEnvoi(immediat) {
-    if (!SYNC.actif) return;
+    if (!SYNC.actif || !SYNC_TOKEN) {
+      badgeSync();
+      return;
+    }
     clearTimeout(SYNC.minuteur);
     var envoyer = function () {
-      fetch('api/carte', {
+      var headers = syncHeaders();
+      headers['Content-Type'] = 'application/json';
+      fetch(apiUrl('carte'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ carte: CARTE, ardoises: ARDOISES, config: CF })
+        headers: headers,
+        body: JSON.stringify({
+          carte: CARTE, ardoises: ARDOISES, config: CF,
+          objectifs: OBJECTIFS, livraison: LIVRAISON
+        })
       }).then(function (r) {
+        if (r.status === 401) throw new Error('token');
         if (!r.ok) throw new Error('ko');
         return r.json();
       }).then(function (r) {
         SYNC.version = Number(r.version) || SYNC.version;
+        SYNC.authentifie = true;
+        SYNC.dirty = false;
+        SYNC.dernierePublication = new Date().toISOString();
+        SYNC.derniereErreur = '';
+        var infoServeur = $('#info-sync-serveur');
+        if (infoServeur) infoServeur.textContent = 'Publication réussie : version ' + SYNC.version +
+          ' · ' + new Date(SYNC.dernierePublication).toLocaleString('fr-FR');
+        majInfoDonnees();
         badgeSync();
-      }).catch(function () { badgeSync(); });
+      }).catch(function (e) {
+        SYNC.derniereErreur = e && e.message ? e.message : 'publication impossible';
+        if (e && e.message === 'token') SYNC.authentifie = false;
+        var infoServeur = $('#info-sync-serveur');
+        if (infoServeur) infoServeur.textContent = e && e.message === 'token'
+          ? 'Publication refusée : clé d’administration invalide.'
+          : 'Publication en attente : serveur indisponible, données locales conservées.';
+        badgeSync();
+        if (e && e.message === 'token') toast('Clé d’administration invalide — publication non effectuée.');
+      });
     };
     if (immediat) envoyer();
     else SYNC.minuteur = setTimeout(envoyer, 900);
+  }
+
+  function afficherStatutHiboutik(message, ok) {
+    var cible = $('#hiboutik-statut');
+    if (!cible) return;
+    cible.textContent = message;
+    cible.className = 'aide ' + (ok ? 'hiboutik-ok' : 'hiboutik-ko');
+    var bouton = $('#btn-hiboutik-importer');
+    if (bouton) bouton.disabled = !ok || !HIBOUTIK.produits.length;
+  }
+
+  function hiboutikEtat() {
+    if (!syncDispo()) {
+      afficherStatutHiboutik('Serveur requis pour protéger les identifiants Hiboutik.', false);
+      return;
+    }
+    fetch(apiUrl('hiboutik/statut'), { cache: 'no-store' }).then(function (r) {
+      return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+    }).then(function (r) {
+      HIBOUTIK.configure = !!r.data.configure;
+      HIBOUTIK.creation = !!r.data.creation;
+      afficherStatutHiboutik(r.data.message || (HIBOUTIK.configure ? 'Connecté' : 'Non configuré'),
+        HIBOUTIK.configure);
+    }).catch(function () {
+      HIBOUTIK.configure = false;
+      afficherStatutHiboutik('Serveur Hiboutik indisponible.', false);
+    });
+  }
+
+  function associerInventaireHiboutik(produits) {
+    var parHid = {}, parCode = {}, parNom = {};
+    produits.forEach(function (p) {
+      parHid[p.hiboutikId] = p;
+      if (p.barcode) parCode[p.barcode] = p;
+      parNom[norm(p.nom)] = parNom[norm(p.nom)] || p;
+    });
+    CARTE.forEach(function (local) {
+      var distant = (local.hiboutikId && parHid[local.hiboutikId]) ||
+        (local.hiboutikBarcode && parCode[local.hiboutikBarcode]) ||
+        parNom[norm(local.nom)];
+      if (!distant) return;
+      local.hiboutikId = distant.hiboutikId;
+      if (distant.barcode) local.hiboutikBarcode = distant.barcode;
+      local.hiboutikStock = distant.stock;
+      if (distant.stockSuivi) local.suiviStock = true;
+    });
+  }
+
+  function actualiserInventaireHiboutik() {
+    if (!SYNC_TOKEN && !demanderToken()) return;
+    if (!syncDispo()) { toast('Lancez serveur_carte.py pour joindre Hiboutik'); return; }
+    HIBOUTIK.chargement = true;
+    afficherStatutHiboutik('Lecture de l’inventaire Hiboutik…', false);
+    fetch(apiUrl('hiboutik/catalogue'), { headers: syncHeaders(), cache: 'no-store' }).then(function (r) {
+      return r.json().then(function (d) { if (!r.ok) throw new Error(d.erreur || 'Hiboutik'); return d; });
+    }).then(function (d) {
+      HIBOUTIK.produits = Array.isArray(d.produits) ? d.produits : [];
+      HIBOUTIK.maj = d.maj || new Date().toISOString();
+      associerInventaireHiboutik(HIBOUTIK.produits);
+      localStorage.setItem(CLE_HIBOUTIK, JSON.stringify(HIBOUTIK));
+      HIBOUTIK.chargement = false;
+      afficherStatutHiboutik(HIBOUTIK.produits.length + ' produit(s) Hiboutik synchronisé(s).', true);
+      $('#hiboutik-dernier').textContent = 'Dernière lecture : ' + new Date(HIBOUTIK.maj).toLocaleString('fr-FR') +
+        '. Les cartes automatiques excluent les produits épuisés suivis.';
+      sauver();
+      toutDessiner();
+      toast('Inventaire Hiboutik actualisé');
+    }).catch(function (e) {
+      HIBOUTIK.chargement = false;
+      afficherStatutHiboutik(e.message || 'Lecture Hiboutik impossible.', false);
+      toast(e.message || 'Lecture Hiboutik impossible');
+    });
+  }
+
+  function produitLocalDepuisHiboutik(distant) {
+    var tva = distant.pv != null ? 0.1 : 0.1;
+    return produitNormalise({
+      id: 'hib' + distant.hiboutikId,
+      nom: distant.nom,
+      desc: 'Importé depuis Hiboutik',
+      type: 'plat',
+      fam: 'Hiboutik',
+      cat: '',
+      pv: distant.pv || 0,
+      cout: distant.cout || 0,
+      tva: tva,
+      actif: true,
+      suiviStock: distant.stockSuivi || distant.stock != null,
+      stock: distant.stock || 0,
+      hiboutikId: distant.hiboutikId,
+      hiboutikBarcode: distant.barcode || '',
+      hiboutikStock: distant.stock
+    }, CARTE.length);
+  }
+
+  function importerNouveauxProduitsHiboutik() {
+    var nouveaux = HIBOUTIK.produits.filter(function (distant) {
+      return !CARTE.some(function (local) {
+        return (local.hiboutikId && local.hiboutikId === distant.hiboutikId) ||
+          (distant.barcode && local.hiboutikBarcode === distant.barcode) ||
+          norm(local.nom) === norm(distant.nom);
+      });
+    });
+    if (!nouveaux.length) { toast('Aucun nouveau produit à importer'); return; }
+    if (!confirm('Ajouter ' + nouveaux.length + ' produit(s) Hiboutik dans la carte locale ?')) return;
+    nouveaux.forEach(function (distant) { CARTE.push(produitLocalDepuisHiboutik(distant)); });
+    sauver();
+    toutDessiner();
+    toast(nouveaux.length + ' produit(s) importé(s) dans la carte');
+  }
+
+  function creerProduitHiboutik(produit) {
+    if (!SYNC_TOKEN || !HIBOUTIK.configure || !syncDispo()) {
+      toast('Produit local créé ; Hiboutik n’est pas configuré sur le serveur');
+      return;
+    }
+    var headers = syncHeaders();
+    headers['Content-Type'] = 'application/json';
+    fetch(apiUrl('hiboutik/produits'), {
+      method: 'POST', headers: headers,
+      body: JSON.stringify({ produit: produit })
+    }).then(function (r) {
+      return r.json().then(function (d) { if (!r.ok) throw new Error(d.erreur || 'Création Hiboutik refusée'); return d; });
+    }).then(function (d) {
+      var distant = d.produit || {};
+      if (distant.hiboutikId) produit.hiboutikId = String(distant.hiboutikId);
+      produit.hiboutikStock = 0;
+      produit.suiviStock = produit.suiviStock || false;
+      HIBOUTIK.produits.push({ hiboutikId: produit.hiboutikId, nom: produit.nom,
+        barcode: produit.hiboutikBarcode, pv: produit.pv, stock: 0,
+        stockSuivi: produit.suiviStock });
+      localStorage.setItem(CLE_HIBOUTIK, JSON.stringify(HIBOUTIK));
+      sauver();
+      toast(produit.nom + ' créé dans Hiboutik');
+      if (d.avertissements && d.avertissements.length) alert(d.avertissements.join('\n'));
+    }).catch(function (e) {
+      toast('Produit local conservé ; Hiboutik : ' + e.message);
+    });
   }
 
   function toutDessiner() {
@@ -1839,14 +2481,37 @@
     dessinerMarges();
     dessinerArdoises();
     dessinerCF();
+    dessinerDashboard();
+    dessinerObjectifs();
   }
 
   // ==========================================================
   //  Écran « La carte »
   // ==========================================================
+  function remplirFiltreFamilles() {
+    var select = $('#filtre-famille');
+    if (!select) return;
+    var familles = famsCatalogue();
+    var valeur = FILTRE_FAMILLE;
+    if (valeur && familles.indexOf(valeur) < 0) valeur = FILTRE_FAMILLE = '';
+    select.innerHTML = '<option value="">Choisir une rubrique…</option>' +
+      familles.map(function (fam) {
+        var total = CARTE.filter(function (p) { return p.fam === fam; }).length;
+        var actifs = CARTE.filter(function (p) { return p.fam === fam && p.actif; }).length;
+        return '<option value="' + echap(fam) + '">' + echap(fam) +
+          ' — ' + actifs + '/' + total + ' publiés</option>';
+      }).join('');
+    select.value = valeur;
+    var etat = $('#filtre-etat');
+    if (etat) etat.value = FILTRE_ETAT;
+  }
+
   function produitsFiltres() {
     var q = norm(RECHERCHE);
     return CARTE.filter(function (p) {
+      if (FILTRE_FAMILLE && p.fam !== FILTRE_FAMILLE) return false;
+      if (FILTRE_ETAT === 'actifs' && !p.actif) return false;
+      if (FILTRE_ETAT === 'pauses' && p.actif) return false;
       if (FILTRE_TYPE !== 'tout' && p.type !== FILTRE_TYPE) return false;
       if (q && norm(p.nom + ' ' + p.desc + ' ' + p.cat + ' ' + p.fam).indexOf(q) < 0) return false;
       return true;
@@ -1859,16 +2524,22 @@
   }
 
   function carteProduitHTML(p) {
-    var photo = p.photo
-      ? '<img src="' + p.photo + '" alt="Photo — ' + echap(p.nom) + '" loading="lazy">'
+    var visuel = p.photo || illustrationProduit(p);
+    var photo = visuel
+      ? '<img src="' + visuel + '" alt="Illustration — ' + echap(p.nom) + '" loading="lazy">'
       : '<span class="motif" aria-hidden="true">' + echap((TYPES[p.type] || '?')[0]) + '</span>';
     var manuel = p.margeManuelle
       ? ' <span class="badge-manuel" title="Marge cible fixée à la main">marge : ' +
         echap(libelleCible(p)) + '</span>' : '';
+    var qteStock = stockProduit(p);
+    var badgeStock = qteStock == null ? '' : '<span class="badge-stock ' +
+      (qteStock > 0 ? 'ok' : 'ko') + '">' + (qteStock > 0 ? 'Disponible' : 'Épuisé') +
+      ' · ' + qteStock.toLocaleString('fr-FR') + '</span>';
     return '<article class="carte-prod' + (p.actif ? '' : ' inactif') + '" data-id="' + echap(p.id) + '">' +
       '<div class="visu">' + photo +
       '<span class="badge-type ' + p.type + '">' + TYPES[p.type] + '</span>' +
-      (p.actif ? '' : '<span class="badge-epuise">Masqué</span>') +
+      (p.actif ? '' : '<span class="badge-epuise">En pause</span>') +
+      badgeStock +
       '</div>' +
       '<div class="infos">' +
       '<span class="cat">' + echap(p.cat || p.fam) + '</span>' +
@@ -1894,17 +2565,87 @@
       '<div class="actions-prod">' +
       '<button type="button" class="btn btn-s btn-mini" data-editer="' + echap(p.id) + '">Modifier</button>' +
       '<button type="button" class="btn btn-s btn-mini" data-actif="' + echap(p.id) + '">' +
-      (p.actif ? 'Masquer' : 'Remettre') + '</button>' +
+      (p.actif ? 'Mettre en pause' : 'Réactiver') + '</button>' +
       '</div>' +
       '</article>';
+  }
+
+  function standardAdminDefs() {
+    // L’organisation de la carte standard ne mélange pas les boissons :
+    // elles sont gérées dans leurs vues dédiées, avec leur propre impression.
+    return STANDARD_SECTIONS.slice();
+  }
+
+  function standardAdminItems(def) {
+    return standardSectionItems(def);
+  }
+
+  function dessinerStandardStructure() {
+    var hote = $('#standard-structure');
+    if (!hote || !CF) return;
+    var h = '<div class="standard-admin-intro"><b>Organisation de la carte du restaurant</b><span>Cette vue règle l’ordre et les rubriques de la carte cuisine. Les boissons et cartes du moment se gèrent dans leurs espaces dédiés.</span></div>';
+    standardAdminDefs().forEach(function (def) {
+      var conf = CF.fams[def.fam] || { titre: def.titre, sous: def.texte, ordre: [], libres: [] };
+      var items = standardAdminItems(def);
+      h += '<section class="famille standard-rubrique" data-fam="' + echap(def.fam) + '">' +
+        '<div class="standard-rubrique-head"><div><span class="standard-kicker">' + echap(def.id === 'plats' ? 'RUBRIQUE OBLIGATOIRE' : 'RUBRIQUE') + '</span>' +
+        '<h3>' + echap(conf.titre || def.titre) + '</h3><p>' + echap(conf.sous || def.texte) + '</p></div>' +
+        '<div class="fam-actions"><button type="button" class="btn btn-s btn-mini" data-fam-edit="1">Modifier titre</button><button type="button" class="btn btn-p btn-mini" data-fam-ligne="1">+ Ajouter une ligne</button></div></div>' +
+        '<div class="fam-edit" hidden>' +
+          '<label class="champ"><span>Titre de la rubrique</span><input type="text" data-fe="titre" maxlength="60" value="' + echap(conf.titre || def.titre) + '"></label>' +
+          '<label class="champ"><span>Sous-titre vendeur</span><input type="text" data-fe="sous" maxlength="120" value="' + echap(conf.sous || def.texte) + '"></label>' +
+          '<div class="cf-rangee"><button type="button" class="btn btn-p btn-mini" data-fam-ok="1">Enregistrer</button><button type="button" class="btn btn-s btn-mini" data-fam-annule="1">Annuler</button></div>' +
+        '</div><ol class="standard-lignes">';
+      items.forEach(function (it, i) {
+        var id = it.kind === 'p' ? it.p.id : it.l.id;
+        var nom = it.kind === 'p' ? it.p.nom : it.l.nom;
+        var prix = it.kind === 'p' ? prixAffiche(it.p) : (it.l.prix ? eur(it.l.prix) : '—');
+        var desc = it.kind === 'p' ? it.p.desc : (it.l.desc || it.l.sous || '');
+        var allergens = it.kind === 'p' ? it.p.allergenes : it.l.allergenes;
+        if (it.kind === 'l' && LF_A_EDITER && LF_A_EDITER.fam === def.fam && LF_A_EDITER.id === id) {
+          h += '<li class="standard-ligne standard-ligne-edit" data-standard-id="' + echap(id) + '">' +
+            '<div class="standard-inline-form"><input type="text" data-lf-champ="nom" maxlength="60" value="' + echap(it.l.nom) + '" placeholder="Nom de la ligne">' +
+            '<input type="text" data-lf-champ="sous" maxlength="90" value="' + echap(it.l.sous || '') + '" placeholder="Sous-titre vendeur">' +
+            '<input type="text" data-lf-champ="desc" maxlength="200" value="' + echap(it.l.desc || '') + '" placeholder="Description vendeur">' +
+            '<input type="text" data-lf-champ="allergenes" maxlength="180" value="' + echap((it.l.allergenes || []).join(', ')) + '" placeholder="Allergènes : gluten, lactose…">' +
+            '<input type="text" data-lf-champ="prix" inputmode="decimal" value="' + (it.l.prix || '') + '" placeholder="Prix €">' +
+            '<button type="button" class="btn btn-p btn-mini" data-lf-ok="' + echap(id) + '">Enregistrer</button><button type="button" class="btn btn-s btn-mini" data-lf-annule="1">Annuler</button></div></li>';
+          return;
+        }
+        h += '<li class="standard-ligne' + (it.kind === 'p' && !it.p.actif ? ' inactif' : '') + '" data-standard-id="' + echap(id) + '">' +
+          '<span class="standard-ligne-order"><button type="button" class="btn btn-mini" data-standard-order="up" data-standard-id="' + echap(id) + '" title="Monter">▲</button><button type="button" class="btn btn-mini" data-standard-order="down" data-standard-id="' + echap(id) + '" title="Descendre">▼</button></span>' +
+          '<span class="standard-ligne-info"><b>' + echap(nom) + '</b>' + (desc ? '<small>' + echap(desc) + '</small>' : '') + (allergens && allergens.length ? '<em title="Allergènes">Allergènes : ' + htmlAllergenes(allergens) + '</em>' : '') + '</span>' +
+          '<strong class="standard-ligne-prix">' + prix + '</strong>' +
+          '<span class="standard-ligne-actions">' + (it.kind === 'p' ? '<button type="button" class="btn btn-s btn-mini" data-editer="' + echap(id) + '">Modifier</button><button type="button" class="btn btn-danger btn-mini" data-standard-remove="' + echap(id) + '">Retirer</button>' : '<button type="button" class="btn btn-s btn-mini" data-lf-edit="' + echap(id) + '">Modifier</button><button type="button" class="btn btn-danger btn-mini" data-lf-del="' + echap(id) + '">Supprimer</button>') + '</span>' +
+          '</li>';
+      });
+      var exclus = conf.exclus || [];
+      var retirable = CARTE.filter(function (p) { return String(p.fam) === def.fam && exclus.indexOf(p.id) >= 0; });
+      h += '</ol>' + (!items.length ? '<p class="standard-vide">Aucune ligne. Utilisez « Ajouter une ligne ».</p>' : '') +
+        (retirable.length ? '<div class="standard-reintegrer"><select data-standard-reintegrer-select>' + retirable.map(function (p) { return '<option value="' + echap(p.id) + '">' + echap(p.nom) + '</option>'; }).join('') + '</select><button type="button" class="btn btn-s btn-mini" data-standard-reintegrer>Réintégrer une ligne</button></div>' : '') +
+        '</section>';
+    });
+    hote.innerHTML = h;
   }
 
   function dessinerCarte() {
     if (CARTE_VIEW === 'moment') { dessinerVueMoment(); return; }
     if (CARTE_VIEW !== 'standard') { dessinerVueExtra(CARTE_VIEW); return; }
     $('#outils-standard').hidden = false;
+    remplirFiltreFamilles();
+    dessinerStandardStructure();
     var liste = produitsFiltres();
-    $('#nb-visibles').textContent = liste.length + (liste.length > 1 ? ' produits' : ' produit');
+    var choixNecessaire = !FILTRE_FAMILLE && !RECHERCHE && FILTRE_TYPE === 'tout';
+    $('#nb-visibles').textContent = choixNecessaire
+      ? 'Choisissez une rubrique pour commencer'
+      : liste.length + (liste.length > 1 ? ' produits' : ' produit');
+    if (choixNecessaire) {
+      $('#liste-produits').innerHTML = '<div class="carte-guidage"><span class="carte-guidage-icone">⌕</span>' +
+        '<strong>Quelle partie de la carte voulez-vous gérer ?</strong>' +
+        '<p>Choisissez une rubrique ci-dessus. Vous ne verrez que les fiches utiles à cette tâche, sans liste interminable.</p>' +
+        '<p class="carte-guidage-note">Pour retrouver une fiche précise, utilisez la recherche.</p></div>';
+      return;
+    }
 
     var parFam = {};
     var ordre = [];
@@ -1918,12 +2659,20 @@
       var ps = parFam[fam];
       if (!ps.length) return;
       var confF = CF ? CF.fams[fam] : null;
+      if (confF && confF.ordre && confF.ordre.length) {
+        var rang = {};
+        confF.ordre.forEach(function (id, i) { rang[id] = i; });
+        ps.sort(function (a, b) {
+          return (rang[a.id] == null ? 999999 : rang[a.id]) -
+            (rang[b.id] == null ? 999999 : rang[b.id]);
+        });
+      }
       var libres = confF ? confF.libres : [];
       h += '<section class="famille" data-fam="' + echap(fam) + '">' +
         '<div class="fam-tete"><h2>' + echap(fam) +
         ' <span class="nb">' + ps.length + '</span></h2>' +
         '<span class="fam-actions">' +
-          '<button type="button" class="btn btn-s btn-mini" data-fam-edit="1">✏️ Titre ardoise</button>' +
+          '<button type="button" class="btn btn-s btn-mini" data-fam-edit="1">✏️ Titre & sous-titre</button>' +
           '<button type="button" class="btn btn-s btn-mini" data-fam-ligne="1">+ Ligne libre</button>' +
         '</span></div>' +
         (confF && (confF.titre !== fam || confF.sous)
@@ -1950,7 +2699,9 @@
               ' <button type="button" class="btn btn-mini" data-lf-del="' + echap(l.id) + '" title="Supprimer">✕</button>' +
               (edit ? '</span><div class="lf-form">' +
                 '<input type="text" data-lf-champ="nom" maxlength="60" value="' + echap(l.nom) + '" placeholder="Nom (ex. : Menu enfant)">' +
-                '<input type="text" data-lf-champ="sous" maxlength="90" value="' + echap(l.sous) + '" placeholder="Sous-titre (facultatif)">' +
+                '<input type="text" data-lf-champ="sous" maxlength="90" value="' + echap(l.sous) + '" placeholder="Sous-titre vendeur (facultatif)">' +
+                '<input type="text" data-lf-champ="desc" maxlength="200" value="' + echap(l.desc || '') + '" placeholder="Description vendeur (facultatif)">' +
+                '<input type="text" data-lf-champ="allergenes" maxlength="180" value="' + echap((l.allergenes || []).join(', ')) + '" placeholder="Allergènes : gluten, lactose…">' +
                 '<input type="text" data-lf-champ="prix" inputmode="decimal" value="' +
                   (l.prix > 0 ? String(l.prix).replace('.', ',') : '') + '" placeholder="Prix €">' +
                 '<div class="cf-rangee">' +
@@ -1961,7 +2712,13 @@
               '</span>';
           }).join('') + '</div>';
       }
-      h += '<div class="grille">' + ps.map(carteProduitHTML).join('') + '</div></section>';
+      h += '<div class="grille">' + ps.map(function (p, i) {
+        var actions = '<div class="standard-ordre" aria-label="Ordre de la ligne">' +
+          '<button type="button" class="btn btn-s btn-mini" data-standard-order="up" data-standard-id="' + echap(p.id) + '" title="Monter">▲</button>' +
+          '<button type="button" class="btn btn-s btn-mini" data-standard-order="down" data-standard-id="' + echap(p.id) + '" title="Descendre">▼</button>' +
+          '</div>';
+        return carteProduitHTML(p).replace('</article>', actions + '</article>');
+      }).join('') + '</div></section>';
     });
     $('#liste-produits').innerHTML = h ||
       '<p class="aide" style="text-align:center;padding:40px 0">Aucun produit ne correspond. ' +
@@ -2052,8 +2809,8 @@
                   txtCoef(f.pv / (1 + p.tva) / f.cout) : '') + '</span>';
             }).join('<br>')
           : '<span class="type-mini">—</span>') + '</td>' +
-        '<td class="num"><button type="button" class="btn btn-s btn-mini" data-editer="' +
-        echap(p.id) + '">⚙</button></td>' +
+        '<td class="num"><button type="button" class="btn btn-s btn-mini" data-voir-carte="' +
+        echap(p.id) + '" title="Ouvrir ce produit dans La carte">Voir dans La carte</button></td>' +
         '</tr>';
     }).join('');
     $('#table-marges tbody').innerHTML = h;
@@ -2161,9 +2918,9 @@
             }).join('') + '</div>'
           : '<p class="aide">Composez cette carte depuis vos produits, ou ajoutez des lignes libres.</p>') +
         '<div class="ab-actions">' +
-        '<button type="button" class="btn btn-s btn-mini" data-composer="' + cle + '">Composer depuis la carte…</button>' +
+        '<button type="button" class="btn btn-s btn-mini" data-composer="' + cle + '">Composer manuellement…</button>' +
         '<button type="button" class="btn btn-s btn-mini" data-libre="' + cle + '">+ Ligne libre</button>' +
-        (cle !== 'plats' ? '<button type="button" class="btn btn-s btn-mini" data-auto="' + cle + '">Sélection auto</button>' : '') +
+        '<button type="button" class="btn btn-s btn-mini" data-auto="' + cle + '">Depuis l’inventaire</button>' +
         '<button type="button" class="btn btn-s btn-mini" data-apercu="' + cle + '">Aperçu</button>' +
         '<button type="button" class="btn btn-s btn-mini" data-imprimer="' + cle + '">Imprimer</button>' +
         '</div>' +
@@ -2185,8 +2942,10 @@
     if (!conf) return;
     CUEILLETTE = {
       cle: 'extras:' + cle,
-      choisis: conf.ordre.filter(function (id) { return !!parId(id); })
+      choisis: conf.ordre.filter(function (id) { return !!parId(id); }),
+      disponibles: false
     };
+    $('#cueillette-disponibles').checked = false;
     $('#cueillette-titre').textContent = conf.titre + ' — produits du catalogue';
     $('#cueillette-recherche').value = '';
     dessinerCueillette();
@@ -2195,7 +2954,8 @@
   }
 
   function ouvrirCueillette(cle) {
-    CUEILLETTE = { cle: cle, choisis: ARDOISES[cle].selection.slice() };
+    CUEILLETTE = { cle: cle, choisis: ARDOISES[cle].selection.slice(), disponibles: false };
+    $('#cueillette-disponibles').checked = false;
     $('#cueillette-titre').textContent = ARDOISES[cle].titre;
     $('#cueillette-recherche').value = '';
     dessinerCueillette();
@@ -2216,16 +2976,25 @@
     var candidats = ((modeExtra || modeMoment)
       ? CARTE.filter(function (p) { return p.actif; })
       : candidatsArdoise(CUEILLETTE.cle)).filter(function (p) {
+      if (CUEILLETTE.disponibles && !produitDisponible(p)) return false;
       return !q || norm(p.nom + ' ' + p.fam + ' ' + p.cat).indexOf(q) >= 0;
     });
+    var info = $('#cueillette-stock-info');
+    if (info) {
+      info.textContent = HIBOUTIK.produits.length
+        ? 'Inventaire Hiboutik synchronisé le ' + new Date(HIBOUTIK.maj).toLocaleString('fr-FR') + '.'
+        : 'Aucun inventaire Hiboutik synchronisé : les produits non suivis restent disponibles.';
+    }
     $('#cueillette-liste').innerHTML = candidats.map(function (p) {
       var ok = CUEILLETTE.choisis.indexOf(p.id) >= 0;
+      var stock = libelleStock(p);
       return '<label class="cueillette-ligne' + (ok ? ' on' : '') + '">' +
         '<input type="checkbox" data-cueillette="' + echap(p.id) + '"' + (ok ? ' checked' : '') + '>' +
         '<span class="cl-nom">' + echap(p.nom) +
-        '<span class="cl-meta">' + echap(p.fam) + (p.cat ? ' · ' + echap(p.cat) : '') + '</span></span>' +
+        '<span class="cl-meta">' + echap(p.fam) + (p.cat ? ' · ' + echap(p.cat) : '') +
+        ' · ' + echap(stock) + '</span></span>' +
         '<span class="cl-prix">' + eur(p.pv) + '</span></label>';
-    }).join('') || '<p class="aide" style="padding:20px">Aucun produit ne correspond.</p>';
+    }).join('') || '<p class="aide" style="padding:20px">Aucun produit disponible ne correspond.</p>';
   }
 
   function validerCueillette() {
@@ -2479,6 +3248,20 @@
     $('#f-tva').value = p ? String(p.tva) : '0.10';
     $('#f-tva-emporter').value = p && p.tvaEmporter != null ? String(p.tvaEmporter) : '';
     $('#f-actif').checked = p ? p.actif : true;
+    $('#f-suivi-stock').checked = p ? p.suiviStock : false;
+    $('#f-stock').value = p ? p.stock : 0;
+    $('#f-stock-mini').value = p ? p.stockMini : 0;
+    $('#f-hiboutik-barcode').value = p ? p.hiboutikBarcode : '';
+    $('#f-hiboutik-creer').checked = false;
+    $('#f-hiboutik-creer').disabled = !!p || !HIBOUTIK.creation || !SYNC_TOKEN;
+    $('#f-hiboutik-aide').textContent = HIBOUTIK.creation
+      ? (p ? 'Produit local' + (p.hiboutikId ? ' lié à Hiboutik (' + p.hiboutikId + ')' : ' non lié') + '.'
+        : 'Cette action crée le produit dans Hiboutik après votre confirmation.')
+      : (HIBOUTIK.configure
+        ? 'Connexion Hiboutik OK, mais les IDs de catégorie et de taxe doivent être configurés sur le serveur.'
+        : 'Hiboutik n’est pas configuré sur le serveur de gestion. Le produit sera créé localement.');
+    $('#f-hiboutik-lie').textContent = p && p.hiboutikId
+      ? 'ID Hiboutik : ' + p.hiboutikId + (p.hiboutikStock != null ? ' · ' + libelleStock(p) : '') : '';
     remplirFormats(p ? p.formats : []);
     dessinerAllergenes(p ? p.allergenes : []);
 
@@ -2654,12 +3437,17 @@
       $('#f-pv').focus();
       return;
     }
+    if (!EN_EDITION && $('#f-hiboutik-creer').checked &&
+        !confirm('Créer ce produit dans Hiboutik après son enregistrement local ?\n\nCette action écrit dans la caisse officielle et ne sera pas annulée automatiquement.')) {
+      return;
+    }
 
     var famSel = $('#f-fam').value;
     if (famSel === '__nouvelle') famSel = '';
 
     var type = $('#f-type').value;
     var margeVal = parseFloat(String($('#f-marge-valeur').value).replace(',', '.')) || 0;
+    var demanderCreationHiboutik = !EN_EDITION && $('#f-hiboutik-creer').checked;
 
     var donnees = {
       type: type,
@@ -2674,6 +3462,10 @@
       allergenes: lireAllergenes(),
       formats: formats,
       actif: $('#f-actif').checked,
+      suiviStock: $('#f-suivi-stock').checked,
+      stock: Math.max(0, lireNombre('#f-stock')),
+      stockMini: Math.max(0, lireNombre('#f-stock-mini')),
+      hiboutikBarcode: String($('#f-hiboutik-barcode').value || '').trim().slice(0, 80),
       photo: PHOTO_BROUILLON,
       sous: String($('#f-sous').value || '').trim().slice(0, 90),
       photoArdoise: PHOTO_ARDOISE_BROUILLON,
@@ -2691,9 +3483,11 @@
       CARTE.push(produitNormalise(donnees, 0));
       toast(donnees.nom + ' ajouté à la carte');
     }
+    var produitNouveau = EN_EDITION ? null : parId(donnees.id);
     sauver();
     fermerFiche();
     toutDessiner();
+    if (demanderCreationHiboutik && produitNouveau) creerProduitHiboutik(produitNouveau);
   }
 
   function supprimerProduit() {
@@ -2720,11 +3514,16 @@
   function exporterJSON() {
     var paquet = {
       application: 'la-trattoria-carte',
-      version: 4,
+      version: 5,
       exporte: new Date().toISOString(),
+      // Alias "carte" pour permettre l'import depuis l'application native
+      // com.trattoria.cartes, qui utilise ce nom historique.
       produits: CARTE,
+      carte: CARTE,
       ardoises: ARDOISES,
-      config: CF
+      config: CF,
+      objectifs: OBJECTIFS,
+      livraison: LIVRAISON
     };
     telecharger(new Blob([JSON.stringify(paquet, null, 1)], { type: 'application/json' }),
       'carte-la-trattoria.json');
@@ -2735,7 +3534,8 @@
     var lignes = [['Produit', 'Type', 'Famille', 'Catégorie', 'Prix TTC', 'Coût matière',
       'TVA %', 'Prix HT', 'Marge €', 'Taux marge %', 'Coefficient',
       'Marge cible (manuelle)', 'Prix TTC pour la cible',
-      'TVA emporté %', 'Marge emporté €', 'Formats (nom=prix)', 'Allergènes',
+      'TVA emporté %', 'Marge emporté €', 'Stock suivi', 'Stock local',
+      'Stock Hiboutik', 'Hiboutik ID', 'Formats (nom=prix)', 'Allergènes',
       'À la carte'].join(';')];
     CARTE.forEach(function (p) {
       var sugg = prixPourMargeCible(p);
@@ -2749,6 +3549,8 @@
         sugg ? dec(sugg) : '',
         p.tvaEmporter != null ? dec(p.tvaEmporter * 100) : '',
         p.tvaEmporter != null ? dec(margeEmporter(p)) : '',
+        p.suiviStock ? 'oui' : 'non', dec(p.stock),
+        p.hiboutikStock != null ? dec(p.hiboutikStock) : '', p.hiboutikId || '',
         (p.formats || []).map(function (f) {
           return (f.nom || '—') + '=' + dec(f.pv) +
             (f.cout > 0 ? ' (marge ' + dec(f.pv / (1 + p.tva) - f.cout) + ')' : '');
@@ -2777,13 +3579,25 @@
     lecteur.onload = function () {
       try {
         var paquet = JSON.parse(lecteur.result);
-        var tab = Object.prototype.toString.call(paquet) === '[object Array]' ? paquet : paquet.produits;
-        if (!tab || !tab.length) throw new Error('vide');
+        var tab = Object.prototype.toString.call(paquet) === '[object Array]'
+          ? paquet : (paquet.produits || paquet.carte);
+        if (Object.prototype.toString.call(tab) !== '[object Array]') throw new Error('format');
         if (!confirm('Remplacer la carte actuelle (' + CARTE.length +
           ' produits) par les ' + tab.length + ' produits importés ?')) return;
         CARTE = tab.map(produitNormalise);
         ARDOISES = ardoisesToutesNormalisees(paquet.ardoises || null);
         CF = configNormalisee(paquet.config || null);
+        if (Object.prototype.toString.call(paquet.objectifs) === '[object Array]') {
+          localStorage.setItem(CLE_OBJECTIFS, JSON.stringify(paquet.objectifs));
+          objectifsCharger();
+        }
+        if (paquet.livraison && typeof paquet.livraison === 'object') {
+          ['sur_place', 'uber', 'livraison_urbaine'].forEach(function (id) {
+            var n = Number(paquet.livraison[id]);
+            if (isFinite(n) && n >= 0 && n <= 100) LIVRAISON[id] = Math.round(n * 100) / 100;
+          });
+          livraisonAfficher();
+        }
         sauver();
         toutDessiner();
         toast('Carte importée');
@@ -2800,6 +3614,8 @@
     CARTE = (window.TRATTORIA_CATALOGUE || []).map(produitNormalise);
     ARDOISES = ardoisesDefaut();
     localStorage.removeItem(CLE_CONFIG);
+    localStorage.removeItem(CLE_STOCK_LEGACY);
+    localStorage.removeItem(CLE_ARDOISES_LEGACY);
     configCharger();
     sauver();
     toutDessiner();
@@ -2808,39 +3624,343 @@
 
   function majInfoDonnees() {
     var infos = $('#info-donnees');
-    if (!infos) return;
     var photos = CARTE.filter(function (p) { return p.photo; }).length;
-    infos.textContent = CARTE.length + ' produits · ' + photos + ' photographiés · ' +
-      'enregistré sur cet appareil' + (SYNC.actif ? ' · synchronisé (v' + SYNC.version + ')' : '');
+    var syncInfo = !SYNC.actif ? (SYNC.dirty ? 'mode autonome · modification à publier' : 'mode autonome') :
+      (SYNC.dirty ? 'modification locale à publier' :
+        (SYNC.derniereErreur ? 'dernière publication en échec' : 'synchronisé (v' + SYNC.version + ')'));
+    var resume = CARTE.length + ' produits · ' + photos + ' photographiés · ' + syncInfo;
+    if (infos) infos.textContent = resume;
+    var etatAdmin = $('#admin-etat-label');
+    if (etatAdmin) etatAdmin.textContent = SYNC.dirty ? 'Modification locale à publier' :
+      (SYNC.actif ? 'Données synchronisées' : 'Données locales disponibles');
+  }
+
+  // ==========================================================
+  //  Tableau de bord et objectifs dynamiques
+  // ==========================================================
+  function objectifId() {
+    return 'obj-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+  }
+
+  function objectifsDefaut() {
+    return [
+      { id: 'obj-ca', nom: 'Chiffre d’affaires du jour', type: 'ca', cible: 600, unite: '€', periode: 'jour', valeur: 0 },
+      { id: 'obj-couverts', nom: 'Couverts du service', type: 'couverts', cible: 40, unite: 'couverts', periode: 'jour', valeur: 0 }
+    ];
+  }
+
+  function objectifsCharger() {
+    var data = null;
+    try { data = JSON.parse(localStorage.getItem(CLE_OBJECTIFS) || 'null'); } catch (e) { }
+    if (Object.prototype.toString.call(data) !== '[object Array]') data = objectifsDefaut();
+    OBJECTIFS = data.map(function (o, i) {
+      return {
+        id: String(o.id || objectifId() + i),
+        nom: String(o.nom || 'Objectif ' + (i + 1)).slice(0, 80),
+        type: ['ca', 'couverts', 'marge', 'produits', 'rubriques', 'manuel'].indexOf(o.type) >= 0 ? o.type : 'manuel',
+        cible: Math.max(0, Number(o.cible) || 0),
+        unite: String(o.unite || '').slice(0, 12),
+        periode: ['jour', 'semaine', 'mois', 'permanent'].indexOf(o.periode) >= 0 ? o.periode : 'jour',
+        valeur: Math.max(0, Number(o.valeur) || 0)
+      };
+    });
+    objectifsSauver();
+  }
+
+  function objectifsSauver() {
+    try { localStorage.setItem(CLE_OBJECTIFS, JSON.stringify(OBJECTIFS)); } catch (e) { }
+  }
+
+  function objectifVentesLocales() {
+    var candidats = ['trattoria.ventes.v1', 'trattoria_ventes', 'trattoria.ventes'];
+    for (var i = 0; i < candidats.length; i++) {
+      try {
+        var v = JSON.parse(localStorage.getItem(candidats[i]) || 'null');
+        if (Object.prototype.toString.call(v) === '[object Array]') return v;
+        if (v && Object.prototype.toString.call(v.ventes) === '[object Array]') return v.ventes;
+      } catch (e) { }
+    }
+    return [];
+  }
+
+  function chargerVentesObjectifs() {
+    var locales = objectifVentesLocales();
+    OBJECTIF_VENTES = locales.filter(function (v) {
+      return !v.date || v.date === new Date().toISOString().slice(0, 10);
+    });
+    // Le serveur local reste la source la plus fraîche, mais un échec réseau
+    // ne doit jamais vider le tableau de bord.
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/v1/ventes?jour=' + encodeURIComponent(new Date().toISOString().slice(0, 10)), true);
+      xhr.timeout = 1800;
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            var rep = JSON.parse(xhr.responseText);
+            var ventes = Object.prototype.toString.call(rep) === '[object Array]' ? rep : rep.ventes;
+            if (Object.prototype.toString.call(ventes) === '[object Array]') OBJECTIF_VENTES = ventes;
+          } catch (e) { }
+        }
+        dessinerDashboard();
+        dessinerObjectifs();
+      };
+      xhr.onerror = xhr.ontimeout = function () { dessinerDashboard(); dessinerObjectifs(); };
+      xhr.send();
+    } catch (e) {
+      dessinerDashboard();
+      dessinerObjectifs();
+    }
+  }
+
+  function valeurObjectif(o) {
+    var total = 0, marge = 0, nbMarge = 0;
+    OBJECTIF_VENTES.forEach(function (v) {
+      total += Number(v.total) || 0;
+      if (v.marge != null) { marge += Number(v.marge) || 0; nbMarge++; }
+    });
+    if (o.type === 'ca') return total;
+    if (o.type === 'couverts') return OBJECTIF_VENTES.length;
+    if (o.type === 'produits') return CARTE.filter(function (p) { return p.actif; }).length;
+    if (o.type === 'rubriques') return Object.keys(CARTE.filter(function (p) { return p.actif; }).reduce(function (m, p) { m[p.fam] = true; return m; }, {})).length;
+    if (o.type === 'marge') {
+      if (nbMarge) return marge / nbMarge;
+      var actifs = CARTE.filter(function (p) { return p.actif && p.pv > 0; });
+      if (!actifs.length) return 0;
+      return actifs.reduce(function (n, p) { return n + tauxMarge(p) * 100; }, 0) / actifs.length;
+    }
+    return o.valeur;
+  }
+
+  function objectifUnite(o) {
+    if (o.unite) return o.unite;
+    return { ca: '€', couverts: 'couverts', marge: '%', produits: 'produits', rubriques: 'rubriques', manuel: 'unités' }[o.type] || 'unités';
+  }
+
+  function objectifValeurTexte(o, valeur) {
+    var n = Number(valeur) || 0;
+    var u = objectifUnite(o);
+    return (u === '€' ? eur(n) : ((Math.round(n) === n) ? String(n) : n.toFixed(1).replace('.', ',')) + ' ' + echap(u));
+  }
+
+  function objectifPeriodeTexte(p) { return { jour: 'Aujourd’hui', semaine: 'Cette semaine', mois: 'Ce mois', permanent: 'Permanent' }[p] || p; }
+
+  function objectifCarteHTML(o) {
+    var actuel = valeurObjectif(o), cible = Number(o.cible) || 0;
+    var progression = cible > 0 ? Math.max(0, Math.min(100, actuel * 100 / cible)) : 0;
+    var atteint = cible > 0 && actuel >= cible;
+    return '<article class="objectif-card ' + (atteint ? 'atteint' : '') + '" data-objectif="' + echap(o.id) + '">' +
+      '<div class="objectif-card-top"><div><span class="objectif-period">' + echap(objectifPeriodeTexte(o.periode)) + '</span><h3>' + echap(o.nom) + '</h3></div><span class="objectif-check">' + (atteint ? '✓' : '○') + '</span></div>' +
+      '<div class="objectif-values"><strong>' + objectifValeurTexte(o, actuel) + '</strong><span>sur ' + objectifValeurTexte(o, cible) + '</span></div>' +
+      '<div class="objectif-progress"><span style="width:' + progression.toFixed(1) + '%"></span></div>' +
+      '<div class="objectif-footer"><span>' + Math.round(progression) + ' % · actualisé automatiquement</span><span class="objectif-actions"><button type="button" class="btn-link" data-modifier-objectif="' + echap(o.id) + '">Modifier</button><button type="button" class="btn-link danger-link" data-supprimer-objectif="' + echap(o.id) + '">Supprimer</button></span></div>' +
+      '</article>';
+  }
+
+  function dessinerObjectifs() {
+    var h = OBJECTIFS.map(objectifCarteHTML).join('');
+    var dashboard = $('#dashboard-objectifs');
+    var liste = $('#liste-objectifs');
+    if (dashboard) dashboard.innerHTML = h || '<div class="empty-state">Aucun objectif. Ajoutez le premier indicateur de votre service.</div>';
+    if (liste) liste.innerHTML = h || '';
+    var vide = $('#objectifs-aide-vide');
+    if (vide) vide.hidden = OBJECTIFS.length > 0;
+  }
+
+  function dessinerDashboard() {
+    var actifs = CARTE.filter(function (p) { return p.actif; });
+    var familles = {};
+    actifs.forEach(function (p) { familles[p.fam] = true; });
+    var alertes = actifs.filter(sousObjectif).length;
+    var set = function (id, val) { var el = $('#' + id); if (el) el.textContent = val; };
+    set('resume-produits', actifs.length);
+    set('resume-rubriques', Object.keys(familles).length);
+    set('resume-formules', actifs.filter(function (p) { return p.type === 'formule'; }).length);
+    set('resume-alertes', alertes);
+    set('dashboard-mise-a-jour', 'Dernière actualisation : ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+    set('dashboard-statut', OBJECTIF_VENTES.length ? OBJECTIF_VENTES.length + ' vente(s) intégrée(s) aujourd’hui' : 'Données locales disponibles');
+  }
+
+  function ouvrirObjectifForm(id) {
+    OBJECTIF_EDIT = id || null;
+    var o = id ? OBJECTIFS.filter(function (x) { return x.id === id; })[0] : null;
+    $('#objectif-fiche-titre').textContent = o ? 'Modifier l’objectif' : 'Nouvel objectif';
+    $('#objectif-nom').value = o ? o.nom : '';
+    $('#objectif-type').value = o ? o.type : 'ca';
+    $('#objectif-unite').value = o ? o.unite : '';
+    $('#objectif-cible').value = o ? o.cible : '';
+    $('#objectif-periode').value = o ? o.periode : 'jour';
+    $('#objectif-valeur').value = o ? o.valeur : 0;
+    $('#objectif-supprimer').hidden = !o;
+    $('#objectif-voile').hidden = false;
+    $('#objectif-fiche').hidden = false;
+    majChampObjectifManuel();
+    $('#objectif-nom').focus();
+  }
+
+  function fermerObjectifForm() {
+    $('#objectif-voile').hidden = true;
+    $('#objectif-fiche').hidden = true;
+    OBJECTIF_EDIT = null;
+  }
+
+  function majChampObjectifManuel() {
+    var manuel = $('#objectif-type').value === 'manuel';
+    $('#objectif-valeur-wrap').hidden = !manuel;
+    if (!$('#objectif-unite').value && !manuel) {
+      $('#objectif-unite').placeholder = objectifUnite({ type: $('#objectif-type').value });
+    }
+  }
+
+  function enregistrerObjectif() {
+    var nom = String($('#objectif-nom').value || '').trim();
+    var cible = Number(String($('#objectif-cible').value || '').replace(',', '.'));
+    if (!nom || !isFinite(cible) || cible < 0) { toast('Indiquez un nom et une cible valide'); return; }
+    var o = OBJECTIF_EDIT ? OBJECTIFS.filter(function (x) { return x.id === OBJECTIF_EDIT; })[0] : null;
+    if (!o) { o = { id: objectifId() }; OBJECTIFS.push(o); }
+    o.nom = nom.slice(0, 80);
+    o.type = $('#objectif-type').value;
+    o.unite = String($('#objectif-unite').value || '').trim().slice(0, 12);
+    o.cible = Math.round(cible * 100) / 100;
+    o.periode = $('#objectif-periode').value;
+    o.valeur = Math.max(0, Number(String($('#objectif-valeur').value || 0).replace(',', '.')) || 0);
+    objectifsSauver();
+    sauver();
+    fermerObjectifForm();
+    dessinerObjectifs();
+    dessinerDashboard();
+    toast('Objectif enregistré');
+  }
+
+  function supprimerObjectif(id) {
+    var index = OBJECTIFS.findIndex(function (o) { return o.id === id; });
+    if (index < 0) return false;
+    if (!confirm('Supprimer cet objectif ?')) return false;
+    OBJECTIFS.splice(index, 1);
+    objectifsSauver();
+    sauver();
+    dessinerObjectifs();
+    dessinerDashboard();
+    toast('Objectif supprimé');
+    return true;
+  }
+
+  function ouvrirProduitDansCarte(id) {
+    var produit = parId(id);
+    if (!produit) return;
+    CARTE_VIEW = 'standard';
+    $$('.cv').forEach(function (b) {
+      var actif = b.dataset.cv === 'standard';
+      b.classList.toggle('on', actif);
+      b.setAttribute('aria-pressed', actif ? 'true' : 'false');
+    });
+    FILTRE_FAMILLE = produit.fam || '';
+    RECHERCHE = produit.nom;
+    montrer('carte');
+    var recherche = $('#recherche');
+    if (recherche) recherche.value = RECHERCHE;
+    dessinerCarte();
+    toast('Produit sélectionné dans La carte : ' + produit.nom);
   }
 
   // ==========================================================
   //  Navigation
   // ==========================================================
-  function montrer(ecran) {
+  function montrer(ecran, silencieux) {
     ECRAN = ecran;
-    ['carte', 'ardoises', 'ardoise', 'marges', 'donnees'].forEach(function (nom) {
-      $('#ecran-' + nom).hidden = nom !== ecran;
+    var libellesEcran = {
+      dashboard: 'Accueil admin', carte: 'La carte', ardoises: 'Cartes du jour',
+      ardoise: 'Ardoise & QR', objectifs: 'Objectifs', marges: 'Marges & prix',
+      donnees: 'Données & publication'
+    };
+    if (!silencieux && window.history && window.history.pushState) {
+      var destination = ecran === 'dashboard' ? '' : '#ecran-' + ecran;
+      if (location.hash !== destination) window.history.pushState({ ecran: ecran }, '', destination || location.pathname + location.search);
+    }
+    var contexte = $('#admin-ecran-label');
+    if (contexte) contexte.textContent = libellesEcran[ecran] || 'Administration';
+    var nouveau = $('#btn-nouveau');
+    if (nouveau) nouveau.hidden = ecran !== 'carte';
+    var sectionActive = $('#ecran-' + ecran);
+    ['dashboard', 'carte', 'ardoises', 'ardoise', 'objectifs', 'marges', 'donnees'].forEach(function (nom) {
+      var section = $('#ecran-' + nom);
+      if (section) section.hidden = nom !== ecran;
     });
+    if (sectionActive && ecran !== 'dashboard') {
+      var head = $('.screen-head', sectionActive);
+      if (head && !head.querySelector('[data-nav-retour]')) {
+        var retour = document.createElement('button');
+        retour.type = 'button';
+        retour.className = 'btn btn-s btn-mini nav-retour';
+        retour.dataset.navEcran = 'dashboard';
+        retour.dataset.navRetour = '1';
+        retour.setAttribute('aria-label', 'Revenir à l’accueil de l’administration');
+        retour.textContent = '← Accueil';
+        head.insertBefore(retour, head.firstChild);
+      }
+    }
     $$('.onglet').forEach(function (b) {
       var actif = b.dataset.ecran === ecran;
       b.classList.toggle('actif', actif);
       b.setAttribute('aria-pressed', actif ? 'true' : 'false');
+      if (actif && b.scrollIntoView) b.scrollIntoView({ block: 'nearest', inline: 'center' });
     });
+    if (sectionActive && ecran !== 'dashboard') {
+      var titreActif = sectionActive.querySelector('h1,h2');
+      if (titreActif) {
+        titreActif.setAttribute('tabindex', '-1');
+        try { titreActif.focus({ preventScroll: true }); } catch (ignore) { titreActif.focus(); }
+      }
+    }
     if (ecran === 'ardoise') { dessinerCF(); dessinerQR(); }
     if (ecran === 'carte') dessinerCarte();
-    window.scrollTo(0, 0);
+    if (ecran === 'dashboard') { dessinerDashboard(); dessinerObjectifs(); }
+    if (ecran === 'objectifs') dessinerObjectifs();
+    if (ecran === 'donnees') {
+      if ($('#champ-sync-token')) $('#champ-sync-token').value = SYNC_TOKEN;
+      afficherLiensServeur();
+    }
+    if (window.scrollTo) {
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      catch (ignoreScroll) { window.scrollTo(0, 0); }
+    }
   }
 
   // ==========================================================
   //  Démarrage
   // ==========================================================
+  function appliquerLogoAdmin() {
+    var cible = $('#admin-logo');
+    var logo = window.ARDOISE_ASSETS && window.ARDOISE_ASSETS.logo;
+    if (!cible || !logo) return;
+    cible.innerHTML = '<img src="' + logo + '" alt="La Trattoria">';
+    cible.classList.add('logo-image');
+    var dashboardLogo = $('#dashboard-logo');
+    if (dashboardLogo) dashboardLogo.src = logo;
+  }
+
   function init() {
+    appliquerLogoAdmin();
+    objectifsCharger();
+    livraisonCharger();
     charger();
+    livraisonAfficher();
     toutDessiner();
     majInfoDonnees();
+    dessinerDashboard();
+    dessinerObjectifs();
+    chargerVentesObjectifs();
+    afficherLiensServeur();
     badgeSync();
     syncDetecter();
+    hiboutikEtat();
+    if (HIBOUTIK.maj) {
+      $('#hiboutik-dernier').textContent = 'Dernière lecture locale : ' +
+        new Date(HIBOUTIK.maj).toLocaleString('fr-FR');
+      afficherStatutHiboutik(HIBOUTIK.produits.length + ' produit(s) Hiboutik en cache.',
+        HIBOUTIK.configure);
+    }
 
     // Application installable : hors ligne complet après premier chargement
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
@@ -2851,8 +3971,64 @@
     document.addEventListener('click', function (e) {
       var t = e.target;
 
+      if (t.closest('#btn-organiser-carte')) {
+        var organisation = $('#standard-structure');
+        var boutonOrganisation = $('#btn-organiser-carte');
+        if (organisation) {
+          organisation.hidden = !organisation.hidden;
+          if (boutonOrganisation) {
+            boutonOrganisation.setAttribute('aria-expanded', organisation.hidden ? 'false' : 'true');
+            boutonOrganisation.textContent = organisation.hidden ? 'Organiser les rubriques' : 'Masquer l’organisation';
+          }
+        }
+        return;
+      }
+
+      if (t.closest('#btn-enregistrer-livraison')) { livraisonSauver(); return; }
+
+      var actionCarte = t.closest('[data-action-carte]');
+      if (actionCarte && actionCarte.dataset.actionCarte === 'nouveau-produit') {
+        montrer('carte');
+        ouvrirFiche(null);
+        return;
+      }
+
+      var actionAdmin = t.closest('[data-action-admin]');
+      if (actionAdmin) {
+        var nomAction = actionAdmin.dataset.actionAdmin;
+        if (nomAction === 'publier') {
+          montrer('donnees');
+          if (!SYNC.actif) {
+            toast('Aucun serveur disponible — vos données restent enregistrées ici.');
+            return;
+          }
+          if (!SYNC_TOKEN && !demanderToken()) return;
+          SYNC.dirty = true;
+          planifierEnvoi(true);
+          toast('Publication en cours…');
+          return;
+        }
+      }
+
       var onglet = t.closest('.onglet');
       if (onglet) { montrer(onglet.dataset.ecran); return; }
+
+      var navigation = t.closest('[data-nav-ecran]');
+      if (navigation) { montrer(navigation.dataset.navEcran); return; }
+      if (t.closest('#btn-ajouter-objectif') || t.closest('#btn-ajouter-objectif-ecran') || t.closest('#btn-ajouter-objectif-vide')) {
+        ouvrirObjectifForm(null); return;
+      }
+      var modifierObjectif = t.closest('[data-modifier-objectif]');
+      if (modifierObjectif) { ouvrirObjectifForm(modifierObjectif.dataset.modifierObjectif); return; }
+      var supprimerObjectifBtn = t.closest('[data-supprimer-objectif]');
+      if (supprimerObjectifBtn) { supprimerObjectif(supprimerObjectifBtn.dataset.supprimerObjectif); return; }
+      if (t.closest('#objectif-supprimer')) {
+        if (OBJECTIF_EDIT && supprimerObjectif(OBJECTIF_EDIT)) fermerObjectifForm();
+        return;
+      }
+      if (t.closest('#objectif-fermer') || t.closest('#objectif-annuler') || t.id === 'objectif-voile') {
+        fermerObjectifForm(); return;
+      }
 
       if (clicArdoise(t)) return;
       if (clicMoment(t)) return;
@@ -2893,6 +4069,9 @@
         return;
       }
 
+      var voirCarte = t.closest('[data-voir-carte]');
+      if (voirCarte) { ouvrirProduitDansCarte(voirCarte.dataset.voirCarte); return; }
+
       var editer = t.closest('[data-editer]');
       if (editer) { ouvrirFiche(editer.dataset.editer); return; }
 
@@ -2909,7 +4088,11 @@
       }
 
       var ligne = t.closest('tr[data-id]');
-      if (ligne) { ouvrirFiche(ligne.dataset.id); return; }
+      if (ligne) {
+        if (ECRAN === 'marges') ouvrirProduitDansCarte(ligne.dataset.id);
+        else ouvrirFiche(ligne.dataset.id);
+        return;
+      }
 
       if (t.closest('#btn-nouveau')) { ouvrirFiche(null); return; }
       if (t.closest('[data-fermer]')) { fermerFiche(); fermerCueillette(); fermerApercu(); return; }
@@ -2953,7 +4136,49 @@
       if (t.closest('#btn-export-csv')) { exporterCSV(); return; }
       if (t.closest('#btn-import')) { $('#fichier-import').click(); return; }
       if (t.closest('#btn-reinit')) { restaurer(); return; }
-      if (t.closest('#btn-sync')) { syncTirer(true); planifierEnvoi(true); return; }
+      if (t.closest('#btn-sync-token')) {
+        if (demanderToken()) {
+          toast('Jeton enregistré sur cet appareil');
+          if (SYNC.actif) planifierEnvoi(true);
+        }
+        return;
+      }
+      if (t.closest('#btn-sync-token-oublier')) {
+        SYNC_TOKEN = '';
+        SYNC.authentifie = false;
+        localStorage.removeItem(CLE_SYNC_TOKEN);
+        var champToken = $('#champ-sync-token');
+        if (champToken) champToken.value = '';
+        toast('Jeton oublié');
+        return;
+      }
+      if (t.closest('#btn-sync-base')) {
+        var champBase = $('#champ-sync-base');
+        var valeurBase = champBase ? String(champBase.value || '').trim() : '';
+        if (valeurBase && !normaliserBaseServeur(valeurBase)) {
+          toast('Adresse invalide — utilisez http:// ou https://');
+          if (champBase) champBase.focus();
+          return;
+        }
+        configurerServeur(valeurBase);
+        toast(SYNC_BASE ? 'Serveur enregistré — test en cours' : 'Mode autonome activé');
+        return;
+      }
+      if (t.closest('#btn-publier')) {
+        if (!SYNC.actif) { toast('Aucun serveur disponible — données conservées sur cette tablette.'); return; }
+        if (!SYNC_TOKEN && !demanderToken()) return;
+        SYNC.dirty = true;
+        planifierEnvoi(true);
+        toast('Publication en cours…');
+        return;
+      }
+      if (t.closest('#btn-sync')) {
+        syncTirer(true);
+        if (!SYNC_TOKEN && !SYNC.dirty) toast('Lecture effectuée ; ajoutez la clé d’administration pour publier.');
+        return;
+      }
+      if (t.closest('#btn-hiboutik-refresh')) { actualiserInventaireHiboutik(); return; }
+      if (t.closest('#btn-hiboutik-importer')) { importerNouveauxProduitsHiboutik(); return; }
       if (t.closest('#badge-sync')) { syncTirer(true); return; }
 
       // ------- cartes du jour -------
@@ -3028,6 +4253,20 @@
     });
 
     document.addEventListener('change', function (e) {
+      if (e.target.id === 'filtre-famille') {
+        FILTRE_FAMILLE = e.target.value;
+        RECHERCHE = '';
+        var rechercheFamille = $('#recherche');
+        if (rechercheFamille) rechercheFamille.value = '';
+        dessinerCarte();
+        return;
+      }
+      if (e.target.id === 'filtre-etat') {
+        FILTRE_ETAT = e.target.value || 'actifs';
+        dessinerCarte();
+        return;
+      }
+      if (e.target.id === 'objectif-type') { majChampObjectifManuel(); return; }
       if (e.target.id === 'champ-photo') {
         chargerPhoto(e.target.files[0]);
         e.target.value = '';
@@ -3061,6 +4300,10 @@
       if (e.target.hasAttribute('data-alg')) {
         e.target.closest('.alg-case').classList.toggle('on', e.target.checked);
       }
+      if (e.target.id === 'cueillette-disponibles' && CUEILLETTE) {
+        CUEILLETTE.disponibles = e.target.checked;
+        dessinerCueillette();
+      }
       if (e.target.hasAttribute('data-cueillette')) {
         var id = e.target.getAttribute('data-cueillette');
         var i = CUEILLETTE ? CUEILLETTE.choisis.indexOf(id) : -1;
@@ -3084,6 +4327,11 @@
     });
 
     document.addEventListener('submit', function (e) {
+      if (e.target.id === 'objectif-form') {
+        e.preventDefault();
+        enregistrerObjectif();
+        return;
+      }
       if (e.target.hasAttribute('data-form-libre')) {
         e.preventDefault();
         ajouterLibre(e.target.getAttribute('data-form-libre'), e.target);
@@ -3091,11 +4339,28 @@
     });
 
     document.addEventListener('keydown', function (e) {
+      var tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : '';
+      var saisie = tag === 'input' || tag === 'textarea' || tag === 'select' ||
+        (e.target && e.target.isContentEditable);
+      if (e.key === '/' && !saisie && ECRAN === 'carte' && $('#fiche').hidden) {
+        var recherche = $('#recherche');
+        if (recherche && !recherche.hidden) {
+          e.preventDefault();
+          recherche.focus();
+          return;
+        }
+      }
+      if ((e.key === 'n' || e.key === 'N') && !saisie && ECRAN === 'carte' && $('#fiche').hidden) {
+        e.preventDefault();
+        ouvrirFiche(null);
+        return;
+      }
       if (e.key !== 'Escape') return;
       if (document.getElementById('ardoise-overlay')) { fermerArdoise(); return; }
       if (!$('#fiche').hidden) fermerFiche();
       else if (!$('#cueillette').hidden) fermerCueillette();
       else if (!$('#apercu').hidden) fermerApercu();
+      else if (ECRAN !== 'dashboard') montrer('dashboard');
     });
 
     $('#form-produit').addEventListener('submit', enregistrer);
@@ -3104,19 +4369,23 @@
     // Lien profond (depuis le panneau « Éditer les cartes » de l'application,
     // ou URL directe) : #ecran-carte&vue=formules, #ecran-ardoise&apercu=1…
     window.addEventListener('hashchange', appliquerHash);
+    window.addEventListener('popstate', appliquerHash);
     appliquerHash();
   }
 
   function appliquerHash() {
     var h = String(location.hash || '').replace(/^#/, '');
-    if (!h) return;
+    if (!h) {
+      if (ECRAN !== 'dashboard') montrer('dashboard', true);
+      return;
+    }
     var mE = h.match(/^ecran-([a-z]+)/);
     if (!mE) return;
     var ecran = mE[1];
-    if (['carte', 'ardoises', 'ardoise', 'marges', 'donnees'].indexOf(ecran) < 0) return;
-    montrer(ecran);
+    if (['dashboard', 'carte', 'ardoises', 'ardoise', 'objectifs', 'marges', 'donnees'].indexOf(ecran) < 0) return;
+    montrer(ecran, true);
     var mV = h.match(/vue=([a-z]+)/);
-    if (mV && ['standard', 'formules', 'vins', 'glaces', 'bieres'].indexOf(mV[1]) >= 0) {
+    if (mV && ['standard', 'formules', 'vins', 'glaces', 'bieres', 'boissons', 'moment'].indexOf(mV[1]) >= 0) {
       CARTE_VIEW = mV[1];
       $$('.cv').forEach(function (b) {
         var on = b.dataset.cv === CARTE_VIEW;
@@ -3139,6 +4408,7 @@
     config: function () { return CF; },
     htmlArdoise: htmlArdoise,
     htmlArdoiseExtras: htmlArdoiseExtras,
+    illustrationProduit: illustrationProduit,
     itemsFamille: itemsFamille,
     itemsExtra: itemsExtra,
     htmlMoment: htmlMoment,

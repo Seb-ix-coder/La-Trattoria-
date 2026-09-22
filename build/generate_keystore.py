@@ -8,18 +8,10 @@ Crée une paire de clés RSA-2048 + un certificat X.509 auto-signé
 (30 ans) et l'empaquette dans un keystore PKCS#12 protégé par mot de
 passe.
 
-⚠️  SÉCURITÉ — LIRE AVANT TOUT  ⚠️
-----------------------------------
-Ce keystore est la clé d'identité de l'application :
-  * TOUTES les mises à jour doivent être signées avec la MÊME clé,
-    sinon Android refuse l'installation par-dessus l'ancienne version ;
-  * quiconque possède ce fichier + le mot de passe peut signer une
-    application « La Trattoria » qui s'installera PAR-DESSUS la vôtre.
-=> À conserver hors du dépôt Git, dans un endroit sûr (coffre, gestionnaire
-   de secrets), avec plusieurs sauvegardes chiffrées.
-
-Le mot de passe est généré aléatoirement et écrit dans le fichier
-README-KEYSTORE.txt situé À CÔTÉ du keystore (hors dépôt Git).
+Le mot de passe n'est jamais écrit dans un fichier. Pour une génération
+interactive, le script l'affiche une seule fois sur stdout ; le pipeline
+`run_build*.sh` le récupère immédiatement dans une variable d'environnement.
+Pour fournir une valeur choisie, définir `KEYSTORE_PASSWORD` avant l'appel.
 
 Usage :
   python3 generate_keystore.py [répertoire_de_sortie]
@@ -38,14 +30,18 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 
-def generate_keystore(out_dir: str) -> str:
-    os.makedirs(out_dir, exist_ok=True)
+def generate_keystore(out_dir: str) -> tuple[str, str]:
+    os.makedirs(out_dir, mode=0o700, exist_ok=True)
+    os.chmod(out_dir, 0o700)
     key_path = os.path.join(out_dir, 'trattoria-release.p12')
-    readme_path = os.path.join(out_dir, 'README-KEYSTORE.txt')
 
-    # -- mot de passe aléatoire (32 caractères)
-    alphabet = string.ascii_letters + string.digits
-    password = ''.join(secrets.choice(alphabet) for _ in range(32))
+    # -- mot de passe choisi par le coffre ou généré une fois
+    password = os.environ.get('KEYSTORE_PASSWORD', '')
+    if not password:
+        alphabet = string.ascii_letters + string.digits
+        password = ''.join(secrets.choice(alphabet) for _ in range(32))
+    if len(password) < 16:
+        raise ValueError('KEYSTORE_PASSWORD doit contenir au moins 16 caractères')
 
     # -- clé RSA-2048
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -67,18 +63,12 @@ def generate_keystore(out_dir: str) -> str:
         .serial_number(x509.random_serial_number())
         .not_valid_before(now - datetime.timedelta(days=1))
         .not_valid_after(now + datetime.timedelta(days=30 * 365))
-        # Certificat volontairement minimal, comme celui de l'APK
-        # d'origine : uniquement SubjectKeyIdentifier, non critique.
-        # Android n'exige aucune extension pour un certificat de
-        # signature d'APK ; rester identique à l'outillage officiel
-        # élimine tout risque de rejet.
         .add_extension(
             x509.SubjectKeyIdentifier.from_public_key(key.public_key()),
             critical=False)
         .sign(key, hashes.SHA256())
     )
 
-    # -- empaquetage PKCS#12
     p12 = pkcs12.serialize_key_and_certificates(
         name=b'trattoria',
         key=key,
@@ -90,39 +80,21 @@ def generate_keystore(out_dir: str) -> str:
     )
     with open(key_path, 'wb') as f:
         f.write(p12)
+    os.chmod(key_path, 0o600)
 
     fingerprint = cert.fingerprint(hashes.SHA256()).hex()
-    with open(readme_path, 'w', encoding='utf-8') as f:
-        f.write(
-            'KEYS DE SIGNATURE « LA TRATTORIA » — BUILD DURCI 11.1\n'
-            '======================================================\n\n'
-            'Fichier   : %s\n'
-            'Alias     : trattoria\n'
-            'Type      : PKCS#12 (compatible Gradle / apksigner / cet outil)\n'
-            'Empreinte SHA-256 du certificat : %s\n\n'
-            'MOT DE PASSE DU KEYSTORE :\n%s\n\n'
-            '⚠ CONSERVER CES INFORMATIONS HORS DU DÉPÔT GIT.\n'
-            'Toute mise à jour de l\'application DOIT être signée avec cette\n'
-            'même clé. Perdre ce fichier = impossible de mettre à jour sans\n'
-            'désinstaller/réinstaller (et donc perdre les données).\n'
-            'Pour le pipeline GitHub Actions, encoder le fichier en base64 :\n'
-            '  base64 -w0 trattoria-release.p12   (ou : cat ... | base64)\n'
-            'et le placer dans le secret KEYSTORE_BASE64 ; le mot de passe\n'
-            'dans le secret KEYSTORE_PASSWORD.\n'
-            % (key_path, fingerprint, password)
-        )
-    os.chmod(readme_path, 0o600)
-    os.chmod(key_path, 0o600)
-    print('[ok] keystore généré : %s' % key_path)
-    print('[ok] mot de passe + empreinte : %s' % readme_path)
-    return key_path
+    print('[ok] keystore généré : %s' % key_path, file=sys.stderr)
+    print('[ok] empreinte SHA-256 : %s' % fingerprint, file=sys.stderr)
+    return key_path, password
 
 
 def main() -> None:
     out_dir = sys.argv[1] if len(sys.argv) > 1 else (
         os.path.join(os.path.expanduser('~'), 'trattoria-keystore')
     )
-    generate_keystore(out_dir)
+    _, password = generate_keystore(out_dir)
+    # Sortie machine lisible et unique : ne pas ajouter d'autres logs stdout.
+    print(password)
 
 
 if __name__ == '__main__':

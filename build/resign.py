@@ -19,9 +19,12 @@ extra de padding, comme zipalign). Les 3 fichiers de signature v1 puis le
 bloc v2 (aligné 4096) sont ensuite ajoutés sans autre modification.
 
 Usage :
-  python3 resign.py trato.apk keystore.p12 PASSWORD out.apk \
+  KEYSTORE_PASSWORD=... python3 resign.py trato.apk keystore.p12 out.apk \
       [--replace=AndroidManifest.xml=fichier.xml] \
       [--replace=classes.dex=fichier.dex] ...
+
+L'ancien format avec le mot de passe en troisième argument reste accepté pour
+compatibilité locale, mais il ne doit plus être utilisé dans un pipeline.
 """
 
 import os
@@ -203,12 +206,22 @@ def build(src_apk, replacements, p12, password, dst):
 
 def main():
     args = sys.argv[1:]
-    if len(args) < 4:
+    if len(args) < 3:
         print(__doc__)
         sys.exit(1)
-    src, p12, password, dst = args[0], args[1], args[2], args[3]
+    # Mode sécurisé : le secret arrive par l'environnement, jamais la ligne
+    # de commande. Le mode à quatre arguments reste une compatibilité locale.
+    if os.environ.get('KEYSTORE_PASSWORD'):
+        src, p12, dst = args[0], args[1], args[2]
+        password = os.environ['KEYSTORE_PASSWORD']
+        replace_args = args[3:]
+    elif len(args) >= 4:
+        src, p12, password, dst = args[0], args[1], args[2], args[3]
+        replace_args = args[4:]
+    else:
+        raise SystemExit('Définir KEYSTORE_PASSWORD dans l\'environnement.')
     replacements = {}
-    for a in args[4:]:
+    for a in replace_args:
         if a.startswith('--replace='):
             kv = a[len('--replace='):]
             k, v = kv.split('=', 1)

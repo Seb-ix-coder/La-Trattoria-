@@ -6,7 +6,7 @@
    ============================================================ */
 'use strict';
 
-var CACHE = 'trattoria-carte-v6';
+var CACHE = 'trattoria-carte-v7';
 var FICHIERS = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ var FICHIERS = [
   './donnees-carte.js',
   './ardoise-assets.js',
   './qr-encodeur.js',
+  './api-client.js',
   './apercu-carte.html',
   './legal.html',
   './public.html',

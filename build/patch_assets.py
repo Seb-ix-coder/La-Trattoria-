@@ -34,6 +34,7 @@ Usage :
 """
 
 import os
+import re
 import sys
 
 # ---------------------------------------------------------------------------
@@ -71,8 +72,52 @@ def _read(path: str) -> str:
         return f.read()
 
 
+def _remplacer_addon_paiement(source: str) -> str:
+    """Remplace l'ancien addon paiement embarqué, sans toucher au noyau."""
+    addon = _read(os.path.join(os.path.dirname(__file__), 'paiement_fidelite.js'))
+    debut = source.find('/* ============================================================================\n   Addon « Mode de paiement')
+    if debut < 0:
+        return source
+    suivant = source.find('/* ============================================================================', debut + 32)
+    if suivant < 0:
+        return source
+    return source[:debut] + addon.rstrip() + '\n\n' + source[suivant:]
+
+
+def _ajouter_livraison(source: str) -> str:
+    """Ajoute la réception et les frais au client sans réinjecter deux fois."""
+    if 'Addon « Réception, livraison et frais »' in source:
+        return source
+    # Le noyau conserve son total calculé à partir des produits. Il reprend
+    # le supplément dans la commande finale via l'API publique de l'addon.
+    if 'window.TrattoriaLivraison' not in source:
+        source = source.replace(
+            'total: totalPanier()\n    });',
+            'total: totalPanier() + (window.TrattoriaLivraison ? window.TrattoriaLivraison.frais() : 0)\n    });',
+            1)
+    addon = _read(os.path.join(os.path.dirname(__file__), 'livraison_commande.js'))
+    return source.rstrip('\n') + '\n\n' + addon + '\n'
+
+
+def _ajouter_extensions_client(source: str) -> str:
+    """Ajoute Monetico et le nouveau thème sans embarquer de secret."""
+    extensions = [
+        ('Monetico — bouton de paiement sécurisé', 'monetico_checkout.js'),
+        ('Design client « La Trattoria — table claire »', 'design_propre.js'),
+    ]
+    for marqueur, fichier in extensions:
+        if marqueur in source:
+            continue
+        source = source.rstrip('\n') + '\n\n' + _read(os.path.join(os.path.dirname(__file__), fichier)).rstrip() + '\n'
+    return source
+
+
 def patch_site_js(source: str) -> str:
-    """Applique le correctif B1 puis ajoute les addons QR + conformité."""
+    """Applique les correctifs client, paiement et réception."""
+    source = _remplacer_addon_paiement(source)
+    # Route du serveur natif 13.0 : /api/commande (et non /site/commande).
+    source = source.replace("API + '/site/commande'", "API + '/api/commande'")
+    source = _ajouter_livraison(source)
     # -- B1 (idempotent)
     if 'Correctif durci 11.1' not in source:
         if source.count(ANCRE) != 1:
@@ -104,7 +149,7 @@ def patch_site_js(source: str) -> str:
         print('[patch] site.js : pourboire numérique (POURBOIRE)')
 
     # -- addon paiement + carte de fidélité (idempotent)
-    if 'Mode de paiement prévu' not in source:
+    if 'Addon « Mode de paiement & carte de fidélité' not in source:
         addon = _read(os.path.join(os.path.dirname(__file__),
                                    'paiement_fidelite.js'))
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
@@ -116,6 +161,7 @@ def patch_site_js(source: str) -> str:
                                    'mode_app.js'))
         source = source.rstrip('\n') + '\n\n' + addon + '\n'
         print('[patch] site.js : modes App client/partenaire (APP)')
+    source = _ajouter_extensions_client(source)
     return source
 
 

@@ -14,6 +14,7 @@
 <link rel="icon" type="image/png" href="icones/icone-192.png">
 <link rel="stylesheet" href="carte.css">
 <link rel="stylesheet" href="ardoise.css">
+<link rel="stylesheet" href="ardoise-premium-overrides.css">
 </head>
 <body>
 
@@ -23,18 +24,23 @@
 <header>
   <div class="conteneur barre">
     <div class="marque">
-      <span class="logo" aria-hidden="true">LT</span>
+      <span class="logo" id="admin-logo" aria-hidden="true"><span class="logo-fallback">LT</span></span>
       <span>
         <span class="n">La Trattoria</span>
         <span class="s">Gestion de la carte</span>
       </span>
     </div>
+    <div class="admin-context" aria-live="polite">
+      <strong id="admin-ecran-label">Accueil admin</strong>
+      <span id="admin-etat-label">Données locales disponibles</span>
+    </div>
     <button type="button" class="badge-sync" id="badge-sync" title="Synchronisation entre tablettes">
       <span class="point"></span>Mode autonome</button>
-    <button type="button" class="btn btn-p" id="btn-nouveau">+ Ajouter</button>
+    <button type="button" class="btn btn-p" id="btn-nouveau" hidden>+ Ajouter un produit</button>
   </div>
   <nav class="conteneur onglets" aria-label="Écrans">
-    <button type="button" class="onglet actif" data-ecran="carte" aria-pressed="true">La carte</button>
+    <button type="button" class="onglet actif" data-ecran="dashboard" aria-pressed="true">Accueil admin</button>
+    <button type="button" class="onglet" data-ecran="carte" aria-pressed="false">La carte</button>
     <button type="button" class="onglet" data-ecran="ardoises" aria-pressed="false">Cartes du jour</button>
     <button type="button" class="onglet" data-ecran="ardoise" aria-pressed="false">Ardoise &amp; QR</button>
     <button type="button" class="onglet" data-ecran="marges" aria-pressed="false">Marges</button>
@@ -44,24 +50,121 @@
 
 <main id="contenu" class="conteneur">
 
+  <!-- ================= écran : accueil administration ================= -->
+  <section id="ecran-dashboard" class="dashboard" aria-labelledby="titre-dashboard">
+    <div class="dashboard-hero">
+      <div class="dashboard-brand">
+        <img id="dashboard-logo" class="dashboard-logo" alt="Logo La Trattoria">
+        <div>
+          <p class="eyebrow">ESPACE ADMINISTRATION</p>
+          <h1 id="titre-dashboard">Piloter La Trattoria</h1>
+          <p class="dashboard-lede">Un espace clair pour piloter la carte, les objectifs et la production du site.</p>
+        </div>
+      </div>
+      <div class="dashboard-status"><span class="status-dot"></span><span id="dashboard-statut">Données locales disponibles</span></div>
+    </div>
+
+    <div class="dashboard-columns">
+      <div class="dashboard-primary">
+        <section class="admin-panel" aria-labelledby="titre-raccourcis">
+          <div class="panel-heading"><div><p class="eyebrow">NAVIGATION RAPIDE</p><h2 id="titre-raccourcis">Menu principal</h2></div><span class="panel-hint">Touchez une tuile pour ouvrir un espace</span></div>
+          <div class="admin-menu-grid">
+            <button type="button" class="admin-menu-card featured" data-nav-ecran="carte"><span class="menu-card-icon">🍽️</span><span class="menu-card-copy"><strong>Carte du restaurant</strong><small>Rubriques cuisine, fiches publiées, prix et allergènes</small></span><span class="menu-card-arrow">›</span></button>
+            <button type="button" class="admin-menu-card" data-nav-ecran="ardoises"><span class="menu-card-icon">🗓️</span><span class="menu-card-copy"><strong>Cartes du jour</strong><small>Composer et publier les sélections</small></span><span class="menu-card-arrow">›</span></button>
+            <button type="button" class="admin-menu-card" data-nav-ecran="ardoise"><span class="menu-card-icon">📋</span><span class="menu-card-copy"><strong>Ardoise &amp; QR</strong><small>Site public, visuels et QR code</small></span><span class="menu-card-arrow">›</span></button>
+            <button type="button" class="admin-menu-card" data-nav-ecran="marges"><span class="menu-card-icon">📊</span><span class="menu-card-copy"><strong>Marges</strong><small>Prix, coûts et alertes de rentabilité</small></span><span class="menu-card-arrow">›</span></button>
+            <button type="button" class="admin-menu-card" data-nav-ecran="objectifs"><span class="menu-card-icon">🎯</span><span class="menu-card-copy"><strong>Objectifs</strong><small>Créer, suivre et actualiser vos objectifs</small></span><span class="menu-card-arrow">›</span></button>
+            <button type="button" class="admin-menu-card" data-nav-ecran="donnees"><span class="menu-card-icon">💾</span><span class="menu-card-copy"><strong>Données &amp; sauvegarde</strong><small>Synchronisation, export et import</small></span><span class="menu-card-arrow">›</span></button>
+          </div>
+        </section>
+
+        <section class="admin-panel actions-rapides" aria-labelledby="titre-actions-rapides">
+          <div class="panel-heading"><div><p class="eyebrow">POUR ALLER VITE</p><h2 id="titre-actions-rapides">Actions fréquentes</h2></div><span class="panel-hint">Les tâches du quotidien, au même endroit</span></div>
+          <div class="quick-actions">
+            <button type="button" class="quick-action primary" data-nav-ecran="carte"><span aria-hidden="true">🍽️</span><span><strong>Ouvrir la carte</strong><small>Modifier, ajouter ou mettre en pause</small></span></button>
+            <button type="button" class="quick-action" data-nav-ecran="ardoises"><span aria-hidden="true">🗓️</span><span><strong>Préparer le service</strong><small>Composer les cartes du jour</small></span></button>
+            <a class="quick-action" id="lien-site-local" href="public.html" target="_blank" rel="noopener"><span aria-hidden="true">↗</span><span><strong>Ouvrir le site client</strong><small id="url-site-local">Adresse du réseau local, en un clic</small></span></a>
+            <button type="button" class="quick-action" data-action-admin="publier"><span aria-hidden="true">☁</span><span><strong>Publier les modifications</strong><small>Mettre à jour les autres tablettes</small></span></button>
+          </div>
+        </section>
+
+        <section class="admin-panel objectifs-panel" aria-labelledby="titre-objectifs-dashboard">
+          <div class="panel-heading"><div><p class="eyebrow">SUIVI DYNAMIQUE</p><h2 id="titre-objectifs-dashboard">Objectifs du service</h2></div><button type="button" class="btn btn-p btn-mini" id="btn-ajouter-objectif">+ Nouvel objectif</button></div>
+          <p class="panel-intro">Les indicateurs se recalculent dès qu'une vente ou une modification de carte est disponible. Vous pouvez ajouter autant d'objectifs que nécessaire.</p>
+          <div id="dashboard-objectifs" class="dashboard-objectifs" aria-live="polite"></div>
+        </section>
+      </div>
+
+      <aside class="dashboard-aside">
+        <section class="admin-panel dashboard-summary" aria-labelledby="titre-resume">
+          <p class="eyebrow">VUE D'ENSEMBLE</p><h2 id="titre-resume">Aujourd'hui</h2>
+          <div class="summary-grid"><div><strong id="resume-produits">—</strong><span>produits actifs</span></div><div><strong id="resume-rubriques">—</strong><span>rubriques</span></div><div><strong id="resume-formules">—</strong><span>formules</span></div><div><strong id="resume-alertes">—</strong><span>alertes marge</span></div></div>
+          <div class="summary-updated" id="dashboard-mise-a-jour">Dernière actualisation : —</div>
+        </section>
+        <section class="admin-panel aide-panel"><p class="eyebrow">MÉTHODE</p><h2>Un tableau de bord fait pour décider</h2><p>Les actions sont regroupées par usage. Les données restent éditables depuis chaque écran et alimentent l'aperçu, l'impression et le site public.</p><button type="button" class="btn btn-s btn-bloc" data-nav-ecran="carte">Ouvrir l'éditeur de carte</button></section>
+      </aside>
+    </div>
+  </section>
+
   <!-- ================= écran : la carte ================= -->
-  <section id="ecran-carte">
-    <p class="carte-entete">✏️ <b>Éditer &amp; produire les cartes</b> — la carte
-      standard (titres, sous-titres, lignes), les formules, les vins, les glaces,
-      les bières, les ardoises du jour · impression A4</p>
+  <section id="ecran-carte" hidden aria-labelledby="titre-carte">
+    <div class="screen-head">
+      <div><p class="eyebrow">CATALOGUE</p><h2 id="titre-carte">La carte</h2><p class="aide">Modifiez chaque produit, rubrique et prix. Les changements alimentent l'aperçu, l'impression A4 et la page publique.</p></div>
+      <button type="button" class="btn btn-p" data-action-carte="nouveau-produit">+ Ajouter un produit</button>
+    </div>
+
+    <section class="carte-bloc impression-restaurant" aria-labelledby="titre-impressions-restaurant">
+      <div class="impression-titre"><div><p class="eyebrow">DOCUMENTS DE SERVICE</p><h2 id="titre-impressions-restaurant">Imprimer sans se perdre</h2></div><span class="impression-note">Une action principale, le reste au besoin</span></div>
+      <p class="aide">La carte du restaurant est le document de référence. Les cartes boissons et les formats spécialisés restent séparés pour éviter une feuille illisible. Les prix viennent des données locales et sont actualisés avant impression.</p>
+      <div class="impression-principale">
+        <a class="btn btn-p" href="#impression" data-cv-imprimer="1">🖨️ Imprimer la carte du restaurant</a>
+        <span>Plats, formules et desserts réellement publiés</span>
+      </div>
+      <details class="impressions-secondaires">
+        <summary>Autres documents d’impression</summary>
+        <div class="rangee-boutons cartes-imprimables" aria-label="Autres cartes imprimables">
+          <a class="btn btn-s" href="#impression" data-print-card="08-carte-boissons.html">Carte des boissons</a>
+          <a class="btn btn-s" href="#impression" data-print-card="02-carte-pizzas.html">Carte pizzas</a>
+          <a class="btn btn-s" href="#impression" data-print-card="05-carte-salades.html">Carte salades</a>
+          <a class="btn btn-s" href="#impression" data-print-card="06-carte-formules.html">Carte formules</a>
+          <a class="btn btn-s" href="#impression" data-print-card="03-glaces-langelys.html">Glaces</a>
+          <a class="btn btn-s" href="#impression" data-print-card="04-bieres-du-moment.html">Bières</a>
+          <a class="btn btn-s" href="#impression" data-print-card="07-carte-restaurant-economique.html">Version économique</a>
+          <a class="btn btn-s" href="#impression" data-print-card="cartes-contact-a4.html">Cartes contact + QR</a>
+        </div>
+      </details>
+    </section>
+
     <nav class="carte-vues" id="carte-vues" aria-label="Cartes éditables">
-      <button type="button" class="cv on" data-cv="standard" aria-pressed="true">🍽️ Carte standard</button>
+      <button type="button" class="cv on" data-cv="standard" aria-pressed="true">🍽️ Carte générale</button>
       <button type="button" class="cv" data-cv="formules" aria-pressed="false">🧾 Formules</button>
       <button type="button" class="cv" data-cv="vins" aria-pressed="false">🍷 Vins</button>
       <button type="button" class="cv" data-cv="glaces" aria-pressed="false">🍨 Glaces</button>
       <button type="button" class="cv" data-cv="bieres" aria-pressed="false">🍺 Bières</button>
+      <button type="button" class="cv" data-cv="boissons" aria-pressed="false">🥂 Boissons</button>
       <button type="button" class="cv" data-cv="moment" aria-pressed="false">✨ Du moment</button>
       <button type="button" class="cva" data-cv-saut="ardoises" title="Éditer les ardoises du jour">🗓️ Ardoises du jour</button>
       <button type="button" class="cva cva-action" data-cv-imprimer="1" title="Aperçu et impression A4 de la carte standard">🖨️ Carte A4</button>
     </nav>
     <div class="outils" id="outils-standard">
-      <input type="search" id="recherche" placeholder="Rechercher un produit…"
-             aria-label="Rechercher un produit">
+      <div class="standard-admin-head">
+        <div>
+          <strong>La carte du restaurant</strong>
+          <span>Choisissez une rubrique, puis ouvrez uniquement les fiches dont vous avez besoin.</span>
+        </div>
+        <div class="standard-admin-actions"><button type="button" class="btn btn-s btn-mini" id="btn-organiser-carte" aria-expanded="false">Organiser les rubriques</button><button type="button" class="btn btn-p btn-mini" data-standard-preview="1">Aperçu de la carte</button></div>
+      </div>
+      <div id="standard-structure" hidden aria-label="Organisation des rubriques de la carte standard"></div>
+      <div class="carte-selection-outil">
+        <label class="champ"><span>Je travaille sur</span><select id="filtre-famille" aria-label="Choisir la rubrique à gérer"><option value="">Choisir une rubrique…</option></select></label>
+        <label class="champ"><span>État des fiches</span><select id="filtre-etat" aria-label="Filtrer par état"><option value="actifs">Publiées uniquement</option><option value="tous">Toutes les fiches</option><option value="pauses">En pause uniquement</option></select></label>
+        <p class="selection-aide">Les autres produits restent rangés dans le catalogue et ne sont pas affichés tant que vous ne les demandez pas.</p>
+      </div>
+      <div class="recherche-ligne">
+        <input type="search" id="recherche" placeholder="Rechercher dans la rubrique choisie…"
+               aria-label="Rechercher un produit dans la rubrique choisie">
+        <span class="raccourcis" aria-label="Raccourcis clavier">/ rechercher · N ajouter</span>
+      </div>
       <div class="filtres" role="group" aria-label="Filtrer par type">
         <button type="button" class="filtre actif" data-type="tout" aria-pressed="true">Tout</button>
         <button type="button" class="filtre" data-type="formule" aria-pressed="false">Formules</button>
@@ -72,22 +175,40 @@
       <p class="aide" id="nb-visibles" aria-live="polite"></p>
     </div>
     <div id="liste-produits"></div>
+    <div class="carte-bloc hiboutik-bloc" id="bloc-hiboutik">
+      <h2>Source stock — Hiboutik</h2>
+      <p class="aide">La connexion reste protégée sur le serveur. Actualisez l'inventaire ici, puis importez uniquement les nouveaux produits dans <strong>La carte</strong>. Les modifications manuelles se font dans les fiches ci-dessus.</p>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-p" id="btn-hiboutik-refresh">Actualiser l'inventaire Hiboutik</button>
+        <button type="button" class="btn btn-s" id="btn-hiboutik-importer" disabled>Importer les nouveaux produits dans La carte</button>
+        <span id="hiboutik-statut" class="aide" role="status">Vérification de la connexion…</span>
+      </div>
+      <p class="aide" id="hiboutik-dernier"></p>
+    </div>
   </section>
 
   <!-- ================= écran : cartes du jour ================= -->
-  <section id="ecran-ardoises" hidden>
-    <div class="ardoise-intro carte-bloc">
-      <h2>Les cartes du jour</h2>
-      <p class="aide">Composez les ardoises du service — bières du jour, plats du jour,
-        carte des desserts — à partir de vos produits ou de lignes libres, puis
-        imprimez-les ou affichez-les. Vides, elles ne sont ni affichées ni imprimées.</p>
+  <section id="ecran-ardoises" hidden aria-labelledby="titre-ardoises">
+    <div class="screen-head">
+      <div><p class="eyebrow">SERVICE</p><h2 id="titre-ardoises">Cartes du jour</h2><p class="aide">Préparez les sélections du service, puis imprimez-les ou publiez-les sur le site.</p></div>
       <button type="button" class="btn btn-p" id="btn-imprimer-tout">🖨 Imprimer les trois cartes</button>
+    </div>
+    <div class="ardoise-intro carte-bloc">
+      <h2>Composer les sélections</h2>
+      <p class="aide">Composez les ardoises du service — bières du jour, plats du jour,
+        carte des desserts — automatiquement depuis les produits disponibles de
+        l'inventaire, ou manuellement avec le catalogue et des lignes libres, puis
+        imprimez-les ou affichez-les. Vides, elles ne sont ni affichées ni imprimées.</p>
     </div>
     <div id="ardoises"></div>
   </section>
 
   <!-- ================= écran : ardoise (carte principale) & QR ================= -->
-  <section id="ecran-ardoise" hidden>
+  <section id="ecran-ardoise" hidden aria-labelledby="titre-ardoise">
+    <div class="screen-head">
+      <div><p class="eyebrow">PUBLICATION</p><h2 id="titre-ardoise">Ardoise &amp; QR</h2><p class="aide">Gérez les cartes dédiées, les titres visibles par les clients et l'adresse du QR code.</p></div>
+      <button type="button" class="btn btn-p" id="btn-ouvrir-ardoise">🧾 Ouvrir l'ardoise</button>
+    </div>
     <div class="ardoise-intro carte-bloc">
       <h2>L'ardoise — la carte principale</h2>
       <p class="aide">Éditez le titre et le sous-titre de chaque catégorie,
@@ -97,7 +218,6 @@
         imprimez l'ardoise. Elle est publiée sur la page clients
         (apercu-carte.html, serveur de carte) et embarquée dans l'application.</p>
       <div class="rangee-boutons">
-        <button type="button" class="btn btn-p" id="btn-ouvrir-ardoise">🧾 Ouvrir l'ardoise</button>
         <button type="button" class="btn btn-s" id="btn-imprimer-ardoise">🖨 Imprimer / PDF</button>
         <button type="button" class="btn btn-s" id="btn-reinit-cf">🧹 Titres par défaut</button>
       </div>
@@ -119,13 +239,28 @@
           </label>
           <button type="button" class="btn btn-p" id="btn-qr-maj">Mettre à jour le QR</button>
           <p class="aide" id="qr-url-affichee"></p>
+          <a class="btn btn-s" id="lien-qr-site" href="#" target="_blank" rel="noopener" hidden>Ouvrir l'adresse du QR</a>
         </div>
       </div>
     </div>
   </section>
 
+  <!-- ================= écran : objectifs ================= -->
+  <section id="ecran-objectifs" hidden aria-labelledby="titre-objectifs">
+    <div class="screen-head">
+      <div><p class="eyebrow">PILOTAGE</p><h2 id="titre-objectifs">Objectifs de l'établissement</h2><p class="aide">Créez vos propres indicateurs : chiffre d'affaires, couverts, marge, produits publiés ou objectif libre. Les valeurs disponibles sont actualisées automatiquement depuis les données locales et le serveur du restaurant.</p></div>
+      <button type="button" class="btn btn-p" id="btn-ajouter-objectif-ecran">+ Ajouter un objectif</button>
+    </div>
+    <div id="liste-objectifs" class="objectifs-admin-grid"></div>
+    <div class="carte-bloc objectifs-empty" id="objectifs-aide-vide" hidden><strong>Commencez par un objectif opérationnel.</strong><p>Exemples : atteindre 600&nbsp;€ de chiffre d'affaires aujourd'hui, publier 6 rubriques, vendre 40 couverts ou maintenir une marge moyenne supérieure à 65&nbsp;%.</p><button type="button" class="btn btn-s" id="btn-ajouter-objectif-vide">Créer mon premier objectif</button></div>
+  </section>
+
   <!-- ================= écran : marges ================= -->
-  <section id="ecran-marges" hidden>
+  <section id="ecran-marges" hidden aria-labelledby="titre-marges">
+    <div class="screen-head">
+      <div><p class="eyebrow">PILOTAGE</p><h2 id="titre-marges">Marges &amp; prix</h2><p class="aide">Repérez les produits à ajuster. Utilisez « Voir dans La carte » pour modifier la fiche, le prix ou l'état de publication.</p></div>
+      <button type="button" class="btn btn-s" data-nav-ecran="carte">Gérer les produits dans La carte</button>
+    </div>
     <div id="kpis" class="kpis"></div>
     <div class="carte-bloc">
       <h2>Marge par produit</h2>
@@ -159,7 +294,11 @@
   </section>
 
   <!-- ================= écran : données ================= -->
-  <section id="ecran-donnees" hidden>
+  <section id="ecran-donnees" hidden aria-labelledby="titre-donnees">
+    <div class="screen-head">
+      <div><p class="eyebrow">SÉCURITÉ &amp; PARTAGE</p><h2 id="titre-donnees">Données &amp; publication</h2><p class="aide">Sauvegardez, synchronisez et contrôlez ce qui est publié sur les tablettes et le site public.</p></div>
+      <button type="button" class="btn btn-p" data-action-admin="publier">☁ Publier maintenant</button>
+    </div>
     <div class="carte-bloc">
       <h2>Sauvegarde et échange</h2>
       <p class="aide">La carte est conservée sur cet appareil. Exportez-la pour la
@@ -172,17 +311,55 @@
       </div>
       <p class="aide" id="info-donnees"></p>
     </div>
+    <div class="carte-bloc livraison-admin" id="bloc-livraison">
+      <h2>Commande en ligne — réception et frais</h2>
+      <p class="aide">Ces tarifs sont ajoutés séparément au total des produits. Le prix des pizzas et des autres lignes ne change jamais selon le mode choisi. La configuration est conservée localement et utilisée par le site de commande de la tablette.</p>
+      <div class="livraison-grille">
+        <label class="champ"><span>Sur place — frais €</span><input id="tarif-sur-place" type="number" min="0" max="100" step="0.10" value="0"></label>
+        <label class="champ"><span>Uber — frais €</span><input id="tarif-uber" type="number" min="0" max="100" step="0.10" value="4.50"></label>
+        <label class="champ"><span>Livraison urbaine — frais €</span><input id="tarif-livraison-urbaine" type="number" min="0" max="100" step="0.10" value="3.00"></label>
+      </div>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-p" id="btn-enregistrer-livraison">Enregistrer les tarifs</button>
+        <span class="aide" id="info-livraison" role="status"></span>
+      </div>
+    </div>
     <div class="carte-bloc">
       <h2>Entre tablettes et avec les clients</h2>
       <p class="aide">Lancez <code>serveur_carte.py</code> sur une tablette ou un ordinateur
         du restaurant : toutes les tablettes se synchronisent alors automatiquement
         (la dernière modification fait foi), et la page publique
-        <a href="public.html"><strong>public.html</strong></a> affiche la carte et les
+        <a id="lien-public-description" href="public.html"><strong>public.html</strong></a> affiche la carte et les
         cartes du jour en lecture seule, pour les clients connectés au Wi-Fi.</p>
       <div class="actions-donnees">
-        <button type="button" class="btn btn-s" id="btn-sync">Synchroniser maintenant</button>
-        <a class="btn btn-s" href="public.html" target="_blank" rel="noopener">Voir la page publique</a>
+        <button type="button" class="btn btn-s" id="btn-sync">Actualiser les données</button>
+        <button type="button" class="btn btn-p" id="btn-publier">Publier les modifications</button>
+        <a class="btn btn-s" id="lien-public-serveur" href="public.html" target="_blank" rel="noopener">Voir la page publique</a>
       </div>
+      <label class="champ" style="margin-top:14px">
+        <span>Adresse du serveur de carte</span>
+        <input type="url" id="champ-sync-base" autocomplete="url"
+               placeholder="http://192.168.1.20:8080" spellcheck="false">
+      </label>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-s" id="btn-sync-base">Enregistrer et tester le serveur</button>
+        <a class="btn btn-s" id="lien-api-serveur" href="#" target="_blank" rel="noopener" hidden>Voir l'état API</a>
+        <a class="btn btn-s" id="lien-apercu-serveur" href="#" target="_blank" rel="noopener" hidden>Ouvrir l'aperçu</a>
+        <a class="btn btn-s" id="lien-impression-serveur" href="#" target="_blank" rel="noopener" hidden>Ouvrir l'impression A4</a>
+      </div>
+      <p class="aide" id="info-sync-serveur" role="status">Serveur utilisé : détection automatique.</p>
+      <label class="champ" style="margin-top:14px">
+        <span>Clé d'administration (conservée sur cet appareil)</span>
+        <input type="password" id="champ-sync-token" autocomplete="off"
+               placeholder="Coller la clé fournie par l'installation" spellcheck="false">
+      </label>
+      <div class="actions-donnees">
+        <button type="button" class="btn btn-s" id="btn-sync-token">Enregistrer le jeton</button>
+        <button type="button" class="btn btn-danger" id="btn-sync-token-oublier">Oublier le jeton</button>
+      </div>
+      <p class="aide">La lecture de la page publique est ouverte. La clé d'administration
+        est demandée uniquement pour publier une modification ; ne la partagez pas avec
+        les clients.</p>
     </div>
     <div class="carte-bloc danger">
       <h2>Zone sensible</h2>
@@ -351,10 +528,43 @@
         </div>
       </fieldset>
 
+      <fieldset class="pave">
+        <legend>Inventaire et disponibilité</legend>
+        <label class="case">
+          <input type="checkbox" id="f-suivi-stock">
+          <span>Suivre ce produit dans l'inventaire</span>
+        </label>
+        <div class="deux-cols inventaire-champs">
+          <label class="champ">
+            <span>Quantité disponible</span>
+            <input type="number" id="f-stock" min="0" step="0.1" inputmode="decimal" value="0">
+          </label>
+          <label class="champ">
+            <span>Seuil d'alerte</span>
+            <input type="number" id="f-stock-mini" min="0" step="0.1" inputmode="decimal" value="0">
+          </label>
+        </div>
+        <p class="aide" id="f-stock-hiboutik"></p>
+      </fieldset>
+
       <label class="case">
         <input type="checkbox" id="f-actif" checked>
         <span>Produit à la carte (décocher pour le masquer temporairement)</span>
       </label>
+
+      <fieldset class="pave hiboutik-fiche" id="bloc-hiboutik-fiche">
+        <legend>Hiboutik</legend>
+        <p class="aide" id="f-hiboutik-aide">Pour une nouvelle fiche, cette action crée le produit dans Hiboutik après votre confirmation. Les identifiants restent côté serveur.</p>
+        <label class="champ">
+          <span>Code-barres / référence Hiboutik (facultatif)</span>
+          <input type="text" id="f-hiboutik-barcode" maxlength="80" autocomplete="off">
+        </label>
+        <label class="case">
+          <input type="checkbox" id="f-hiboutik-creer">
+          <span>Créer aussi ce nouveau produit dans Hiboutik</span>
+        </label>
+        <p class="aide" id="f-hiboutik-lie"></p>
+      </fieldset>
 
       <p class="err" id="f-erreur" role="alert" hidden></p>
     </div>
@@ -376,6 +586,11 @@
     <button type="button" class="fermer" aria-label="Fermer">×</button>
   </header>
   <div class="fiche-corps">
+    <label class="case cueillette-dispo">
+      <input type="checkbox" id="cueillette-disponibles">
+      <span>Afficher seulement les produits disponibles dans l'inventaire</span>
+    </label>
+    <p class="aide" id="cueillette-stock-info"></p>
     <input type="search" id="cueillette-recherche" placeholder="Rechercher un produit…"
            aria-label="Rechercher un produit">
     <div id="cueillette-liste" class="cueillette-liste"></div>
@@ -396,12 +611,52 @@
 <!-- ================= zone d'impression (invisible à l'écran) ================= -->
 <div id="zone-impression" aria-hidden="true"></div>
 
+<div id="objectif-voile" class="voile" hidden></div>
+<div id="objectif-fiche" class="fiche objectif-fiche" role="dialog" aria-modal="true" aria-labelledby="objectif-fiche-titre" hidden>
+  <form id="objectif-form">
+    <header class="fiche-tete"><h2 id="objectif-fiche-titre">Nouvel objectif</h2><button type="button" class="fermer" id="objectif-fermer" aria-label="Fermer">×</button></header>
+    <div class="fiche-corps">
+      <label class="champ"><span>Nom de l'objectif</span><input id="objectif-nom" type="text" maxlength="80" placeholder="Ex. : Chiffre d'affaires du service" required></label>
+      <div class="deux-cols"><label class="champ"><span>Indicateur</span><select id="objectif-type"><option value="ca">Chiffre d'affaires</option><option value="couverts">Couverts / commandes</option><option value="marge">Marge moyenne</option><option value="produits">Produits actifs</option><option value="rubriques">Rubriques publiées</option><option value="manuel">Valeur saisie manuellement</option></select></label><label class="champ"><span>Unité affichée</span><input id="objectif-unite" type="text" maxlength="12" placeholder="€, %, unités"></label></div>
+      <div class="deux-cols"><label class="champ"><span>Cible</span><input id="objectif-cible" type="number" min="0" step="0.01" required></label><label class="champ"><span>Période</span><select id="objectif-periode"><option value="jour">Aujourd'hui</option><option value="semaine">Cette semaine</option><option value="mois">Ce mois</option><option value="permanent">Permanent</option></select></label></div>
+      <label class="champ objectif-valeur-manuelle" id="objectif-valeur-wrap"><span>Valeur actuelle (si saisie manuellement)</span><input id="objectif-valeur" type="number" min="0" step="0.01" value="0"></label>
+      <p class="aide">Les indicateurs du chiffre d'affaires, des commandes, de la marge et du catalogue sont recalculés automatiquement. Un objectif manuel reste entièrement sous votre contrôle.</p>
+    </div>
+    <footer class="fiche-pied"><button type="button" class="btn btn-danger" id="objectif-supprimer" hidden>Supprimer</button><span class="flex-vide"></span><button type="button" class="btn btn-s" id="objectif-annuler">Annuler</button><button type="submit" class="btn btn-p">Enregistrer</button></footer>
+  </form>
+</div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="donnees.js"></script>
 <script src="donnees-carte.js"></script>
 <script src="ardoise-assets.js"></script>
 <script src="qr-encodeur.js"></script>
+<script src="api-client.js"></script>
 <script src="carte.js"></script>
+<script>
+(function () {
+  'use strict';
+  function ouvrirCarteImprimable(fichier) {
+    var cartes = window.TRATTORIA_PRINT_CARDS || {};
+    if (cartes[fichier]) {
+      var blob = new Blob([cartes[fichier]], {type: 'text/html;charset=utf-8'});
+      var url = URL.createObjectURL(blob);
+      var fenetre = window.open(url, '_blank', 'noopener');
+      // Certains WebView refusent les fenêtres secondaires : afficher alors
+      // la fiche dans la fenêtre courante plutôt que de perdre l'action.
+      if (!fenetre) window.location.href = url;
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      return;
+    }
+    window.location.href = 'impression/' + encodeURIComponent(fichier);
+  }
+  document.addEventListener('click', function (event) {
+    var target = event.target.closest ? event.target.closest('[data-print-card]') : null;
+    if (!target) return;
+    event.preventDefault();
+    ouvrirCarteImprimable(target.getAttribute('data-print-card'));
+  });
+}());
+</script>
 </body>
 </html>
