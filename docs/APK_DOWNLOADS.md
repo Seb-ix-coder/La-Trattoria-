@@ -7,7 +7,7 @@
 ## Répartition recommandée
 
 Une seule APK suffit pour l'équipe du restaurant : installer le même fichier
-`trato-13.4-monetico-pro.apk` sur la tablette **Maître** et sur les tablettes
+`trato-13.5-complete-admin.apk` sur la tablette **Maître** et sur les tablettes
 du **personnel**, puis choisir le rôle correspondant dans l'application.
 
 Les clients n'installent pas d'APK. Ils ouvrent le site servi par le réseau local
@@ -19,7 +19,7 @@ adresse sous le bouton **Ouvrir le site client** afin de l'ouvrir en un clic.
 
 | Fichier | Statut | SHA-256 | Téléchargement direct |
 |---|---|---|---|
-| `trato-13.4-monetico-pro.apk` | **Candidat 13.4 / versionCode 35** — Monetico côté relais HTTPS, nouveau design client, éditeur de carte corrigé | `c46368a823501c4d989f232c74c54998140ecb1dabed46ac0cda6fb98113fbe8` | [Télécharger l'APK](https://raw.githubusercontent.com/Seb-ix-coder/La-Trattoria-/arena/01a051de-la-trattoria/trato-13.4-monetico-pro.apk) |
+| `trato-13.5-complete-admin.apk` | **Candidat 13.5 / versionCode 36** — navigation admin fluide, module La carte complet, thème premium et intégration API | `ab4c4b2d4fa089bea71837c3d0ef5ba659580a0753728d5657ed636b2efba534` | [Télécharger l'APK](https://raw.githubusercontent.com/Seb-ix-coder/La-Trattoria-/arena/01a051de-la-trattoria/trato-13.5-complete-admin.apk) |
 | `trato-13.0-stable.apk` | Archive de base 13.0 / versionCode 32 | `869d39adf5d0e025429db15c3fe21384a3c3ad686a4ce25e6f2c3372c2e94834` | [Télécharger l'APK](https://raw.githubusercontent.com/Seb-ix-coder/La-Trattoria-/arena/01a051de-la-trattoria/trato-13.0-stable.apk) |
 
 **Lien immuable correspondant au build vérifié `b0a0ef8` :**
