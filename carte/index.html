@@ -69,7 +69,7 @@
         <section class="admin-panel" aria-labelledby="titre-raccourcis">
           <div class="panel-heading"><div><p class="eyebrow">NAVIGATION RAPIDE</p><h2 id="titre-raccourcis">Menu principal</h2></div><span class="panel-hint">Touchez une tuile pour ouvrir un espace</span></div>
           <div class="admin-menu-grid">
-            <button type="button" class="admin-menu-card featured" data-nav-ecran="carte"><span class="menu-card-icon">🍽️</span><span class="menu-card-copy"><strong>Carte générale</strong><small>Toutes les rubriques, produits, prix et allergènes</small></span><span class="menu-card-arrow">›</span></button>
+            <button type="button" class="admin-menu-card featured" data-nav-ecran="carte"><span class="menu-card-icon">🍽️</span><span class="menu-card-copy"><strong>Carte du restaurant</strong><small>Rubriques cuisine, fiches publiées, prix et allergènes</small></span><span class="menu-card-arrow">›</span></button>
             <button type="button" class="admin-menu-card" data-nav-ecran="ardoises"><span class="menu-card-icon">🗓️</span><span class="menu-card-copy"><strong>Cartes du jour</strong><small>Composer et publier les sélections</small></span><span class="menu-card-arrow">›</span></button>
             <button type="button" class="admin-menu-card" data-nav-ecran="ardoise"><span class="menu-card-icon">📋</span><span class="menu-card-copy"><strong>Ardoise &amp; QR</strong><small>Site public, visuels et QR code</small></span><span class="menu-card-arrow">›</span></button>
             <button type="button" class="admin-menu-card" data-nav-ecran="marges"><span class="menu-card-icon">📊</span><span class="menu-card-copy"><strong>Marges</strong><small>Prix, coûts et alertes de rentabilité</small></span><span class="menu-card-arrow">›</span></button>
@@ -114,23 +114,25 @@
     </div>
 
     <section class="carte-bloc impression-restaurant" aria-labelledby="titre-impressions-restaurant">
-      <h2 id="titre-impressions-restaurant">🖨️ Imprimer les cartes du restaurant</h2>
-      <p class="aide">Chaque bouton ouvre une carte autonome prête à imprimer. Choisir A4,
-        100&nbsp;% / taille réelle et désactiver les en-têtes et pieds de page.
-        Les prix proviennent du catalogue de cette application : vérifier la dernière
-        synchronisation avec Hiboutik avant impression. Imprimer une carte ne crée
-        aucune vente et ne modifie pas Hiboutik.</p>
-      <div class="rangee-boutons cartes-imprimables" aria-label="Cartes imprimables">
-        <a class="btn btn-p" href="#impression" data-cv-imprimer="1">🖨️ Imprimer la carte standard éditée</a>
-        <a class="btn btn-s" href="#impression" data-print-card="02-carte-pizzas.html">🖨️ Imprimer les pizzas</a>
-        <a class="btn btn-s" href="#impression" data-print-card="05-carte-salades.html">🖨️ Imprimer les salades</a>
-        <a class="btn btn-s" href="#impression" data-print-card="06-carte-formules.html">🖨️ Imprimer les formules</a>
-        <a class="btn btn-s" href="#impression" data-cv-imprimer="1">🖨️ Imprimer boissons & carte standard</a>
-        <a class="btn btn-s" href="#impression" data-print-card="03-glaces-langelys.html">🖨️ Imprimer les glaces</a>
-        <a class="btn btn-s" href="#impression" data-print-card="04-bieres-du-moment.html">🖨️ Imprimer les bières</a>
-        <a class="btn btn-s" href="#impression" data-print-card="07-carte-restaurant-economique.html">🖨️ Imprimer la version économique</a>
-        <a class="btn btn-s" href="#impression" data-print-card="cartes-contact-a4.html">🖨️ Imprimer les cartes de visite + QR</a>
+      <div class="impression-titre"><div><p class="eyebrow">DOCUMENTS DE SERVICE</p><h2 id="titre-impressions-restaurant">Imprimer sans se perdre</h2></div><span class="impression-note">Une action principale, le reste au besoin</span></div>
+      <p class="aide">La carte du restaurant est le document de référence. Les cartes boissons et les formats spécialisés restent séparés pour éviter une feuille illisible. Les prix viennent des données locales et sont actualisés avant impression.</p>
+      <div class="impression-principale">
+        <a class="btn btn-p" href="#impression" data-cv-imprimer="1">🖨️ Imprimer la carte du restaurant</a>
+        <span>Plats, formules et desserts réellement publiés</span>
       </div>
+      <details class="impressions-secondaires">
+        <summary>Autres documents d’impression</summary>
+        <div class="rangee-boutons cartes-imprimables" aria-label="Autres cartes imprimables">
+          <a class="btn btn-s" href="#impression" data-print-card="08-carte-boissons.html">Carte des boissons</a>
+          <a class="btn btn-s" href="#impression" data-print-card="02-carte-pizzas.html">Carte pizzas</a>
+          <a class="btn btn-s" href="#impression" data-print-card="05-carte-salades.html">Carte salades</a>
+          <a class="btn btn-s" href="#impression" data-print-card="06-carte-formules.html">Carte formules</a>
+          <a class="btn btn-s" href="#impression" data-print-card="03-glaces-langelys.html">Glaces</a>
+          <a class="btn btn-s" href="#impression" data-print-card="04-bieres-du-moment.html">Bières</a>
+          <a class="btn btn-s" href="#impression" data-print-card="07-carte-restaurant-economique.html">Version économique</a>
+          <a class="btn btn-s" href="#impression" data-print-card="cartes-contact-a4.html">Cartes contact + QR</a>
+        </div>
+      </details>
     </section>
 
     <nav class="carte-vues" id="carte-vues" aria-label="Cartes éditables">
@@ -147,15 +149,20 @@
     <div class="outils" id="outils-standard">
       <div class="standard-admin-head">
         <div>
-          <strong>Éditeur de la carte générale</strong>
-          <span>Toutes les rubriques · lignes, titres, prix, textes vendeurs, allergènes et ordre</span>
+          <strong>La carte du restaurant</strong>
+          <span>Choisissez une rubrique, puis ouvrez uniquement les fiches dont vous avez besoin.</span>
         </div>
-        <div class="standard-admin-actions"><button type="button" class="btn btn-s btn-mini" data-standard-formules="1">Éditer les formules</button><button type="button" class="btn btn-p btn-mini" data-standard-preview="1">Aperçu A4 en deux colonnes</button></div>
+        <div class="standard-admin-actions"><button type="button" class="btn btn-s btn-mini" id="btn-organiser-carte" aria-expanded="false">Organiser les rubriques</button><button type="button" class="btn btn-p btn-mini" data-standard-preview="1">Aperçu de la carte</button></div>
       </div>
-      <div id="standard-structure" aria-label="Rubriques éditables de la carte standard"></div>
+      <div id="standard-structure" hidden aria-label="Organisation des rubriques de la carte standard"></div>
+      <div class="carte-selection-outil">
+        <label class="champ"><span>Je travaille sur</span><select id="filtre-famille" aria-label="Choisir la rubrique à gérer"><option value="">Choisir une rubrique…</option></select></label>
+        <label class="champ"><span>État des fiches</span><select id="filtre-etat" aria-label="Filtrer par état"><option value="actifs">Publiées uniquement</option><option value="tous">Toutes les fiches</option><option value="pauses">En pause uniquement</option></select></label>
+        <p class="selection-aide">Les autres produits restent rangés dans le catalogue et ne sont pas affichés tant que vous ne les demandez pas.</p>
+      </div>
       <div class="recherche-ligne">
-        <input type="search" id="recherche" placeholder="Rechercher un produit…"
-               aria-label="Rechercher un produit">
+        <input type="search" id="recherche" placeholder="Rechercher dans la rubrique choisie…"
+               aria-label="Rechercher un produit dans la rubrique choisie">
         <span class="raccourcis" aria-label="Raccourcis clavier">/ rechercher · N ajouter</span>
       </div>
       <div class="filtres" role="group" aria-label="Filtrer par type">

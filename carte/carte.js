@@ -49,6 +49,8 @@
   var ARDOISES = null;
   var ECRAN = 'carte';
   var FILTRE_TYPE = 'tout';
+  var FILTRE_FAMILLE = '';
+  var FILTRE_ETAT = 'actifs';
   var RECHERCHE = '';
   var TRI = { cle: 'fam', sens: 1 };
   var EN_EDITION = null;      // id du produit en cours d'édition, null = création
@@ -1154,25 +1156,12 @@
       });
       famillesUtilisees[def.fam] = true;
     });
-    // Boissons, formules et apéritifs restent dans la carte standard :
-    // le client retrouve ainsi toute l'offre sans devoir ouvrir une autre
-    // fiche imprimable.
-    famsCatalogue().forEach(function (fam) {
-      if (famillesUtilisees[fam]) return;
-      var conf = CF && CF.fams[fam];
-      var items = itemsFamille(fam).filter(function (it) {
-        if (fam === 'Apéritif' && it.kind === 'p' && it.p.type === 'formule') return false;
-        return it.kind === 'l' || it.p.actif;
-      });
-      if (!items.length) return;
-      sections.push({
-        id: 'fam-' + norm(fam).replace(/[^a-z0-9]+/g, '-'),
-        titre: conf && conf.titre ? conf.titre : fam,
-        sous: conf && conf.sous ? conf.sous : 'À découvrir à la Trattoria.',
-        items: items
-      });
-    });
-    return sections.filter(function (s) { return s.items.length || ['entrees', 'salades', 'pizzas', 'plats', 'desserts', 'glaces'].indexOf(s.id) >= 0; });
+    // La carte standard reste volontairement courte et lisible : elle porte
+    // la cuisine et les formules. Les boissons, vins, bières et cafés ont
+    // leurs propres fiches imprimables et ne doivent pas écraser le menu.
+    // Les catégories vides ne sont jamais imprimées : une rubrique vide est
+    // un signal de configuration, pas une page à montrer au client.
+    return sections.filter(function (s) { return s.items.length > 0; });
   }
 
   function htmlAllergenes(liste) {
@@ -1256,7 +1245,7 @@
       '<div class="sansImpression" style="max-width:820px;margin:0 auto 12px;' +
         'display:flex;gap:10px;justify-content:flex-end;align-items:center;">' +
         '<span style="color:#F3F1E7;font-family:Georgia,serif;font-size:14px;margin-right:auto;">' +
-          'La carte standard — A4, prête à imprimer (données éditées ici)</span>' +
+          'La carte du restaurant — A4, prête à imprimer (données éditées ici)</span>' +
         '<button type="button" id="btn-a4-imprimer" class="btn btn-s">🖨 Imprimer / PDF</button>' +
         '<button type="button" id="btn-a4-fermer" class="btn btn-s">Fermer</button>' +
       '</div>' +
@@ -2491,9 +2480,30 @@
   // ==========================================================
   //  Écran « La carte »
   // ==========================================================
+  function remplirFiltreFamilles() {
+    var select = $('#filtre-famille');
+    if (!select) return;
+    var familles = famsCatalogue();
+    var valeur = FILTRE_FAMILLE;
+    if (valeur && familles.indexOf(valeur) < 0) valeur = FILTRE_FAMILLE = '';
+    select.innerHTML = '<option value="">Choisir une rubrique…</option>' +
+      familles.map(function (fam) {
+        var total = CARTE.filter(function (p) { return p.fam === fam; }).length;
+        var actifs = CARTE.filter(function (p) { return p.fam === fam && p.actif; }).length;
+        return '<option value="' + echap(fam) + '">' + echap(fam) +
+          ' — ' + actifs + '/' + total + ' publiés</option>';
+      }).join('');
+    select.value = valeur;
+    var etat = $('#filtre-etat');
+    if (etat) etat.value = FILTRE_ETAT;
+  }
+
   function produitsFiltres() {
     var q = norm(RECHERCHE);
     return CARTE.filter(function (p) {
+      if (FILTRE_FAMILLE && p.fam !== FILTRE_FAMILLE) return false;
+      if (FILTRE_ETAT === 'actifs' && !p.actif) return false;
+      if (FILTRE_ETAT === 'pauses' && p.actif) return false;
       if (FILTRE_TYPE !== 'tout' && p.type !== FILTRE_TYPE) return false;
       if (q && norm(p.nom + ' ' + p.desc + ' ' + p.cat + ' ' + p.fam).indexOf(q) < 0) return false;
       return true;
@@ -2553,9 +2563,9 @@
   }
 
   function standardAdminDefs() {
-    return STANDARD_SECTIONS.concat([
-      { id: 'boissons', fam: 'Boissons', titre: 'Boissons', texte: 'Alcools, vins, bières, softs, eaux, cafés et digestifs.' }
-    ]);
+    // L’organisation de la carte standard ne mélange pas les boissons :
+    // elles sont gérées dans leurs vues dédiées, avec leur propre impression.
+    return STANDARD_SECTIONS.slice();
   }
 
   function standardAdminItems(def) {
@@ -2565,7 +2575,7 @@
   function dessinerStandardStructure() {
     var hote = $('#standard-structure');
     if (!hote || !CF) return;
-    var h = '<div class="standard-admin-intro"><b>La carte générale publiée</b><span>Cette source unique alimente l’administration, l’aperçu, l’impression A4, le site public et les commandes. Modifiez, déplacez, masquez ou ajoutez chaque ligne directement ici.</span></div>';
+    var h = '<div class="standard-admin-intro"><b>Organisation de la carte du restaurant</b><span>Cette vue règle l’ordre et les rubriques de la carte cuisine. Les boissons et cartes du moment se gèrent dans leurs espaces dédiés.</span></div>';
     standardAdminDefs().forEach(function (def) {
       var conf = CF.fams[def.fam] || { titre: def.titre, sous: def.texte, ordre: [], libres: [] };
       var items = standardAdminItems(def);
@@ -2614,9 +2624,20 @@
     if (CARTE_VIEW === 'moment') { dessinerVueMoment(); return; }
     if (CARTE_VIEW !== 'standard') { dessinerVueExtra(CARTE_VIEW); return; }
     $('#outils-standard').hidden = false;
+    remplirFiltreFamilles();
     dessinerStandardStructure();
     var liste = produitsFiltres();
-    $('#nb-visibles').textContent = liste.length + (liste.length > 1 ? ' produits' : ' produit');
+    var choixNecessaire = !FILTRE_FAMILLE && !RECHERCHE && FILTRE_TYPE === 'tout';
+    $('#nb-visibles').textContent = choixNecessaire
+      ? 'Choisissez une rubrique pour commencer'
+      : liste.length + (liste.length > 1 ? ' produits' : ' produit');
+    if (choixNecessaire) {
+      $('#liste-produits').innerHTML = '<div class="carte-guidage"><span class="carte-guidage-icone">⌕</span>' +
+        '<strong>Quelle partie de la carte voulez-vous gérer ?</strong>' +
+        '<p>Choisissez une rubrique ci-dessus. Vous ne verrez que les fiches utiles à cette tâche, sans liste interminable.</p>' +
+        '<p class="carte-guidage-note">Pour retrouver une fiche précise, utilisez la recherche.</p></div>';
+      return;
+    }
 
     var parFam = {};
     var ordre = [];
@@ -3826,6 +3847,7 @@
       b.classList.toggle('on', actif);
       b.setAttribute('aria-pressed', actif ? 'true' : 'false');
     });
+    FILTRE_FAMILLE = produit.fam || '';
     RECHERCHE = produit.nom;
     montrer('carte');
     var recherche = $('#recherche');
@@ -3911,6 +3933,19 @@
 
     document.addEventListener('click', function (e) {
       var t = e.target;
+
+      if (t.closest('#btn-organiser-carte')) {
+        var organisation = $('#standard-structure');
+        var boutonOrganisation = $('#btn-organiser-carte');
+        if (organisation) {
+          organisation.hidden = !organisation.hidden;
+          if (boutonOrganisation) {
+            boutonOrganisation.setAttribute('aria-expanded', organisation.hidden ? 'false' : 'true');
+            boutonOrganisation.textContent = organisation.hidden ? 'Organiser les rubriques' : 'Masquer l’organisation';
+          }
+        }
+        return;
+      }
 
       if (t.closest('#btn-enregistrer-livraison')) { livraisonSauver(); return; }
 
@@ -4181,6 +4216,19 @@
     });
 
     document.addEventListener('change', function (e) {
+      if (e.target.id === 'filtre-famille') {
+        FILTRE_FAMILLE = e.target.value;
+        RECHERCHE = '';
+        var rechercheFamille = $('#recherche');
+        if (rechercheFamille) rechercheFamille.value = '';
+        dessinerCarte();
+        return;
+      }
+      if (e.target.id === 'filtre-etat') {
+        FILTRE_ETAT = e.target.value || 'actifs';
+        dessinerCarte();
+        return;
+      }
       if (e.target.id === 'objectif-type') { majChampObjectifManuel(); return; }
       if (e.target.id === 'champ-photo') {
         chargerPhoto(e.target.files[0]);
