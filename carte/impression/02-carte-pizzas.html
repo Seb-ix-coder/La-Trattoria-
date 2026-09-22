@@ -48,6 +48,36 @@ body { color: #252521; font-family: Georgia, 'Times New Roman', serif; }
   .screen-actions { display: none !important; }
   .sheet { margin: 0; width: 210mm; min-height: 297mm; height: 297mm; box-shadow: none; }
 }
+
+/* Direction artistique premium : papier ivoire, vert profond et accent or. */
+:root { --ink:#26332d; --ink-soft:#66736c; --or:#b78a39; --or-pale:#ead9ad; --bordeaux:#8d1f2b; --papier:#fffdf8; }
+html, body { background: #eee8dd; }
+body { color: var(--ink); }
+.screen-actions { border-color: #d6bf87; border-radius: 6px; box-shadow: 0 4px 16px rgba(36,49,43,.08); }
+.screen-actions button { border-color: #7f1d29; background: var(--bordeaux); border-radius: 4px; }
+.sheet { background: var(--papier); border: 1px solid #d6bf87; border-radius: 5px; box-shadow: 0 16px 44px rgba(36,49,43,.13); }
+.brand { border-bottom: 1px solid var(--or); position: relative; }
+.brand::after { content:""; position:absolute; bottom:-5px; left:50%; width:9px; height:9px; border:1px solid var(--or); background:var(--papier); transform:translateX(-50%) rotate(45deg); }
+.brand .name { color: var(--ink); letter-spacing: .12em; }
+.brand .city { color: var(--ink-soft); letter-spacing: .16em; }
+.brand h1 { color: var(--ink); letter-spacing: .035em; text-transform: uppercase; }
+.brand .tagline { color: #977329; }
+.section h2 { border-bottom: 1px solid #e3d7bd; color: var(--ink); text-transform: uppercase; letter-spacing: .035em; }
+.section h2::before { content:"✦"; color:var(--or); font-size:.7em; margin-right:5px; }
+.section .section-note { color: var(--ink-soft); }
+.menu-item { border-bottom: 1px solid #f0eadd; padding-bottom: 1mm; }
+.item-name { color: var(--ink); }
+.dots { border-bottom-color: #cdbd9b; }
+.price { color: var(--bordeaux); }
+.item-desc { color: var(--ink-soft); }
+.item-desc strong { color: #977329; }
+.footer { border-top-color: var(--or); color: var(--ink-soft); }
+.callout { border-color: var(--or); background: #fbf5e7; color: var(--ink); }
+.callout b { color: var(--bordeaux); }
+@media print {
+  html, body { background: #fff; }
+  .sheet { border: 0; border-radius: 0; box-shadow: none; }
+}
 .brand{position:relative;padding-right:27mm!important}.menu-illustration{position:absolute;right:0;top:-1mm;width:23mm;height:18mm;object-fit:cover;border-radius:2mm;filter:saturate(.8)}</style></head><body>
 <div class="screen-actions"><button type="button" onclick="window.print()">🖨 Imprimer cette carte</button>
 <span>Une carte = une page A4 · échelle 100 % · désactiver en-têtes/pieds du navigateur</span></div>

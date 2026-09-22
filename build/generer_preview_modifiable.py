@@ -36,6 +36,22 @@ button.action:hover { background: #41482b; }
   header { padding: 16px; } .toolbar { position: static; } #state { width: 100%; margin-left: 0; }
   #stage { padding: 8px; overflow-x: auto; } .help { padding: 0 8px; }
 }
+
+/* Interface d’aperçu alignée avec la carte : sobre, éditoriale, lisible. */
+:root { --ink:#26332d; --or:#b78a39; --papier:#fffdf8; --bordeaux:#8d1f2b; }
+body { background:linear-gradient(180deg,#f6f2ea,#ebe4d8); color:var(--ink); }
+header { padding:28px 30px 22px; background:linear-gradient(135deg,#1b2923,#2c4436); border-bottom:1px solid var(--or); color:#fffdf8; }
+header h1 { color:#fffdf8; letter-spacing:.04em; text-transform:uppercase; }
+header p { color:#ead9ad; }
+.toolbar { background:rgba(255,253,248,.94); border-bottom:1px solid #d6bf87; box-shadow:0 4px 18px rgba(36,49,43,.08); padding:11px 16px; }
+button { border-color:#d0c09d; border-radius:5px; background:var(--papier); color:var(--ink); transition:background .15s ease,transform .15s ease; }
+button:hover,button.active { border-color:var(--bordeaux); background:var(--bordeaux); }
+button.action { border-color:#806127; background:#806127; }
+button.action:hover { background:#634b1e; }
+#state { color:#66736c; }
+#stage { padding:26px 20px; }
+#preview { border:1px solid #d6bf87; box-shadow:0 16px 44px rgba(36,49,43,.16); }
+.help { color:#66736c; }
 """
 
 EDITOR_JS = r"""
