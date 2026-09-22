@@ -956,6 +956,12 @@
     return false;
   }
 
+  function memoriserVueCarte() {
+    if (!window.history || !window.history.replaceState || ECRAN !== 'carte') return;
+    var hash = '#ecran-carte&vue=' + encodeURIComponent(CARTE_VIEW);
+    if (location.hash !== hash) window.history.replaceState({ ecran: 'carte', vue: CARTE_VIEW }, '', hash);
+  }
+
   // Clics de l'onglet « La carte » : vues + édition en place.
   function clicCarteStandard(t) {
     if (ECRAN !== 'carte') return false;
@@ -965,6 +971,7 @@
     if (t.closest('[data-standard-formules]')) {
       CARTE_VIEW = 'formules';
       $$('.cv').forEach(function (b) { var on = b.dataset.cv === CARTE_VIEW; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+      memoriserVueCarte();
       dessinerCarte();
       return true;
     }
@@ -976,6 +983,7 @@
         b.classList.toggle('on', on);
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
+      memoriserVueCarte();
       dessinerCarte();
       return true;
     }
@@ -3859,26 +3867,52 @@
   // ==========================================================
   //  Navigation
   // ==========================================================
-  function montrer(ecran) {
+  function montrer(ecran, silencieux) {
     ECRAN = ecran;
     var libellesEcran = {
       dashboard: 'Accueil admin', carte: 'La carte', ardoises: 'Cartes du jour',
       ardoise: 'Ardoise & QR', objectifs: 'Objectifs', marges: 'Marges & prix',
       donnees: 'Données & publication'
     };
+    if (!silencieux && window.history && window.history.pushState) {
+      var destination = ecran === 'dashboard' ? '' : '#ecran-' + ecran;
+      if (location.hash !== destination) window.history.pushState({ ecran: ecran }, '', destination || location.pathname + location.search);
+    }
     var contexte = $('#admin-ecran-label');
     if (contexte) contexte.textContent = libellesEcran[ecran] || 'Administration';
     var nouveau = $('#btn-nouveau');
     if (nouveau) nouveau.hidden = ecran !== 'carte';
+    var sectionActive = $('#ecran-' + ecran);
     ['dashboard', 'carte', 'ardoises', 'ardoise', 'objectifs', 'marges', 'donnees'].forEach(function (nom) {
       var section = $('#ecran-' + nom);
       if (section) section.hidden = nom !== ecran;
     });
+    if (sectionActive && ecran !== 'dashboard') {
+      var head = $('.screen-head', sectionActive);
+      if (head && !head.querySelector('[data-nav-retour]')) {
+        var retour = document.createElement('button');
+        retour.type = 'button';
+        retour.className = 'btn btn-s btn-mini nav-retour';
+        retour.dataset.navEcran = 'dashboard';
+        retour.dataset.navRetour = '1';
+        retour.setAttribute('aria-label', 'Revenir à l’accueil de l’administration');
+        retour.textContent = '← Accueil';
+        head.insertBefore(retour, head.firstChild);
+      }
+    }
     $$('.onglet').forEach(function (b) {
       var actif = b.dataset.ecran === ecran;
       b.classList.toggle('actif', actif);
       b.setAttribute('aria-pressed', actif ? 'true' : 'false');
+      if (actif && b.scrollIntoView) b.scrollIntoView({ block: 'nearest', inline: 'center' });
     });
+    if (sectionActive && ecran !== 'dashboard') {
+      var titreActif = sectionActive.querySelector('h1,h2');
+      if (titreActif) {
+        titreActif.setAttribute('tabindex', '-1');
+        try { titreActif.focus({ preventScroll: true }); } catch (ignore) { titreActif.focus(); }
+      }
+    }
     if (ecran === 'ardoise') { dessinerCF(); dessinerQR(); }
     if (ecran === 'carte') dessinerCarte();
     if (ecran === 'dashboard') { dessinerDashboard(); dessinerObjectifs(); }
@@ -3887,7 +3921,10 @@
       if ($('#champ-sync-token')) $('#champ-sync-token').value = SYNC_TOKEN;
       afficherLiensServeur();
     }
-    window.scrollTo(0, 0);
+    if (window.scrollTo) {
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      catch (ignoreScroll) { window.scrollTo(0, 0); }
+    }
   }
 
   // ==========================================================
@@ -4323,6 +4360,7 @@
       if (!$('#fiche').hidden) fermerFiche();
       else if (!$('#cueillette').hidden) fermerCueillette();
       else if (!$('#apercu').hidden) fermerApercu();
+      else if (ECRAN !== 'dashboard') montrer('dashboard');
     });
 
     $('#form-produit').addEventListener('submit', enregistrer);
@@ -4331,17 +4369,21 @@
     // Lien profond (depuis le panneau « Éditer les cartes » de l'application,
     // ou URL directe) : #ecran-carte&vue=formules, #ecran-ardoise&apercu=1…
     window.addEventListener('hashchange', appliquerHash);
+    window.addEventListener('popstate', appliquerHash);
     appliquerHash();
   }
 
   function appliquerHash() {
     var h = String(location.hash || '').replace(/^#/, '');
-    if (!h) return;
+    if (!h) {
+      if (ECRAN !== 'dashboard') montrer('dashboard', true);
+      return;
+    }
     var mE = h.match(/^ecran-([a-z]+)/);
     if (!mE) return;
     var ecran = mE[1];
     if (['dashboard', 'carte', 'ardoises', 'ardoise', 'objectifs', 'marges', 'donnees'].indexOf(ecran) < 0) return;
-    montrer(ecran);
+    montrer(ecran, true);
     var mV = h.match(/vue=([a-z]+)/);
     if (mV && ['standard', 'formules', 'vins', 'glaces', 'bieres', 'boissons', 'moment'].indexOf(mV[1]) >= 0) {
       CARTE_VIEW = mV[1];

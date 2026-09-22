@@ -589,3 +589,15 @@ body.impression-carte-a4 #impression-carte-overlay .sansImpression { display: no
 #liste-produits .carte-prod .actions-prod{grid-column:3;grid-row:1;align-self:center;display:flex;flex-direction:column;gap:4px;padding:8px 9px 3px 0;min-width:116px}.carte-prod .actions-prod .btn{min-height:31px;font-size:11px;white-space:nowrap}.standard-ordre{grid-column:3;grid-row:2;display:flex;justify-content:flex-end;gap:3px;padding:0 9px 8px 0}.standard-ordre .btn{min-width:27px;padding:2px 5px;font-size:10px}
 @media(max-width:680px){.impression-titre{flex-direction:column;gap:7px}.impression-note{white-space:normal}.carte-selection-outil{grid-template-columns:1fr}.selection-aide{grid-column:1;margin-top:0}.carte-prod .actions-prod{min-width:100px!important}.carte-prod .actions-prod .btn{font-size:10px}}
 @media(max-width:520px){#liste-produits .carte-prod{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto}.carte-prod .visu{grid-column:1!important;grid-row:1 / span 2!important;width:64px!important;min-height:86px!important}.carte-prod .infos{grid-column:2!important;grid-row:1!important;padding:9px!important}.carte-prod .actions-prod{grid-column:2!important;grid-row:2!important;flex-direction:row!important;padding:0 9px 8px!important;min-width:0!important;justify-content:flex-start}.carte-prod .standard-ordre{grid-column:1!important;grid-row:2!important;padding:0 0 8px 8px!important;justify-content:flex-start}}
+
+/* ---------- navigation fluide et repères ---------- */
+html{scroll-behavior:smooth}
+.screen-head{position:relative;min-height:48px}.screen-head .nav-retour{order:-1;flex:none;box-shadow:none;color:var(--rougef);border-color:#d4c5a8;background:#fffdf8}.screen-head .nav-retour:hover{background:var(--beige);transform:translateX(-2px)}
+.onglet{transition:background .16s ease,color .16s ease,transform .16s ease}.onglet:active{transform:scale(.97)}
+#ecran-dashboard,#ecran-carte,#ecran-ardoises,#ecran-ardoise,#ecran-objectifs,#ecran-marges,#ecran-donnees{animation:arrivee-ecran .2s ease both}
+@keyframes arrivee-ecran{from{opacity:.35;transform:translateY(5px)}to{opacity:1;transform:none}}
+.carte-vues{position:sticky;top:114px;z-index:18;background:rgba(239,233,218,.94);backdrop-filter:blur(8px);box-shadow:0 4px 12px rgba(43,43,40,.06)}
+.carte-selection-outil{position:sticky;top:170px;z-index:17;box-shadow:0 4px 12px rgba(43,43,40,.06);backdrop-filter:blur(8px)}
+@media(max-width:780px){.screen-head .nav-retour{align-self:flex-start}.carte-vues{top:108px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}.carte-vues::-webkit-scrollbar{display:none}.carte-vues .cv,.carte-vues .cva{flex:none}.carte-selection-outil{top:164px}}
+@media(max-width:560px){.screen-head .nav-retour{order:0}.carte-selection-outil{top:157px}.carte-guidage{padding:27px 17px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}#ecran-dashboard,#ecran-carte,#ecran-ardoises,#ecran-ardoise,#ecran-objectifs,#ecran-marges,#ecran-donnees{animation:none}.onglet,.screen-head .nav-retour{transition:none}}
