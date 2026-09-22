@@ -37,6 +37,7 @@
 .paiement-tip{
   margin:9px 0 0;font-size:12px;color:var(--olive,#8A8A55);font-weight:600;
 }
+.livraison-recap{font-variant-numeric:tabular-nums}
 .paiement-recap{
   margin:2px 0 0;font-size:12.5px;color:var(--texte,#2B2B28);text-align:right;
   font-weight:600;

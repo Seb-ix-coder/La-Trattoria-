@@ -1,3 +1,8 @@
+> **Archive historique — non approuvée pour livraison.** Les APK et les
+> identités de signature décrits ici sont historiques ; considérer
+> les anciennes clés comme compromises et consulter
+> `build/KEYSTORE_ROTATION.md` avant toute nouvelle diffusion.
+
 ## 🧾 Carte principale éditable « ardoise » — `trato-11.6-stable.apk` (versionCode 21)
 
 **Nouveauté majeure** : la carte principale s'édite désormais comme les plats

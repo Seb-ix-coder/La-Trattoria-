@@ -26,6 +26,8 @@ TestResults.xml
 build/work/
 build/out/
 build/work_keystore.p12
+# Secrets de signature : aucun fichier ne doit entrer dans le dépôt.
+build/keystore/
 *.p12
 *.jks
 *.keystore
@@ -36,6 +38,9 @@ __pycache__/
 carte/donnees-serveur.json
 carte/__pycache__/
 carte/gestion-de-la-carte.zip
+# Données locales du relais de paiement Monetico
+monetico-orders.json
+*.monetico-orders.json
 
 # Environnement virtuel Python local
 .venv/

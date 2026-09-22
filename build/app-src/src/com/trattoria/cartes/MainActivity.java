@@ -126,8 +126,18 @@ public class MainActivity extends Activity {
         return sb.toString();
     }
     private static void ecrire(File f, String s) throws Exception {
-        FileOutputStream fos = new FileOutputStream(f);
-        try { fos.write(s.getBytes(StandardCharsets.UTF_8)); } finally { fos.close(); }
+        File tmp = new File(f.getParentFile(), f.getName() + ".tmp");
+        FileOutputStream fos = new FileOutputStream(tmp);
+        try {
+            fos.write(s.getBytes(StandardCharsets.UTF_8));
+            fos.getFD().sync();
+        } finally { fos.close(); }
+        if (!tmp.renameTo(f)) {
+            // Certains Android refusent le remplacement atomique d'un fichier
+            // existant : supprimer seulement après l'écriture complète.
+            if (f.exists() && !f.delete()) throw new java.io.IOException("suppression impossible");
+            if (!tmp.renameTo(f)) throw new java.io.IOException("remplacement impossible");
+        }
     }
     private String asset(String nom) {
         try { return lireAssetsApp(nom); } catch (Exception e) { return ""; }
@@ -355,7 +365,16 @@ public class MainActivity extends Activity {
         tuiles.put("admin", new String[]{"⚙️", "Administration — plan de salle, paramètres"});
         tuiles.put("donnees", new String[]{"💾", "Données — export / import JSON"});
         tuiles.put("apropos", new String[]{"ℹ️", "À propos et mentions"});
+        LinearLayout grille = colonne();
+        LinearLayout ligneGrille = null;
+        int indiceTuile = 0;
         for (final java.util.Map.Entry<String, String[]> t : tuiles.entrySet()) {
+            if (indiceTuile % 2 == 0) {
+                ligneGrille = new LinearLayout(this);
+                ligneGrille.setOrientation(LinearLayout.HORIZONTAL);
+                grille.addView(ligneGrille, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            }
             LinearLayout l = colonne();
             l.setBackground(fondBord(CREME, TRAIT, 14, 1));
             l.setPadding(dp(16), dp(14), dp(16), dp(14));
@@ -387,9 +406,14 @@ public class MainActivity extends Activity {
             l.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) { afficher(t.getKey()); }
             });
-            contenu.addView(l);
-            contenu.addView(espace(10));
+            LinearLayout.LayoutParams tuileParams = new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            tuileParams.setMargins(indiceTuile % 2 == 0 ? 0 : dp(5), 0,
+                    indiceTuile % 2 == 0 ? dp(5) : 0, dp(10));
+            ligneGrille.addView(l, tuileParams);
+            indiceTuile++;
         }
+        contenu.addView(grille);
         contenu.addView(texte("La Trattoria — 15 rue de la poste, 17100 Saintes — SIRET 106 050 263 00016",
                 11.5f, GRIS, false));
     }
@@ -2422,7 +2446,12 @@ public class MainActivity extends Activity {
                 String brut;
                 try { brut = toutLire(is); } finally { is.close(); }
                 JSONObject lu = new JSONObject(brut);
-                if (lu.optJSONArray("carte") == null) { toast("Fichier invalide"); return; }
+                // Le module PWA exporte « produits », tandis que cette app
+                // historique utilise « carte » : accepter les deux formats.
+                JSONArray importCarte = lu.optJSONArray("carte");
+                if (importCarte == null) importCarte = lu.optJSONArray("produits");
+                if (importCarte == null) { toast("Fichier invalide"); return; }
+                lu.put("carte", importCarte);
                 donnees = lu;
                 try {
                     if (!donnees.has("moment")) donnees.put("moment", new JSONObject());

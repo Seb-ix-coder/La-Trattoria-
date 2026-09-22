@@ -1,0 +1,506 @@
+[
+  {
+    "id": "p1",
+    "nom": "La Margherita",
+    "pv": 10.0,
+    "actif": true
+  },
+  {
+    "id": "p2",
+    "nom": "La Regina",
+    "pv": 12.0,
+    "actif": true
+  },
+  {
+    "id": "p3",
+    "nom": "La 4 Fromages",
+    "pv": 12.5,
+    "actif": true
+  },
+  {
+    "id": "p4",
+    "nom": "La Chorizo",
+    "pv": 13.0,
+    "actif": true
+  },
+  {
+    "id": "p5",
+    "nom": "La Montagnarde",
+    "pv": 13.0,
+    "actif": true
+  },
+  {
+    "id": "p6",
+    "nom": "La Chèvre Miel",
+    "pv": 13.0,
+    "actif": true
+  },
+  {
+    "id": "p7",
+    "nom": "La Poulet Curry",
+    "pv": 14.0,
+    "actif": true
+  },
+  {
+    "id": "p8",
+    "nom": "La Fermière",
+    "pv": 14.5,
+    "actif": true
+  },
+  {
+    "id": "p9",
+    "nom": "La Parme",
+    "pv": 16.5,
+    "actif": true
+  },
+  {
+    "id": "p10",
+    "nom": "La Diavola",
+    "pv": 13.5,
+    "actif": true
+  },
+  {
+    "id": "p11",
+    "nom": "La Végétarienne",
+    "pv": 12.5,
+    "actif": true
+  },
+  {
+    "id": "p12",
+    "nom": "La Saumon",
+    "pv": 15.5,
+    "actif": true
+  },
+  {
+    "id": "p13",
+    "nom": "La Calzone",
+    "pv": 13.5,
+    "actif": true
+  },
+  {
+    "id": "p14",
+    "nom": "La Truffe",
+    "pv": 17.0,
+    "actif": true
+  },
+  {
+    "id": "p15",
+    "nom": "La César",
+    "pv": 11.0,
+    "actif": true
+  },
+  {
+    "id": "p16",
+    "nom": "L'Italienne",
+    "pv": 12.5,
+    "actif": true
+  },
+  {
+    "id": "p17",
+    "nom": "La Burrata",
+    "pv": 13.5,
+    "actif": true
+  },
+  {
+    "id": "p18",
+    "nom": "La Chèvre Chaud",
+    "pv": 11.5,
+    "actif": true
+  },
+  {
+    "id": "p19",
+    "nom": "Planche apéritive",
+    "pv": 14.0,
+    "actif": true
+  },
+  {
+    "id": "p20",
+    "nom": "Focaccia maison",
+    "pv": 4.5,
+    "actif": true
+  },
+  {
+    "id": "p21",
+    "nom": "Bâtonnets de pâte",
+    "pv": 5.5,
+    "actif": true
+  },
+  {
+    "id": "p22",
+    "nom": "Tomate & basilic",
+    "pv": 6.5,
+    "actif": true
+  },
+  {
+    "id": "p23",
+    "nom": "Burrata & pesto",
+    "pv": 8.5,
+    "actif": true
+  },
+  {
+    "id": "p24",
+    "nom": "Parme & ricotta",
+    "pv": 8.5,
+    "actif": true
+  },
+  {
+    "id": "p25",
+    "nom": "Bolognaise",
+    "pv": 13.5,
+    "actif": true
+  },
+  {
+    "id": "p26",
+    "nom": "Carbonara",
+    "pv": 14.0,
+    "actif": true
+  },
+  {
+    "id": "p27",
+    "nom": "Poulet & champignons",
+    "pv": 14.0,
+    "actif": true
+  },
+  {
+    "id": "p28",
+    "nom": "Arrabbiata",
+    "pv": 12.0,
+    "actif": true
+  },
+  {
+    "id": "p29",
+    "nom": "Lasagnes maison",
+    "pv": 14.5,
+    "actif": true
+  },
+  {
+    "id": "p30",
+    "nom": "Le Classique",
+    "pv": 6.0,
+    "actif": true
+  },
+  {
+    "id": "p31",
+    "nom": "Le Caramel Spéculoos",
+    "pv": 6.5,
+    "actif": true
+  },
+  {
+    "id": "p32",
+    "nom": "Le Noisette",
+    "pv": 6.5,
+    "actif": true
+  },
+  {
+    "id": "p33",
+    "nom": "Le Pistache",
+    "pv": 7.5,
+    "actif": true
+  },
+  {
+    "id": "p34",
+    "nom": "Le Crousti",
+    "pv": 8.0,
+    "actif": true
+  },
+  {
+    "id": "p35",
+    "nom": "1 boule",
+    "pv": 2.5,
+    "actif": true
+  },
+  {
+    "id": "p36",
+    "nom": "2 boules",
+    "pv": 4.5,
+    "actif": true
+  },
+  {
+    "id": "p37",
+    "nom": "3 boules",
+    "pv": 6.0,
+    "actif": true
+  },
+  {
+    "id": "p38",
+    "nom": "Coupe maison",
+    "pv": 7.5,
+    "actif": true
+  },
+  {
+    "id": "p39",
+    "nom": "Affogato",
+    "pv": 5.5,
+    "actif": true
+  },
+  {
+    "id": "p40",
+    "nom": "Coupe enfant",
+    "pv": 4.5,
+    "actif": true
+  },
+  {
+    "id": "p41",
+    "nom": "Menu Enfant",
+    "pv": 6.0,
+    "actif": true
+  },
+  {
+    "id": "p42",
+    "nom": "Formule Midi",
+    "pv": 15.0,
+    "actif": true
+  },
+  {
+    "id": "p43",
+    "nom": "Formule Complète",
+    "pv": 22.0,
+    "actif": true
+  },
+  {
+    "id": "p44",
+    "nom": "Formule Salade",
+    "pv": 15.5,
+    "actif": true
+  },
+  {
+    "id": "p45",
+    "nom": "Spritz maison",
+    "pv": 7.0,
+    "actif": true
+  },
+  {
+    "id": "p46",
+    "nom": "Americano",
+    "pv": 7.0,
+    "actif": true
+  },
+  {
+    "id": "p47",
+    "nom": "Kir",
+    "pv": 5.0,
+    "actif": true
+  },
+  {
+    "id": "p48",
+    "nom": "Picon bière 25 cl",
+    "pv": 6.0,
+    "actif": true
+  },
+  {
+    "id": "p49",
+    "nom": "Apéritif sans alcool",
+    "pv": 5.5,
+    "actif": true
+  },
+  {
+    "id": "p50",
+    "nom": "Planche & pichet",
+    "pv": 21.0,
+    "actif": true
+  },
+  {
+    "id": "p51",
+    "nom": "Planche & Spritz",
+    "pv": 25.0,
+    "actif": true
+  },
+  {
+    "id": "p52",
+    "nom": "Eau plate 33 cl",
+    "pv": 2.0,
+    "actif": true
+  },
+  {
+    "id": "p53",
+    "nom": "Eau gazeuse 33 cl",
+    "pv": 2.0,
+    "actif": true
+  },
+  {
+    "id": "p54",
+    "nom": "Coca-Cola 33 cl",
+    "pv": 2.5,
+    "actif": true
+  },
+  {
+    "id": "p55",
+    "nom": "Coca-Cola Cherry 33 cl",
+    "pv": 2.5,
+    "actif": true
+  },
+  {
+    "id": "p56",
+    "nom": "Coca-Cola Zero 33 cl",
+    "pv": 2.5,
+    "actif": true
+  },
+  {
+    "id": "p57",
+    "nom": "Fuze Tea 33 cl",
+    "pv": 2.5,
+    "actif": true
+  },
+  {
+    "id": "p58",
+    "nom": "Limonade artisanale 33 cl",
+    "pv": 3.5,
+    "actif": true
+  },
+  {
+    "id": "p59",
+    "nom": "San Pellegrino 33 cl",
+    "pv": 3.5,
+    "actif": true
+  },
+  {
+    "id": "p60",
+    "nom": "Jus de fruits 25 cl",
+    "pv": 3.0,
+    "actif": true
+  },
+  {
+    "id": "p61",
+    "nom": "Citronnade maison",
+    "pv": 3.5,
+    "actif": true
+  },
+  {
+    "id": "p62",
+    "nom": "Sirop à l'eau 25 cl",
+    "pv": 2.0,
+    "actif": true
+  },
+  {
+    "id": "p63",
+    "nom": "Pichet 25 cl",
+    "pv": 5.0,
+    "actif": true
+  },
+  {
+    "id": "p64",
+    "nom": "Pichet 50 cl",
+    "pv": 8.5,
+    "actif": true
+  },
+  {
+    "id": "p65",
+    "nom": "Pichet 1 litre",
+    "pv": 15.0,
+    "actif": true
+  },
+  {
+    "id": "p66",
+    "nom": "Chianti — verre",
+    "pv": 5.5,
+    "actif": true
+  },
+  {
+    "id": "p67",
+    "nom": "Chianti — bouteille",
+    "pv": 24.0,
+    "actif": true
+  },
+  {
+    "id": "p68",
+    "nom": "Pinot Grigio — verre",
+    "pv": 5.0,
+    "actif": true
+  },
+  {
+    "id": "p69",
+    "nom": "Pinot Grigio — bouteille",
+    "pv": 21.0,
+    "actif": true
+  },
+  {
+    "id": "p70",
+    "nom": "Rosé de Provence — verre",
+    "pv": 5.0,
+    "actif": true
+  },
+  {
+    "id": "p71",
+    "nom": "Rosé de Provence — bouteille",
+    "pv": 21.0,
+    "actif": true
+  },
+  {
+    "id": "p72",
+    "nom": "Prosecco — coupe",
+    "pv": 5.5,
+    "actif": true
+  },
+  {
+    "id": "p73",
+    "nom": "Pression 25 cl",
+    "pv": 4.0,
+    "actif": true
+  },
+  {
+    "id": "p74",
+    "nom": "Pression 50 cl",
+    "pv": 7.0,
+    "actif": true
+  },
+  {
+    "id": "p75",
+    "nom": "Peroni 33 cl",
+    "pv": 5.0,
+    "actif": true
+  },
+  {
+    "id": "p76",
+    "nom": "Moretti 33 cl",
+    "pv": 5.0,
+    "actif": true
+  },
+  {
+    "id": "p77",
+    "nom": "Bière sans alcool 33 cl",
+    "pv": 4.0,
+    "actif": true
+  },
+  {
+    "id": "p78",
+    "nom": "Espresso",
+    "pv": 2.0,
+    "actif": true
+  },
+  {
+    "id": "p79",
+    "nom": "Café allongé",
+    "pv": 2.2,
+    "actif": true
+  },
+  {
+    "id": "p80",
+    "nom": "Cappuccino",
+    "pv": 3.5,
+    "actif": true
+  },
+  {
+    "id": "p81",
+    "nom": "Café gourmand",
+    "pv": 7.0,
+    "actif": true
+  },
+  {
+    "id": "p82",
+    "nom": "Thé ou infusion",
+    "pv": 3.0,
+    "actif": true
+  },
+  {
+    "id": "p83",
+    "nom": "Limoncello 4 cl",
+    "pv": 5.0,
+    "actif": true
+  },
+  {
+    "id": "p84",
+    "nom": "Amaretto 4 cl",
+    "pv": 5.0,
+    "actif": true
+  }
+]
